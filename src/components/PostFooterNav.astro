@@ -1,0 +1,96 @@
+---
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+
+type Collection = 'blog' | 'field-notes' | 'projects';
+type AnyEntry =
+	| CollectionEntry<'blog'>
+	| CollectionEntry<'field-notes'>
+	| CollectionEntry<'projects'>;
+
+interface Props {
+	collection: Collection;
+	prev?: AnyEntry;
+	next?: AnyEntry;
+	related?: AnyEntry[];
+}
+
+const { collection, prev, next, related = [] } = Astro.props;
+
+const sectionLabel: Record<Collection, string> = {
+	blog: 'the journal',
+	'field-notes': 'the trail log',
+	projects: 'the workshop',
+};
+
+const indexHref: Record<Collection, string> = {
+	blog: '/blog',
+	'field-notes': '/field-notes',
+	projects: '/projects',
+};
+
+function entryHref(c: Collection, id: string) {
+	return `/${c}/${id}/`;
+}
+
+function entryHero(e: AnyEntry) {
+	const data = e.data as { featuredImage?: { src: string } | null; heroImage?: { src: string } | null };
+	return data.featuredImage ?? data.heroImage ?? undefined;
+}
+---
+
+<aside class="mt-16 not-prose">
+	<!-- Prev / Next -->
+	{(prev || next) && (
+		<div class="grid sm:grid-cols-2 gap-px bg-base-content/10 border-y border-base-content/10">
+			{prev ? (
+				<a href={entryHref(collection, prev.id)} class="group bg-base-100 p-6 hover:bg-base-200/60 transition-colors flex flex-col gap-2">
+					<span class="text-[10px] font-display font-bold tracking-[0.22em] uppercase text-base-content/50 inline-flex items-center gap-1.5">
+						<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition-transform group-hover:-translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+						Previously
+					</span>
+					<span class="font-editorial text-xl text-base-content group-hover:text-primary transition-colors line-clamp-2">{prev.data.title}</span>
+				</a>
+			) : <div class="bg-base-100" />}
+			{next ? (
+				<a href={entryHref(collection, next.id)} class="group bg-base-100 p-6 hover:bg-base-200/60 transition-colors flex flex-col gap-2 sm:text-right sm:items-end">
+					<span class="text-[10px] font-display font-bold tracking-[0.22em] uppercase text-base-content/50 inline-flex items-center gap-1.5">
+						Up next
+						<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+					</span>
+					<span class="font-editorial text-xl text-base-content group-hover:text-primary transition-colors line-clamp-2">{next.data.title}</span>
+				</a>
+			) : <div class="bg-base-100" />}
+		</div>
+	)}
+
+	<!-- Related -->
+	{related.length > 0 && (
+		<div class="mt-14">
+			<div class="flex items-baseline gap-4 mb-8">
+				<span class="eyebrow">Keep reading · more from {sectionLabel[collection]}</span>
+				<span class="flex-1 border-t border-base-content/15"></span>
+				<a href={indexHref[collection]} class="link-reveal font-display text-xs font-bold tracking-[0.2em] uppercase text-base-content/60 hover:text-primary">All →</a>
+			</div>
+			<div class="grid gap-8 sm:grid-cols-2">
+				{related.map((entry) => {
+					const hero = entryHero(entry);
+					return (
+						<a href={entryHref(collection, entry.id)} class="group flex gap-4 items-start">
+							{hero && (
+								<figure class="shrink-0 w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-xl bg-base-200 ring-1 ring-base-300/60">
+									<Image src={hero as any} alt={entry.data.title} width={224} height={224} class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]" />
+								</figure>
+							)}
+							<div class="flex-1 min-w-0">
+								<div class="text-[10px] font-display font-bold tracking-[0.2em] uppercase text-primary mb-1">{(entry.data as any).category ?? (entry.data as any).location}</div>
+								<h4 class="font-editorial text-lg leading-tight"><span class="title-sweep">{entry.data.title}</span></h4>
+								<p class="text-sm text-base-content/65 line-clamp-2 mt-1">{entry.data.description}</p>
+							</div>
+						</a>
+					);
+				})}
+			</div>
+		</div>
+	)}
+</aside>

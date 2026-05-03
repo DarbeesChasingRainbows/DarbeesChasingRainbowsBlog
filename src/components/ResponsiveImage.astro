@@ -1,0 +1,48 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+	src: ImageMetadata | string;
+	alt: string;
+	width?: number;
+	height?: number;
+	class?: string;
+	loading?: 'eager' | 'lazy';
+	sizes?: string;
+}
+
+const {
+	src,
+	alt,
+	width = 1200,
+	height = 675,
+	class: className,
+	loading = 'lazy',
+	sizes = '(min-width: 1024px) 1024px, 100vw',
+} = Astro.props;
+---
+
+{
+	typeof src === 'string' ? (
+		<img
+			src={src}
+			alt={alt}
+			width={width}
+			height={height}
+			loading={loading}
+			class={className}
+			decoding="async"
+		/>
+	) : (
+		<Image
+			src={src}
+			alt={alt}
+			width={width}
+			height={height}
+			loading={loading}
+			class={className}
+			sizes={sizes}
+		/>
+	)
+}

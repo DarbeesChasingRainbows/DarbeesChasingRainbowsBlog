@@ -1,0 +1,22 @@
+---
+interface Props {
+	label: string;
+	href?: string;
+	variant?: 'default' | 'category' | 'tag';
+}
+
+const { label, href, variant = 'default' } = Astro.props;
+
+const classes = {
+	default: 'badge badge-outline',
+	category: 'badge badge-primary badge-soft font-medium',
+	tag: 'badge badge-ghost text-xs',
+};
+
+const Tag = href ? 'a' : 'span';
+---
+
+<Tag href={href} class:list={[classes[variant], 'gap-1']}>
+	<slot />
+	{label}
+</Tag>

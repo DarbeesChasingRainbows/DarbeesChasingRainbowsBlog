@@ -1,0 +1,56 @@
+---
+interface Part {
+	name: string;
+	quantity?: number;
+	url?: string;
+	notes?: string;
+}
+
+interface Props {
+	items: Part[];
+	title?: string;
+}
+
+const { items, title = 'Parts List' } = Astro.props;
+---
+
+<section class="my-8 rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
+	<header class="px-5 py-3 bg-base-200 border-b border-base-300">
+		<h3 class="font-display font-bold text-lg m-0">{title}</h3>
+	</header>
+	<div class="overflow-x-auto">
+		<table class="table">
+			<thead>
+				<tr>
+					<th>Part</th>
+					<th class="w-20 text-right">Qty</th>
+					<th>Notes</th>
+				</tr>
+			</thead>
+			<tbody>
+				{
+					items.map((part) => (
+						<tr>
+							<td class="font-medium">
+								{part.url ? (
+									<a
+										href={part.url}
+										target="_blank"
+										rel="noopener nofollow"
+										class="link link-primary"
+									>
+										{part.name}
+									</a>
+								) : (
+									part.name
+								)}
+							</td>
+							<td class="text-right tabular-nums">{part.quantity ?? '—'}</td>
+							<td class="text-sm text-base-content/80">{part.notes ?? ''}</td>
+						</tr>
+					))
+				}
+			</tbody>
+		</table>
+	</div>
+</section>

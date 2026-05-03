@@ -1,63 +1,214 @@
 ---
-import AboutHeroImage from '../assets/blog-placeholder-about.jpg';
-import Layout from '../layouts/BlogPost.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import NewsletterSignup from '../components/NewsletterSignup.astro';
 ---
 
-<Layout
-	title="About Me"
-	description="Lorem ipsum dolor sit amet"
-	pubDate={new Date('August 08 2021')}
-	heroImage={AboutHeroImage}
+<BaseLayout
+	title="Our Story"
+	description="How a hard season, a house that wasn't forever, and repeated rainbows became the beginning of Darbees Chasing Rainbows."
 >
-	<p>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-		labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo
-		viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam
-		adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus
-		et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus
-		vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque
-		sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.
-	</p>
+	<article class="mx-auto max-w-3xl px-4 py-16 md:py-24">
 
-	<p>
-		Morbi tristique senectus et netus. Id semper risus in hendrerit gravida rutrum quisque non
-		tellus. Habitasse platea dictumst quisque sagittis purus sit amet. Tellus molestie nunc non
-		blandit massa. Cursus vitae congue mauris rhoncus. Accumsan tortor posuere ac ut. Fringilla urna
-		porttitor rhoncus dolor. Elit ullamcorper dignissim cras tincidunt lobortis. In cursus turpis
-		massa tincidunt dui ut ornare lectus. Integer feugiat scelerisque varius morbi enim nunc.
-		Bibendum neque egestas congue quisque egestas diam. Cras ornare arcu dui vivamus arcu felis
-		bibendum. Dignissim suspendisse in est ante in nibh mauris. Sed tempus urna et pharetra pharetra
-		massa massa ultricies mi.
-	</p>
+		<!-- Hero -->
+		<div class="text-center mb-16 md:mb-20">
+			<div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+					<path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+				</svg>
+			</div>
+			<h1 class="font-display text-5xl md:text-6xl font-extrabold tracking-tight mb-4">Our Story</h1>
+			<p class="text-xl md:text-2xl text-base-content/70 max-w-2xl mx-auto leading-snug">
+				How a hard season, a house that wasn't forever, and repeated rainbows became the beginning of Darbees Chasing Rainbows.
+			</p>
+		</div>
 
-	<p>
-		Mollis nunc sed id semper risus in. Convallis a cras semper auctor neque. Diam sit amet nisl
-		suscipit. Lacus viverra vitae congue eu consequat ac felis donec. Egestas integer eget aliquet
-		nibh praesent tristique magna sit amet. Eget magna fermentum iaculis eu non diam. In vitae
-		turpis massa sed elementum. Tristique et egestas quis ipsum suspendisse ultrices. Eget lorem
-		dolor sed viverra ipsum. Vel turpis nunc eget lorem dolor sed viverra. Posuere ac ut consequat
-		semper viverra nam. Laoreet suspendisse interdum consectetur libero id faucibus. Diam phasellus
-		vestibulum lorem sed risus ultricies tristique. Rhoncus dolor purus non enim praesent elementum
-		facilisis. Ultrices tincidunt arcu non sodales neque. Tempus egestas sed sed risus pretium quam
-		vulputate. Viverra suspendisse potenti nullam ac tortor vitae purus faucibus ornare. Fringilla
-		urna porttitor rhoncus dolor purus non. Amet dictum sit amet justo donec enim.
-	</p>
+		<!-- The forever home that wasn't -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>The forever home that wasn't</h2>
+			<p>
+				In 2023, we were trying to sell the house we thought would be our forever home.
+			</p>
+			<p>
+				On paper, it was 2,100 square feet — enough to sound spacious. In practice, it was designed for a retired couple, not a growing family. Two tiny bedrooms. A giant master suite. Not enough room for the life we were building. We had three children when we bought it. We soon had four.
+			</p>
+			<p>
+				Then, layer by layer, we started discovering what the house actually was.
+			</p>
+		</div>
 
-	<p>
-		Mattis ullamcorper velit sed ullamcorper morbi tincidunt. Tortor posuere ac ut consequat semper
-		viverra. Tellus mauris a diam maecenas sed enim ut sem viverra. Venenatis urna cursus eget nunc
-		scelerisque viverra mauris in. Arcu ac tortor dignissim convallis aenean et tortor at. Curabitur
-		gravida arcu ac tortor dignissim convallis aenean et tortor. Egestas tellus rutrum tellus
-		pellentesque eu. Fusce ut placerat orci nulla pellentesque dignissim enim sit amet. Ut enim
-		blandit volutpat maecenas volutpat blandit aliquam etiam. Id donec ultrices tincidunt arcu. Id
-		cursus metus aliquam eleifend mi.
-	</p>
+		<!-- Layer-by-layer problems -->
+		<div class="mb-16 rounded-3xl bg-base-200 p-8 md:p-10">
+			<h2 class="font-display text-2xl font-bold mb-6">What we found</h2>
+			<p class="text-base-content/80 mb-6">We remedied what we could. But it kept going.</p>
+			<ul class="space-y-3 text-base-content/80">
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Hidden mold</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Bad plumbing</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Poor soil — hammerhead worms and invasive Asian jumping worms</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Water entering a wall from an improperly installed gutter</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Termites, because the builders hadn't sealed them out properly</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Evidence the property had been used as a community dump decades earlier — we kept finding rusty saw blades and broken glass in the ground</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span>Mildew smell outside from overcrowded landscaping, which brought a cockroach infestation</span>
+				</li>
+			</ul>
+			<p class="mt-6 font-medium text-base-content">
+				We fixed what we could. But making that house into what our family needed would have taken more money, time, and strength than we had. So we listed it.
+			</p>
+		</div>
 
-	<p>
-		Tempus quam pellentesque nec nam aliquam sem. Risus at ultrices mi tempus imperdiet. Id porta
-		nibh venenatis cras sed felis eget velit. Ipsum a arcu cursus vitae. Facilisis magna etiam
-		tempor orci eu lobortis elementum. Tincidunt dui ut ornare lectus sit. Quisque non tellus orci
-		ac. Blandit libero volutpat sed cras. Nec tincidunt praesent semper feugiat nibh sed pulvinar
-		proin gravida. Egestas integer eget aliquet nibh praesent tristique magna.
-	</p>
-</Layout>
+		<!-- Living in the RV while waiting -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>Waiting in a tiny RV</h2>
+			<p>
+				We thought the house would sell quickly. It didn't.
+			</p>
+			<p>
+				For months, we lived in a small RV on the property while we waited. We kept praying. We kept asking the Lord what He was doing. We didn't know. The path forward wasn't clear at all.
+			</p>
+		</div>
+
+		<!-- The rainbows -->
+		<div class="mb-16 rounded-3xl border border-primary/20 bg-primary/5 p-8 md:p-10">
+			<h2 class="font-display text-2xl font-bold mb-4">The rainbows</h2>
+			<p class="text-base-content/80 mb-4">
+				Again and again, in moments of discouragement — when we talked about not knowing the Lord's will — we would see a rainbow.
+			</p>
+			<p class="text-base-content/80 mb-4">
+				Not once. Not twice. Over and over.
+			</p>
+			<p class="font-medium text-base-content">
+				Those rainbows became a comfort to us. A reminder that God had not forgotten our family, even when the path forward was unclear. The rainbow is not decoration for us. It is part of our testimony.
+			</p>
+		</div>
+
+		<!-- Why "Darbees" -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>Why "Darbees"</h2>
+			<p>
+				Darbee is our last name. The brand name "Darbees Chasing Rainbows" came directly from that season — a family name attached to a testimony. The "Darbees" part is simply who we are.
+			</p>
+			<p>
+				We are not chasing comfort, perfection, or a polished life. We are chasing the reminders of God's faithfulness in the middle of uncertainty. We are learning to build, learn, work, repent, repair, and hope as we go.
+			</p>
+		</div>
+
+		<!-- The RV is not the dream -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>The RV is not the dream</h2>
+			<p>
+				We have been full-time RVing ever since. We didn't set out to become forever RV people. The RV is the road we are walking — not the destination.
+			</p>
+			<p>
+				It has been a training ground. It has taught us about needs versus wants, systems versus chaos, small-space family life, and what it feels like to be a stranger in a community over and over. It has given us an unreasonable view of this country and its people. It has cost us real things too — consistent community, friendships, belonging, and ease.
+			</p>
+			<p>
+				We talk about all of it honestly on the <a href="/rv-life">RV Life</a> page.
+			</p>
+		</div>
+
+		<!-- Family roles and privacy -->
+		<div class="mb-16">
+			<h2 class="font-display text-2xl font-bold mb-6">The family behind the site</h2>
+
+			<div class="grid md:grid-cols-2 gap-6 mb-8">
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold text-lg mb-2">My wife</div>
+					<p class="text-sm text-base-content/80">She carries the daily academic load with extraordinary patience. She is the primary homeschool lead — adapting to each child's needs, keeping the core work moving, and knowing when to push, when to slow down, and when the whole day needs mercy.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold text-lg mb-2">Me</div>
+					<p class="text-sm text-base-content/80">I document the journey, build the systems, write the posts, and bring the side roads: theology, art, music, economics, tracking, taxonomy, herbal knowledge, nature identification, and practical projects. I also work full-time as a senior software engineer.</p>
+				</div>
+			</div>
+
+			<div class="rounded-2xl bg-base-200 p-6">
+				<div class="font-semibold mb-2">Our four kids</div>
+				<p class="text-sm text-base-content/80">
+					We have four children. They are part of everything on this site, but they are not the product. You may see their projects, hikes, drawings, notebooks, hands, and the life we are building together — but we protect their faces and their private moments.
+				</p>
+				<p class="mt-3 text-sm font-medium text-base-content">
+					We share family life, but we do not make our children the product.
+				</p>
+			</div>
+		</div>
+
+		<!-- Kingdom Farm -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>Kingdom Farm</h2>
+			<p>
+				Kingdom Farm is the next major destination — but not the final one. It is a long-term vision for regenerative food, faithful work, practical mercy, hospitality, and deeper roots. We are scouting land, studying regenerative farming, counting the cost, and building toward it honestly.
+			</p>
+			<p>
+				The deeper goal is larger than a farm: to become the kind of family that can build, steward, serve, and endure faithfully wherever the Lord leads.
+			</p>
+			<p>
+				<a href="/kingdom-farm">Read more about Kingdom Farm →</a>
+			</p>
+		</div>
+
+		<!-- How We Share -->
+		<div class="mb-16 rounded-3xl bg-base-200 p-8 md:p-10">
+			<h2 class="font-display text-2xl font-bold mb-6">How we share</h2>
+			<ul class="space-y-3 text-base-content/80">
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>We tell the truth, but not everything.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>We protect our children — no faces, no private or embarrassing moments.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>We share enough to be useful, not enough to make our family the product.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>No display ads. Affiliate links are disclosed and limited to things we actually use.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>We correct mistakes publicly when we get things wrong.</span>
+				</li>
+			</ul>
+			<p class="mt-6 text-sm text-base-content/60">
+				<a href="/support" class="hover:text-primary transition-colors underline">How This Site Is Supported →</a>
+			</p>
+		</div>
+
+		<!-- Closing invitation -->
+		<div class="text-center border-t border-base-300 pt-12">
+			<p class="text-base-content/70 mb-8 max-w-md mx-auto">
+				If any of this resonates, you're welcome here. We're glad you found us.
+			</p>
+			<div class="flex flex-wrap justify-center gap-4 mb-10">
+				<a href="/start-here" class="btn btn-primary">Start Here</a>
+				<a href="/kingdom-farm" class="btn btn-outline">Follow Kingdom Farm</a>
+				<a href="/homeschool" class="btn btn-ghost">Our Homeschool</a>
+			</div>
+		</div>
+
+		<div id="newsletter" class="mt-4 pt-12 border-t border-base-300">
+			<NewsletterSignup />
+		</div>
+	</article>
+</BaseLayout>

@@ -7,15 +7,23 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "check": "astro check",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.9",
     "@astrojs/mdx": "^5.0.4",
     "@astrojs/rss": "^4.0.18",
     "@astrojs/sitemap": "^3.7.2",
+    "@tailwindcss/vite": "^4.2.4",
     "astro": "^6.1.10",
-    "sharp": "^0.34.3"
+    "astro-icon": "^1.1.5",
+    "daisyui": "^5.5.19",
+    "sharp": "^0.34.3",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5.9.3"
   }
 }

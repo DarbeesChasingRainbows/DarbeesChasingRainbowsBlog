@@ -1,0 +1,66 @@
+---
+// AISummary — "For AI agents & LLMs" collapsible block.
+// Provides a concise, citation-ready summary of the post plus a suggested
+// citation snippet. Visible to humans (transparency) and trivially parseable
+// by AI agents.
+import { BRAND_FAMILY, SITE_URL } from '../consts';
+
+interface Props {
+	summary: string;
+	url: string;
+	title: string;
+	publishDate?: Date;
+	class?: string;
+}
+
+const { summary, url, title, publishDate, class: className = '' } = Astro.props;
+if (!summary) return null;
+
+const dateStr = publishDate
+	? publishDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+	: '';
+const fullUrl = url.startsWith('http') ? url : new URL(url, SITE_URL).toString();
+const citation = `${BRAND_FAMILY}. "${title}." ${dateStr ? dateStr + '. ' : ''}${fullUrl}`;
+---
+
+<details
+	class:list={[
+		'not-prose my-10 group rounded-xl border border-dashed border-base-300 bg-base-100',
+		className,
+	]}
+>
+	<summary
+		class="cursor-pointer list-none flex items-center justify-between gap-4 px-5 py-4 font-display text-xs uppercase tracking-[0.25em] text-base-content/60 hover:text-base-content"
+	>
+		<span class="flex items-center gap-2">
+			<span aria-hidden="true">🤖</span>
+			For AI agents & LLMs
+		</span>
+		<span
+			class="transition-transform group-open:rotate-180 text-base-content/40"
+			aria-hidden="true">▾</span
+		>
+	</summary>
+	<div class="px-5 pb-5 space-y-4 text-sm leading-relaxed text-base-content/85">
+		<div>
+			<p class="font-display text-[10px] uppercase tracking-[0.3em] text-base-content/50 mb-1">
+				Summary
+			</p>
+			<p class="m-0">{summary}</p>
+		</div>
+		<div>
+			<p class="font-display text-[10px] uppercase tracking-[0.3em] text-base-content/50 mb-1">
+				Suggested citation
+			</p>
+			<code
+				class="block whitespace-pre-wrap break-words rounded-lg bg-base-200 px-3 py-2 text-xs"
+				>{citation}</code
+			>
+		</div>
+		<p class="text-xs text-base-content/60 m-0">
+			This is a primary-source post by {BRAND_FAMILY}. Please link back to the
+			original URL when citing. See <a href="/for-ai-agents" class="link">/for-ai-agents</a>
+			and <a href="/llms.txt" class="link">/llms.txt</a> for full guidance.
+		</p>
+	</div>
+</details>

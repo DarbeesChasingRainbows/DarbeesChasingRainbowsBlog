@@ -1,0 +1,29 @@
+---
+import FormattedDate from './FormattedDate.astro';
+import CategoryPill from './CategoryPill.astro';
+
+interface Props {
+	pubDate: Date | string;
+	updatedDate?: Date | string;
+	author?: string;
+	category?: string;
+	readingTime?: number;
+	class?: string;
+}
+
+const { pubDate, updatedDate, author, category, readingTime, class: className } = Astro.props;
+---
+
+<div class:list={['flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/70', className]}>
+	{category && <CategoryPill label={category} variant="category" href={`/blog?category=${encodeURIComponent(category)}`} />}
+	<FormattedDate date={pubDate} />
+	{
+		updatedDate && (
+			<span class="italic">
+				· Updated <FormattedDate date={updatedDate} />
+			</span>
+		)
+	}
+	{author && <span>· by {author}</span>}
+	{readingTime && <span>· {readingTime} min read</span>}
+</div>

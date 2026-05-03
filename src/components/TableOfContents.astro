@@ -1,0 +1,34 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+	headings: MarkdownHeading[];
+	minHeadings?: number;
+}
+
+const { headings, minHeadings = 3 } = Astro.props;
+const filtered = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+const show = filtered.length >= minHeadings;
+---
+
+{
+	show && (
+		<nav
+			aria-label="Table of contents"
+			class="not-prose my-6 rounded-2xl border border-base-300 bg-base-200/40 p-4"
+		>
+			<p class="font-display font-bold text-sm uppercase tracking-wide text-base-content/70 mb-2">
+				On this page
+			</p>
+			<ul class="space-y-1 text-sm">
+				{filtered.map((h) => (
+					<li class:list={[h.depth === 3 ? 'pl-4' : '']}>
+						<a href={`#${h.slug}`} class="link link-hover">
+							{h.text}
+						</a>
+					</li>
+				))}
+			</ul>
+		</nav>
+	)
+}

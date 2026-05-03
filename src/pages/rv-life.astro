@@ -1,0 +1,199 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import BlogCard from '../components/BlogCard.astro';
+import NewsletterSignup from '../components/NewsletterSignup.astro';
+import { getBlogPosts } from '../utils/getPosts';
+
+const allBlog = await getBlogPosts();
+const rvPosts = allBlog.filter((p) => p.data.category === 'RV Life').slice(0, 4);
+---
+
+<BaseLayout
+	title="RV Life"
+	description="The honest road between the house that wasn't forever and the deeper roots we're working toward. What full-time RV life with four kids actually looks like."
+>
+	<article class="mx-auto max-w-3xl px-4 py-16 md:py-24">
+
+		<!-- Hero -->
+		<div class="text-center mb-16 md:mb-20">
+			<div class="eyebrow mb-4">Honest notes from the road</div>
+			<h1 class="font-display text-5xl md:text-6xl font-extrabold tracking-tight mb-4">RV Life</h1>
+			<p class="text-xl md:text-2xl text-base-content/70 max-w-2xl mx-auto leading-snug">
+				The honest road between the house that wasn't forever and the deeper roots we're working toward.
+			</p>
+		</div>
+
+		<!-- The RV is not the dream -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>The RV is not the dream</h2>
+			<p>
+				We did not set out to become forever RV people.
+			</p>
+			<p>
+				When we sold the house that was supposed to be our forever home, we thought we'd travel for a while — see the country, let the kids experience real places, give ourselves time to find the right land while the market corrected. That was the plan.
+			</p>
+			<p>
+				The market did not correct the way we hoped. Life kept happening. RV life stretched longer than expected. And somewhere along the way, we stopped waiting for it to end and started paying attention to what it was actually teaching us.
+			</p>
+			<p>
+				The RV is the road we're walking. It is not the destination.
+			</p>
+		</div>
+
+		<!-- What it has given -->
+		<div class="mb-16">
+			<h2 class="font-display text-2xl font-bold mb-6">What RV life has given us</h2>
+			<div class="grid sm:grid-cols-2 gap-5">
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">An unreasonable view of this country</div>
+					<p class="text-sm text-base-content/80">We've seen regions most people only read about. We've realized how different — and how similar — people are across this country. Many people rarely leave their county. We've been in dozens of them.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Seeing God's wonder across the land</div>
+					<p class="text-sm text-base-content/80">Mountains, coastlines, forests, ruins, rivers, swamps, prairies. The created world is extraordinary. We've been reminded of that over and over.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Freedom from bad neighbors</div>
+					<p class="text-sm text-base-content/80">When a situation isn't working, we can move. That's not nothing. Everyone moves eventually — you just usually don't control when.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Financial security from owning outright</div>
+					<p class="text-sm text-base-content/80">Our truck and RV are paid off. That matters. We're not paying rent or a mortgage while on the road — and that margin has helped us stay focused on the longer vision.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Seasonal mobility</div>
+					<p class="text-sm text-base-content/80">Move north when the south gets brutal. Move south when the north gets cold. This sounds minor until you've lived it.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Clarity about needs versus wants</div>
+					<p class="text-sm text-base-content/80">Small space strips out a lot of noise. You learn quickly what your family actually needs and what was just clutter — physical and otherwise.</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- What it has cost -->
+		<div class="mb-16 rounded-3xl bg-base-200 p-8 md:p-10">
+			<h2 class="font-display text-2xl font-bold mb-6">What RV life has cost us</h2>
+			<p class="text-base-content/80 mb-6">We try to be honest about this. The costs are real.</p>
+			<ul class="space-y-3 text-base-content/80">
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Repairs and expense.</strong> RVs break. Trucks break. Fuel costs are significant. Wear and tear on both is constant.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Emotional toll.</strong> Being always in motion has a cost you don't fully anticipate until you've lived it for a year.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Moving rhythm.</strong> With Thousand Trails, we move every 2–3 weeks. That disrupts everything: schooling, routines, friendships, rest.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Consistent community is hard.</strong> Plugging into a church, making real friends, being known over time — these are genuinely difficult in this lifestyle.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Kids are growing.</strong> Four kids take up more space every year. What felt manageable at the start feels tighter now.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Kids don't always share the glamour.</strong> The youngest doesn't know anything different. The older ones sometimes just want consistency, a room of their own, and to stay somewhere long enough to feel at home.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">—</span>
+					<span><strong>Weight management is constant.</strong> Every pound matters when you're towing. Gear, food, books, supplies — it all adds up and has to be managed carefully.</span>
+				</li>
+			</ul>
+		</div>
+
+		<!-- Moving days -->
+		<div class="prose prose-lg max-w-none mb-16">
+			<h2>Moving days</h2>
+			<p>
+				Moving days are their own category.
+			</p>
+			<p>
+				We have clear roles: my wife cleans and stores everything inside. I handle the outside — disconnecting utilities, packing gear, hitching up. When it works well, it's satisfying. When it doesn't, it's a long day.
+			</p>
+			<p>
+				Some moving days become survival days. Homeschool stops. Tempers get short. Nothing goes as planned. We've learned to expect this and plan accordingly — moving days don't go on the school calendar as productive days.
+			</p>
+		</div>
+
+		<!-- Best systems -->
+		<div class="mb-16">
+			<h2 class="font-display text-2xl font-bold mb-6">Systems that help</h2>
+			<div class="space-y-5">
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Dedicated roles</div>
+					<p class="text-sm text-base-content/80">Knowing who does what removes a lot of friction. Clear inside/outside split on moving days. Clear academic lead versus project lead in the homeschool. Roles matter.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Gear philosophy</div>
+					<p class="text-sm text-base-content/80">Avoid buying things labeled "for RV" unless there's a genuine reason. Generic products often work just as well and cost less. One exception: the Hughes Power Watchdog. It's expensive, but if you're not electrically inclined, something handling campground electrical protection for you may be worth it.</p>
+				</div>
+				<div class="rounded-2xl border border-base-300 p-6">
+					<div class="font-semibold mb-2">Setup and teardown checklists</div>
+					<p class="text-sm text-base-content/80">We have a mental checklist that has become second nature. Written checklists help when you're tired or distracted. Don't skip them.</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- What we'd tell someone considering it -->
+		<div class="mb-16 rounded-3xl bg-base-200 p-8 md:p-10">
+			<h2 class="font-display text-2xl font-bold mb-6">What we'd tell someone considering it</h2>
+			<ul class="space-y-3 text-base-content/80">
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>It is not automatically cheaper or simpler than a house. Budget carefully and honestly.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>Your kids will grow. Plan for more space than you think you need.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>Community will be the hardest thing. Be intentional about it from day one.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>You need systems. The families who thrive are organized, not just adventurous.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>It will teach you things about your family — about resilience, priorities, and what you actually need — that nothing else would have.</span>
+				</li>
+				<li class="flex items-start gap-3">
+					<span class="text-primary mt-1 shrink-0">→</span>
+					<span>If you're doing it to escape something, it won't work. If you're doing it to pursue something, it can be extraordinary.</span>
+				</li>
+			</ul>
+		</div>
+
+		<!-- Related posts -->
+		{rvPosts.length > 0 ? (
+			<div class="mb-16">
+				<div class="flex items-baseline gap-4 mb-8">
+					<span class="eyebrow">From the blog</span>
+					<span class="flex-1 border-t border-base-content/15"></span>
+					<a href="/blog?category=RV+Life" class="text-xs font-display font-bold tracking-[0.2em] uppercase text-base-content/60 hover:text-primary transition-colors">All RV posts →</a>
+				</div>
+				<div class="grid gap-8 sm:grid-cols-2">
+					{rvPosts.map((post) => <BlogCard post={post} />)}
+				</div>
+			</div>
+		) : (
+			<div class="mb-16 rounded-2xl border border-base-300 p-8 text-center">
+				<p class="font-display font-bold text-lg mb-2">RV Life posts coming soon</p>
+				<p class="text-base-content/70 text-sm">Moving days, gear reviews, systems that work, and the honest parts nobody talks about. Subscribe below to catch them when they land.</p>
+			</div>
+		)}
+
+		<!-- Newsletter -->
+		<div class="border-t border-base-300 pt-12">
+			<NewsletterSignup />
+		</div>
+
+	</article>
+</BaseLayout>

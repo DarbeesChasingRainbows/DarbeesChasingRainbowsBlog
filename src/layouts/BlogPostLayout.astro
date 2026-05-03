@@ -1,0 +1,153 @@
+---
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import PostMeta from '../components/PostMeta.astro';
+import CategoryPill from '../components/CategoryPill.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import NewsletterSignup from '../components/NewsletterSignup.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PostFooterNav from '../components/PostFooterNav.astro';
+import KeyTakeaways from '../components/KeyTakeaways.astro';
+import Sources from '../components/Sources.astro';
+import FAQAccordion from '../components/FAQAccordion.astro';
+import EntityCard from '../components/EntityCard.astro';
+import AISummary from '../components/AISummary.astro';
+import StructuredData from '../components/StructuredData.astro';
+import {
+	buildBlogPostingJsonLd,
+	buildBreadcrumbJsonLd,
+	buildFaqJsonLd,
+} from '../utils/seo';
+import { getBlogPosts, getAdjacentPosts, getRelatedPosts } from '../utils/getPosts';
+
+const allBlog = await getBlogPosts();
+
+interface Props {
+	post: CollectionEntry<'blog'>;
+	headings?: MarkdownHeading[];
+	readingTime?: number;
+}
+
+const { post, headings = [], readingTime } = Astro.props;
+const { data } = post;
+const hero = data.featuredImage ?? data.heroImage;
+
+const { prev, next } = getAdjacentPosts(allBlog, post.id);
+const related = getRelatedPosts(allBlog, post, 2);
+
+const postUrl = new URL(Astro.url.pathname, Astro.site).toString();
+const heroUrl = hero ? new URL(hero.src, Astro.site).toString() : undefined;
+
+const breadcrumbItems = [
+	{ label: 'Home', href: '/' },
+	{ label: 'Blog', href: '/blog' },
+	{ label: data.title },
+];
+
+const graph = [
+	buildBlogPostingJsonLd({
+		title: data.title,
+		description: data.description,
+		url: postUrl,
+		image: heroUrl,
+		publishDate: data.pubDate,
+		updatedDate: data.updatedDate,
+		author: data.author,
+		category: data.category,
+		tags: data.tags,
+		aiSummary: data.aiSummary,
+	}),
+	buildBreadcrumbJsonLd(breadcrumbItems),
+	...(data.faq?.length ? [buildFaqJsonLd(data.faq)] : []),
+];
+---
+
+<BaseLayout
+	title={data.title}
+	description={data.description}
+	image={hero}
+	ogType="article"
+	publishDate={data.pubDate}
+	updatedDate={data.updatedDate}
+>
+	<article class="mx-auto max-w-3xl px-4 py-8 md:py-12">
+		<Breadcrumbs class="mb-6" items={breadcrumbItems} />
+		<header class="mb-8">
+			<h1 class="font-display text-3xl md:text-5xl font-extrabold leading-tight mb-4">
+				{data.title}
+			</h1>
+			<p class="text-lg text-base-content/80 mb-4">{data.description}</p>
+			<PostMeta
+				pubDate={data.pubDate}
+				updatedDate={data.updatedDate}
+				author={data.author}
+				category={data.category}
+				readingTime={readingTime}
+			/>
+		</header>
+
+		{
+			hero && (
+				<figure class="mb-8 -mx-4 md:mx-0">
+					<Image
+						src={hero}
+						alt={data.title}
+						width={1200}
+						height={675}
+						class="w-full md:rounded-2xl shadow-md"
+						loading="eager"
+					/>
+				</figure>
+			)
+		}
+
+		{data.keyTakeaways && data.keyTakeaways.length > 0 && (
+			<KeyTakeaways items={data.keyTakeaways} />
+		)}
+
+		<TableOfContents headings={headings} />
+
+		<div class="prose prose-lg max-w-none">
+			<slot />
+		</div>
+
+		{data.faq && data.faq.length > 0 && <FAQAccordion faq={data.faq} />}
+
+		{data.sources && data.sources.length > 0 && <Sources sources={data.sources} />}
+
+		{data.aiSummary && (
+			<AISummary
+				summary={data.aiSummary}
+				url={postUrl}
+				title={data.title}
+				publishDate={data.pubDate}
+			/>
+		)}
+
+		<EntityCard />
+
+		{
+			data.tags && data.tags.length > 0 && (
+				<div class="mt-10 flex flex-wrap gap-2">
+					{data.tags.map((tag: string) => (
+						<CategoryPill label={`#${tag}`} variant="tag" href={`/blog?tag=${encodeURIComponent(tag)}`} />
+					))}
+				</div>
+			)
+		}
+
+		<PostFooterNav collection="blog" prev={prev} next={next} related={related} />
+
+		<hr class="my-12 border-base-300" />
+
+		<NewsletterSignup />
+
+		<div class="mt-10 text-center">
+			<a href="/blog" class="btn btn-ghost">← Back to all posts</a>
+		</div>
+	</article>
+
+	<StructuredData graph={graph} />
+</BaseLayout>

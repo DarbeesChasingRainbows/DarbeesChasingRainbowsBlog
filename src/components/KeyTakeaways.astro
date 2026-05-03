@@ -1,0 +1,47 @@
+---
+// Editorial "Key Takeaways" callout placed at the top of long-form posts.
+// Designed for both human skim-reading and easy LLM citation.
+interface Props {
+	items: string[];
+	title?: string;
+	class?: string;
+}
+
+const { items, title = 'Key Takeaways', class: className = '' } = Astro.props;
+if (!items?.length) return null;
+---
+
+<aside
+	class:list={[
+		'not-prose my-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 md:p-8 shadow-sm',
+		className,
+	]}
+	aria-labelledby="key-takeaways-title"
+>
+	<div class="flex items-center gap-3 mb-4">
+		<span
+			class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-content font-display font-black text-sm"
+			aria-hidden="true"
+		>
+			TL;DR
+		</span>
+		<h2
+			id="key-takeaways-title"
+			class="font-display text-xs uppercase tracking-[0.3em] text-primary/80 m-0"
+		>
+			{title}
+		</h2>
+	</div>
+	<ol class="list-none m-0 p-0 space-y-3">
+		{
+			items.map((item, i) => (
+				<li class="flex gap-3 items-start text-base-content/90 leading-relaxed">
+					<span class="font-display font-black text-primary tabular-nums shrink-0 w-6">
+						{String(i + 1).padStart(2, '0')}
+					</span>
+					<span>{item}</span>
+				</li>
+			))
+		}
+	</ol>
+</aside>

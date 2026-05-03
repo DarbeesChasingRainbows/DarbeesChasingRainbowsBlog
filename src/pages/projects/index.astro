@@ -1,0 +1,63 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getProjects, getCategories } from '../../utils/getPosts';
+
+const projects = await getProjects();
+const categories = getCategories(projects);
+---
+
+<BaseLayout
+	title="Projects"
+	description="DIY, RV automation, schematics, and useful builds we've shipped and documented."
+>
+	<section class="mx-auto max-w-7xl px-6 pt-10 md:pt-14 pb-12">
+		<Breadcrumbs class="mb-6" items={[{ label: 'Home', href: '/' }, { label: 'Projects' }]} />
+		<div class="grid lg:grid-cols-12 gap-8 items-end">
+			<div class="lg:col-span-8">
+				<div class="flex items-center gap-3 mb-6">
+					<span class="inline-block w-10 h-px bg-primary"></span>
+					<span class="eyebrow">The Workshop</span>
+				</div>
+				<h1 class="font-editorial text-[clamp(3rem,8vw,7rem)]">
+					Things we <span class="italic text-accent">built</span>.
+				</h1>
+				<p class="mt-6 max-w-xl text-lg text-base-content/70 leading-relaxed">
+					DIY, RV automation, schematics, and useful builds we've shipped and documented. Parts lists and code included where it helps.
+				</p>
+			</div>
+			{categories.length > 0 && (
+				<div class="lg:col-span-4 lg:pl-8 lg:border-l lg:border-primary/15">
+					<div class="eyebrow mb-3">Kinds of builds</div>
+					<div class="flex flex-wrap gap-x-4 gap-y-1 font-display font-bold text-base-content/75">
+						{categories.map((c, i) => (
+							<>
+								{i > 0 && <span class="text-base-content/30">·</span>}
+								<span>{c}</span>
+							</>
+						))}
+					</div>
+					<p class="mt-4 text-sm text-base-content/55">{projects.length} {projects.length === 1 ? 'project' : 'projects'} documented.</p>
+				</div>
+			)}
+		</div>
+	</section>
+
+	{projects.length === 0 ? (
+		<section class="mx-auto max-w-3xl px-6 py-24 text-center">
+			<p class="font-editorial text-3xl text-base-content/40">No projects published yet. We're building.</p>
+		</section>
+	) : (
+		<section class="mx-auto max-w-7xl px-6 pb-16">
+			<div class="flex items-baseline gap-4 mb-10">
+				<span class="eyebrow">All builds</span>
+				<span class="flex-1 border-t border-base-content/15"></span>
+				<span class="font-display text-xs font-bold tracking-[0.2em] uppercase text-base-content/50 tabular-nums">{projects.length} projects</span>
+			</div>
+			<div class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+				{projects.map((project) => <ProjectCard project={project} />)}
+			</div>
+		</section>
+	)}
+</BaseLayout>

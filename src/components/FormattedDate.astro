@@ -1,17 +1,15 @@
 ---
+import { formatDate, formatDateISO } from '../utils/formatDate';
+
 interface Props {
-	date: Date;
+	date: Date | string;
+	class?: string;
 }
 
-const { date } = Astro.props;
+const { date, class: className } = Astro.props;
+const d = typeof date === 'string' ? new Date(date) : date;
 ---
 
-<time datetime={date.toISOString()}>
-	{
-		date.toLocaleDateString('en-us', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-		})
-	}
+<time datetime={formatDateISO(d)} class={className}>
+	{formatDate(d)}
 </time>

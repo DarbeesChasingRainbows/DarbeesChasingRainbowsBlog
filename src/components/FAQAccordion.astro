@@ -1,0 +1,45 @@
+---
+// FAQ accordion + inline FAQPage JSON-LD.
+// Each Q&A is rendered as a DaisyUI <collapse> for human readers AND emitted
+// as schema.org/FAQPage for search engines + LLMs.
+import { buildFaqJsonLd, type FaqItem } from '../utils/seo';
+
+interface Props {
+	faq: FaqItem[];
+	title?: string;
+	class?: string;
+}
+
+const { faq, title = 'Frequently Asked Questions', class: className = '' } = Astro.props;
+if (!faq?.length) return null;
+
+const jsonLd = buildFaqJsonLd(faq);
+---
+
+<section class:list={['not-prose my-12', className]} aria-labelledby="faq-title">
+	<h2
+		id="faq-title"
+		class="font-display text-2xl md:text-3xl font-extrabold tracking-tight mb-6"
+	>
+		{title}
+	</h2>
+	<div class="space-y-3">
+		{
+			faq.map((item, i) => (
+				<details
+					class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-xl"
+					open={i === 0}
+				>
+					<summary class="collapse-title font-display font-bold text-lg cursor-pointer list-none">
+						{item.question}
+					</summary>
+					<div class="collapse-content text-base-content/85 leading-relaxed">
+						<p class="pt-2">{item.answer}</p>
+					</div>
+				</details>
+			))
+		}
+	</div>
+</section>
+
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />

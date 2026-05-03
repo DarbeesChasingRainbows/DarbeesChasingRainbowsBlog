@@ -1,0 +1,82 @@
+---
+interface Props {
+	location: string;
+	date?: string;
+	weather?: string;
+	saw?: string[];
+	heard?: string;
+	wondered?: string;
+	learned?: string;
+}
+
+const { location, date, weather, saw = [], heard, wondered, learned } = Astro.props;
+---
+
+<section
+	class="my-8 rounded-2xl border border-success/30 bg-success/5 p-5 md:p-6"
+	aria-label="Field study observations"
+>
+	<header class="mb-4">
+		<h3 class="font-display font-bold text-xl m-0 flex items-center gap-2">
+			<span aria-hidden="true">🌿</span> Field Notes
+		</h3>
+		<dl class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+			<div>
+				<dt class="font-semibold">Location</dt>
+				<dd class="text-base-content/80">{location}</dd>
+			</div>
+			{
+				date && (
+					<div>
+						<dt class="font-semibold">Date</dt>
+						<dd class="text-base-content/80">{date}</dd>
+					</div>
+				)
+			}
+			{
+				weather && (
+					<div>
+						<dt class="font-semibold">Weather</dt>
+						<dd class="text-base-content/80">{weather}</dd>
+					</div>
+				)
+			}
+		</dl>
+	</header>
+
+	{
+		saw.length > 0 && (
+			<div class="mb-3">
+				<p class="font-display font-bold text-sm uppercase tracking-wide text-base-content/70">
+					Three things we saw
+				</p>
+				<ul class="list-disc pl-5 mt-1">
+					{saw.map((item) => (
+						<li>{item}</li>
+					))}
+				</ul>
+			</div>
+		)
+	}
+	{
+		heard && (
+			<p class="mb-2">
+				<strong class="font-display">One thing we heard:</strong> {heard}
+			</p>
+		)
+	}
+	{
+		wondered && (
+			<p class="mb-2">
+				<strong class="font-display">One thing we wondered:</strong> {wondered}
+			</p>
+		)
+	}
+	{
+		learned && (
+			<p class="mb-0">
+				<strong class="font-display">One thing we learned:</strong> {learned}
+			</p>
+		)
+	}
+</section>

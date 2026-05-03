@@ -1,0 +1,18 @@
+---
+// StructuredData — emits one or more JSON-LD blocks.
+// Pass an array of already-built JSON-LD nodes (use builders from utils/seo).
+// Each is serialized into its own <script type="application/ld+json"> tag,
+// which is the recommended approach for multiple schema blocks per page.
+interface Props {
+	graph: unknown[];
+}
+
+const { graph } = Astro.props;
+const blocks = (graph ?? []).filter(Boolean);
+---
+
+{
+	blocks.map((node) => (
+		<script type="application/ld+json" set:html={JSON.stringify(node)} is:inline />
+	))
+}

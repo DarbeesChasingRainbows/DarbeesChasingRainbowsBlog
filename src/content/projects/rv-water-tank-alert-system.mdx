@@ -1,0 +1,90 @@
+---
+title: "RV Water Tank Alert System"
+description: "A simple, reliable Arduino-based alert system that warns us before our RV's gray and fresh water tanks hit critical levels."
+pubDate: 2026-04-20
+category: "RV Automation"
+tags:
+  - rv
+  - arduino
+  - automation
+  - diy
+difficulty: "medium"
+estimatedCost: "$45–60"
+estimatedTime: "3–4 hours"
+githubUrl: "https://github.com/darbeeschasingrainbows/rv-tank-alert"
+draft: false
+partsList:
+  - name: "Arduino Nano (or compatible)"
+    quantity: 1
+    notes: "ATmega328P. The 5V version is fine."
+  - name: "Capacitive level sensor (non-contact)"
+    quantity: 2
+    notes: "One per tank. Avoid float switches if you can."
+  - name: "Piezo buzzer"
+    quantity: 1
+  - name: "10kΩ resistor"
+    quantity: 2
+    notes: "Pull-down for sensor inputs."
+  - name: "12V → 5V buck converter"
+    quantity: 1
+    notes: "RV runs on 12V; Arduino wants 5V."
+  - name: "Project enclosure"
+    quantity: 1
+---
+
+import Callout from '../../components/Callout.astro';
+
+## Overview
+
+We were tired of guessing how full our gray tank was — and even more tired of finding out the hard way. This is a simple Arduino project that watches both tanks and beeps before they hit critical.
+
+## Problem
+
+The factory tank monitor in our RV is famously unreliable. Sensors gunk up, readings drift, and you end up tapping the side of the tank like it's 1972.
+
+## Goal
+
+A non-contact monitor that:
+
+- Reads gray and fresh water levels reliably
+- Beeps a warning at 80% gray (and 20% fresh)
+- Costs less than a single bad dump-station mistake
+- Doesn't need an app or a cloud account
+
+## Build Steps
+
+1. **Mount the sensors.** The capacitive sensors stick to the *outside* of the tank. No drilling.
+2. **Wire to the Nano.** Each sensor goes to a digital input with a pull-down resistor.
+3. **Power from the RV's 12V house bus.** Use the buck converter to step down to 5V.
+4. **Flash the firmware.** See the [GitHub repo](https://github.com/darbeeschasingrainbows/rv-tank-alert) for the sketch.
+5. **Tune thresholds.** Fill the tank slowly and log raw values to find your trip points.
+
+<Callout type="warning" title="RV electrical work">
+Always disconnect shore power and the house battery before tying into the 12V bus. RV wiring is forgiving until it isn't.
+</Callout>
+
+## What Went Wrong
+
+The first capacitive sensor I tried was rated for "any tank up to 20mm wall." Our gray tank wall is 22mm. Readings were noisy until I switched sensors. Lesson: measure first.
+
+## Final Result
+
+The buzzer goes off about 90 minutes before we'd actually have a problem, which is exactly the lead time we need to find a dump station.
+
+## Cost Breakdown
+
+- Sensors (x2): $24
+- Arduino Nano clone: $6
+- Buck converter + buzzer + resistors: $8
+- Enclosure: $9
+- **Total: ~$47**
+
+## What I'd Change
+
+- Add a small OLED screen with current % readings.
+- Log to an SD card so we can see fill rates over a week.
+- Eventually, push to Home Assistant via ESP32.
+
+<Callout type="project" title="Code">
+The full Arduino sketch and wiring diagram live in the [GitHub repo](https://github.com/darbeeschasingrainbows/rv-tank-alert). Pull requests welcome.
+</Callout>

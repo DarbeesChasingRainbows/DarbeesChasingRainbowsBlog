@@ -1,0 +1,58 @@
+---
+interface Props {
+	compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+---
+
+<div class:list={['text-center', compact ? '' : 'max-w-xl mx-auto']}>
+	{
+		!compact && (
+			<>
+				<div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-6">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+						<path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+						<path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+					</svg>
+				</div>
+				<h3 class="font-display text-2xl md:text-3xl font-bold mb-3">Follow the journey</h3>
+				<p class="text-base text-base-content/70 mb-8 leading-relaxed">
+					Get RV life updates, field notes, homeschool lessons, and useful builds — straight to your inbox. No spam, ever.
+				</p>
+			</>
+		)
+	}
+	{
+		compact && (
+			<div class="text-left">
+				<h3 class="font-display text-lg font-bold mb-2">Stay in the loop</h3>
+				<p class="text-sm text-base-content/70 mb-3">
+					Field notes, projects, and updates from the road.
+				</p>
+			</div>
+		)
+	}
+	<form
+		class="flex flex-col sm:flex-row gap-3"
+		action="https://buttondown.email/api/emails/embed-subscribe/CHANGE_ME"
+		method="post"
+		target="_blank"
+	>
+		<label class="sr-only" for="newsletter-email">Email address</label>
+		<input
+			id="newsletter-email"
+			type="email"
+			name="email"
+			required
+			placeholder="you@example.com"
+			class="input input-bordered flex-1 bg-base-100 focus:bg-base-100"
+		/>
+		<button type="submit" class="btn btn-primary shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all">
+			{compact ? 'Subscribe' : 'Get Updates'}
+		</button>
+	</form>
+	<p class="text-xs text-base-content/50 mt-3">
+		Unsubscribe anytime. We respect your inbox.
+	</p>
+</div>

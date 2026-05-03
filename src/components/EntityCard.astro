@@ -1,0 +1,77 @@
+---
+// EntityCard — "About The Darbees" byline card placed at the end of every post.
+// Pattern follows Substack/Ghost/NYT byline-at-end conventions so the entity
+// is consistently associated with every piece of content (helps LLMs treat
+// the family as a recognizable, citable author entity).
+import {
+	BRAND_ENTITY,
+	BRAND_FAMILY,
+	BRAND_BIO,
+	BRAND_LOCATION,
+	SOCIAL_LINKS,
+} from '../consts';
+
+interface Props {
+	class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+const location = `${BRAND_LOCATION.city}, ${BRAND_LOCATION.region}`;
+---
+
+<aside
+	class:list={[
+		'not-prose my-12 rounded-2xl border border-base-300 bg-base-200/40 p-6 md:p-8',
+		className,
+	]}
+	aria-labelledby="entity-card-title"
+>
+	<div class="flex flex-col md:flex-row gap-6 items-start">
+		<div
+			class="relative shrink-0 inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary text-primary-content font-display font-black text-3xl shadow-md ring-2 ring-primary/20"
+			aria-hidden="true"
+		>
+			d
+			<span
+				class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary ring-2 ring-base-100"
+			></span>
+		</div>
+		<div class="flex-1 min-w-0">
+			<p class="font-display text-[10px] uppercase tracking-[0.3em] text-primary/70 mb-1">
+				Written by
+			</p>
+			<h2
+				id="entity-card-title"
+				class="font-display text-xl md:text-2xl font-extrabold tracking-tight m-0"
+			>
+				{BRAND_FAMILY}
+				<span class="text-base-content/50 font-normal text-base"> · {location}</span>
+			</h2>
+			<p class="mt-2 text-base-content/80 leading-relaxed">
+				{BRAND_BIO}
+			</p>
+			<div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+				<a href="/about" class="link link-hover font-semibold">About us →</a>
+				<a href="/for-ai-agents" class="link link-hover text-base-content/70">
+					For AI agents
+				</a>
+				<span class="text-base-content/30" aria-hidden="true">·</span>
+				<a
+					href={SOCIAL_LINKS.instagram}
+					class="link link-hover text-base-content/70"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					Instagram
+				</a>
+				<a
+					href={SOCIAL_LINKS.email}
+					class="link link-hover text-base-content/70"
+				>
+					Email
+				</a>
+			</div>
+			<p class="sr-only">{BRAND_ENTITY}</p>
+		</div>
+	</div>
+</aside>

@@ -1,0 +1,58 @@
+---
+type Variant = 'note' | 'warning' | 'faith' | 'field-note' | 'project' | 'tip';
+
+interface Props {
+	type?: Variant;
+	title?: string;
+}
+
+const { type = 'note', title } = Astro.props;
+
+const styles: Record<Variant, { wrapper: string; icon: string; label: string }> = {
+	note: {
+		wrapper: 'border-info/40 bg-info/10 text-base-content',
+		icon: 'ℹ️',
+		label: 'Note',
+	},
+	tip: {
+		wrapper: 'border-success/40 bg-success/10 text-base-content',
+		icon: '💡',
+		label: 'Tip',
+	},
+	warning: {
+		wrapper: 'border-warning/50 bg-warning/15 text-base-content',
+		icon: '⚠️',
+		label: 'Warning',
+	},
+	faith: {
+		wrapper: 'border-secondary/50 bg-secondary/15 text-base-content',
+		icon: '✝️',
+		label: 'Reflection',
+	},
+	'field-note': {
+		wrapper: 'border-success/40 bg-success/10 text-base-content',
+		icon: '🌿',
+		label: 'Field Note',
+	},
+	project: {
+		wrapper: 'border-primary/40 bg-primary/10 text-base-content',
+		icon: '🛠️',
+		label: 'Project',
+	},
+};
+
+const style = styles[type];
+const heading = title ?? style.label;
+---
+
+<aside class:list={['my-6 rounded-2xl border-l-4 p-4 md:p-5', style.wrapper]} role="note">
+	<div class="flex items-start gap-3">
+		<div class="text-2xl leading-none" aria-hidden="true">{style.icon}</div>
+		<div class="flex-1">
+			<p class="font-display font-bold mb-1">{heading}</p>
+			<div class="text-base-content/90 leading-relaxed">
+				<slot />
+			</div>
+		</div>
+	</div>
+</aside>

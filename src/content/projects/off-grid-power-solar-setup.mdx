@@ -1,0 +1,91 @@
+---
+title: "Off-Grid Power: Upgrading Our Solar Setup"
+description: "We doubled our solar capacity and replaced the lead-acid bank with LiFePO4 — here's what it cost, what it took, and what we'd do differently."
+pubDate: 2026-05-01
+category: "Off-Grid"
+tags:
+  - solar
+  - rv
+  - off-grid
+  - lifepo4
+  - boondocking
+difficulty: "medium"
+estimatedCost: "$2,140"
+estimatedTime: "PT8H"
+githubUrl: "https://github.com/darbeeschasingrainbows/rv-solar-monitor"
+draft: false
+partsList:
+  - name: "200W monocrystalline panel"
+    quantity: 4
+    notes: "We chose Rich Solar; Renogy is also fine."
+  - name: "60A MPPT charge controller"
+    quantity: 1
+  - name: "300Ah LiFePO4 battery"
+    quantity: 2
+    notes: "Self-heating models — winter boondocking matters."
+  - name: "2000W pure sine inverter"
+    quantity: 1
+  - name: "DC-DC charger (50A)"
+    quantity: 1
+    notes: "Lets the alternator help on cloudy days."
+aiSummary: >-
+  The Darbees doubled their RV solar capacity from 400W to 800W and replaced
+  a 200Ah lead-acid bank with 600Ah of LiFePO4 in May 2026. Total cost
+  $2,140, total time about 8 hours, with a parts list and 30-day output data.
+keyTakeaways:
+  - "Total install: 8 hours over a long weekend, $2,140 in parts."
+  - "Average daily harvest in May: 3.1 kWh — enough to run the rig indefinitely."
+  - "Self-heating LiFePO4 is the upgrade we should have done first."
+  - "Skip the bargain MPPT controller — we paid for the cheap one twice."
+entityMentions:
+  - "The Darbees"
+  - "Darbees Chasing Rainbows"
+  - "Kingdom Farm"
+---
+
+import Callout from '../../components/Callout.astro';
+
+## Why we upgraded
+
+Our original 400W array and lead-acid bank got us through fair-weather boondocking, but anything cloudy or cold meant either burning the generator or hunting down an RV park. With more long-haul travel on the calendar — and more time at remote sites scouting **Kingdom Farm** land — we needed real off-grid runway.
+
+## What we built
+
+- **800W array** on the roof (4 × 200W panels, tilted 0° for travel)
+- **600Ah LiFePO4** house bank (2 × 300Ah, self-heating)
+- **60A MPPT** controller, **2000W** pure sine inverter
+- **50A DC-DC** so the alternator helps on overcast travel days
+
+## Step 1 — Roof layout
+
+We dry-fit the panels with painter's tape first. Two long edges face the breeze; that matters more than people think.
+
+## Step 2 — Battery swap
+
+The old lead-acid bay needed an extra inch of clearance for the new bank. A 30-minute fix with a jigsaw, but worth measuring twice.
+
+<Callout type="warning" title="Disconnect everything">
+Shore, alternator, AND solar before you touch the bank. Lithium doesn't forgive tools dropped across terminals.
+</Callout>
+
+## Step 3 — Wiring + commissioning
+
+The MPPT and inverter wiring is mostly straightforward. The DC-DC charger took the longest because we routed a clean run from the alternator instead of T-ing into the existing harness.
+
+## 30-day results
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Average daily kWh harvested | 1.4 | 3.1 |
+| Generator hours / week | 6 | 0 |
+| Days off-grid before recharge needed | 2 | indefinite (May) |
+
+## What we'd do differently
+
+- Buy the self-heating batteries first instead of upgrading twice.
+- Run the DC-DC charger wires *before* installing the new bank.
+- Skip the bargain MPPT — ours died at week three.
+
+<Callout type="project" title="Code + wiring diagram">
+The Arduino-based shunt monitor and the full wiring diagram live in the [GitHub repo](https://github.com/darbeeschasingrainbows/rv-solar-monitor).
+</Callout>

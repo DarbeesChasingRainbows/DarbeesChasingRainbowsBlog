@@ -1,0 +1,24 @@
+---
+import { type CollectionEntry, render } from 'astro:content';
+import { getFieldNotes } from '../../utils/getPosts';
+import { readingTime } from '../../utils/readingTime';
+import FieldNotesLayout from '../../layouts/FieldNotesLayout.astro';
+
+export async function getStaticPaths() {
+	const notes = await getFieldNotes();
+	return notes.map((post) => ({
+		params: { slug: post.id },
+		props: { post },
+	}));
+}
+
+type Props = { post: CollectionEntry<'field-notes'> };
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const minutes = readingTime(post.body ?? '');
+---
+
+<FieldNotesLayout post={post} headings={headings} readingTime={minutes}>
+	<Content />
+</FieldNotesLayout>
