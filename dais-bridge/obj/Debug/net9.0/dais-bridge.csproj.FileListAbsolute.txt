@@ -115,3 +115,4 @@ C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\staticwebassets.buil
 C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\staticwebassets.development.json
 C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\staticwebassets.build.endpoints.json
 C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\swae.build.ex.cache
+C:\Work\DarbeesChasingRainbows\dais-bridge\bin\Debug\net9.0\safety_policies.json

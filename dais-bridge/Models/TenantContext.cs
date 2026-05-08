@@ -1,4 +1,4 @@
-namespace Darbee.Gateway.Models;
+namespace Darbee.Gateway;
 
 public class TenantContext
 {

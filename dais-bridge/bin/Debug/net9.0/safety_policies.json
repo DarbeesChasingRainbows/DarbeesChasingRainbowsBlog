@@ -1,0 +1,4 @@
+{
+  "BlockedKeywords": ["guns", "violence", "extremism", "hate speech"],
+  "RefusalMessage": "Policy Violation: The request body contains prohibited terminology."
+}
