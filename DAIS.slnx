@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="dais-bridge.tests/dais-bridge.tests.csproj" />
+  <Project Path="dais-bridge/dais-bridge.csproj" />
+</Solution>
