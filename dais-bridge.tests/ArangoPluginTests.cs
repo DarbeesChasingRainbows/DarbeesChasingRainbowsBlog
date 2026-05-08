@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Darbee.Gateway;
+using Darbee.Gateway.Plugins;
 using Xunit;
 
 namespace DAIS.Bridge.Tests;

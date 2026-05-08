@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using DAIS.Bridge.Plugins;
+using Darbee.Gateway.Plugins;
 using Xunit;
 
 namespace DAIS.Bridge.Tests;

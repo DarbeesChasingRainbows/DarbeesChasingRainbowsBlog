@@ -6,7 +6,7 @@ using Microsoft.SemanticKernel;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace DAIS.Bridge.Plugins;
+namespace Darbee.Gateway.Plugins;
 
 public class ObsidianPlugin
 {

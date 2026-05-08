@@ -7,7 +7,7 @@ using ArangoDBNetStandard;
 using ArangoDBNetStandard.Transport.Http;
 using Microsoft.SemanticKernel;
 
-namespace Darbee.Gateway;
+namespace Darbee.Gateway.Plugins;
 
 public class ArangoPlugin
 {

@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using DAIS.Bridge.Plugins;
+using Darbee.Gateway.Plugins;
+using Darbee.Gateway.Middleware;
+using Darbee.Gateway.Hubs;
 
 namespace Darbee.Gateway;
 
@@ -46,7 +48,12 @@ public class Program
         var app = builder.Build();
 
         // 3. Configure Middleware & Endpoints
+        app.UseMiddleware<SafetyMiddleware>();
+
         app.MapGet("/", () => "Darbee Sovereign AI Gateway Active");
+        
+        app.MapHub<KidSafeHub>("/hubs/kidsafe");
+        app.MapHub<ParentHub>("/hubs/parent");
 
         Console.WriteLine("🚀 Darbee Sovereign Gateway Initializing...");
         app.Run();

@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 
-namespace DAIS.Bridge.Plugins;
+namespace Darbee.Gateway.Plugins;
 
 public class GEOPlugin
 {
