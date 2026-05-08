@@ -33,3 +33,6 @@ obsidian-templates/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Git Worktrees
+.worktrees/
