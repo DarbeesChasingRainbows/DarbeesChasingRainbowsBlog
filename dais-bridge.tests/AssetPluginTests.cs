@@ -10,11 +10,14 @@ public class AssetPluginTests
     public async Task WashImage_ShouldReturnCloudUrl()
     {
         // Arrange
-        var plugin = new AssetPlugin("accountId", "apiToken");
+        var accountId = "accountId";
+        var plugin = new AssetPlugin(accountId, "apiToken");
         var localPath = "test.jpg";
 
-        // Act & Assert
-        // (Just compilation check for now)
-        await Task.CompletedTask;
+        // Act
+        var result = await plugin.WashImage(localPath);
+
+        // Assert
+        Assert.Contains(accountId, result);
     }
 }

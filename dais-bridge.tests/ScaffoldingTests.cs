@@ -17,7 +17,9 @@ public class ScaffoldingTests
         }
         
         Assert.NotNull(currentDir);
-        var projectRoot = currentDir.Parent; // Move up from dais-bridge.tests to solution root
+        var projectRoot = currentDir.Parent; 
+        
+        Assert.NotNull(projectRoot);
         var appSettingsPath = Path.Combine(projectRoot.FullName, "dais-bridge", "appsettings.json");
 
         // Act & Assert

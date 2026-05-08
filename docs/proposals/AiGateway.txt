@@ -1,0 +1,282 @@
+Darbee Family Sovereign AI Platform
+Unified Specification v1.0
+KidSafe AI Gateway + DAIS — Fully Integrated
+Version: 1.0
+Date: May 8, 2026
+Hardware Target: AMD Ryzen AI Max+ 395 (Strix Halo) on Framework Desktop, 128 GB RAM, Bazzite DX, Podman (rootless)
+Primary Author: doulos Christou (RV family of 6, 40-acre regenerative Kingdom Farm, Rome GA)
+
+1. Executive Summary & Unified Vision
+The Darbee Family Sovereign AI Platform is a single, local-first, Bible-aligned, multi-generational AI system that protects your children while capturing and multiplying your family’s lived wisdom.
+It combines two tightly integrated subsystems:
+
+KidSafe AI Gateway — Deterministic safety layer, age-appropriate education, voice interaction, vision moderation, and parent oversight for your four children (ages 4, 7, 10, 12).
+DAIS (Darbees Architectural Intelligence System) — Agentic content intelligence layer that turns your Obsidian vault, build photos, theology notes, and farm decisions into published Astro content and a living Family Legacy Graph.
+
+Core Commitments
+
+Everything that touches your children passes through deterministic, layered safety (never delegated to LLMs).
+Everything that captures family story, builds, and principles flows through DAIS with full provenance and versioning.
+Both systems share one ArangoDB knowledge graph, one LM Studio model server, one .NET 9 Semantic Kernel runtime, and one Podman-based deployment on Bazzite DX.
+The platform is designed for RV life (on-demand/scheduled operation) and grows with your children from preschool to adulthood.
+All inference, storage, and orchestration is 100% local and sovereign.
+
+Primary Goals
+
+Protect children with biblical, stewardship-centered guardrails.
+Automatically adjust content complexity for each child.
+Capture and publish regenerative farming + theology content while maintaining family voice.
+Build a queryable, versioned, multi-generational Family Legacy Graph.
+Give parents (you and your wife) real-time visibility + simple approval workflows.
+Export family stories as books, audio, and time-capsule PDFs for your children’s future.
+
+
+2. Family Context & Design Principles
+Family Profile
+
+Full-time RV family (2021 Keystone Avalanche 390DS + 2021 RAM 3500 Cummins)
+Four children: 4, 7, 10, 12 years old
+Building 40-acre regenerative Kingdom Farm in Rome, GA (Zone 8a)
+Mission: decentralized food security, serving the marginalized, zero-debt, multi-generational legacy
+
+Non-Negotiable Guardrails (encoded in policy engine)
+
+No guns, weapons, or violent imagery for any age
+No social media concepts or content for any age
+No reproductive or sexual content for any age
+Huge additional list of non-kid-safe topics (policy engine will be seeded with your full list)
+All content must align with biblical principles, creation care, stewardship, and service to the marginalized
+No evolutionary assumptions in educational material
+
+Design Principles (unchanged from prior specs but now unified)
+
+Local-first, offline-capable, on-demand for RV inverter life
+Safety is systemic and deterministic
+Capability isolation (one model, one job)
+Human supervision with real-time + daily visibility
+Immutable versioning of every decision, memory write, and policy change
+Strict multi-tenant isolation between child profiles and family legacy domain
+Profiles evolve automatically with parent-controlled stages
+
+
+3. Children Profiles & Safety Guardrails
+Profile Definitions (with auto-adjust reading level enabled)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Age BandReading LevelMax Session LengthCoding AccessVoice StyleHard RestrictionsExample Use CasePreschool (3-5)Picture books + very short sentences5–10 minNoneCalm storytellerNo text-heavy content, no toolsOccasional farm animal stories (low priority)Early Elementary (6-8)Simple sentences15–20 minNoneCalm storytellerNo guns/weapons, no social media, no reproductiveBasic farm facts, simple Bible storiesUpper Elementary (9-11)Chapter books25–30 minNoneCalm storytellerSame + age-appropriate depth limitsRegenerative farming principles, simple theologyMiddle School (12+)Full paragraphs40–45 minIntro coding (sandboxed)Calm storytellerSame + parent approval for new topicsCoding experiments, deeper research, legacy contributions
+Auto-Complexity Feature
+When the same content (e.g., “chicken tractor build”) is requested by different children, the system automatically rewrites at the appropriate reading level while preserving biblical alignment and family voice.
+Safety Severity Engine (0–100 scoring, same as prior spec)
+All content — whether generated for a child or published via DAIS — passes through the same engine with Bible-aligned weighting.
+
+4. Unified Architecture Overview
+text┌──────────────────────────────────────────────────────────────────────────────┐
+│                    Darbee Family Sovereign AI Platform                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Clients: KidSafe Apps (web/voice/PWA) • Obsidian • Astro Site • VS Code     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Gateway API (.NET 9 Minimal APIs + SignalR)                                  │
+│  Multi-Tenant Isolation + Immutable Audit Log                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Shared Safety & Intelligence Layer                                           │
+│  • Input Safety Pipeline (GLiNER-PII + GLiClass + Llama Guard)                │
+│  • Output Safety + Bible-aligned Rewrite Engine                               │
+│  • Semantic Routing (KidSafe) + Content Intelligence (DAIS)                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Shared Semantic Kernel Orchestrator (.NET 9 on Bazzite DX)                   │
+│  Common Plugins: ArangoPlugin, AssetPlugin, GitPlugin                         │
+│  KidSafe Plugins: SafetyPlugin, EducationPlugin, VoicePlugin, ParentPlugin    │
+│  DAIS Plugins: ObsidianPlugin, GEOPlugin, PublishPlugin, LegacyGraphPlugin    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Shared Memory: ArangoDB (128 GB system allows large vector + graph indexes)  │
+│  Domains: kid:preschool | kid:early-elementary | kid:upper-elementary         │
+│           kid:middle-school | family:legacy | family:builds | family:theology │
+│  Full versioning + previous_version edges + tenant isolation                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Specialized Subsystems                                                       │
+│  • KidSafe: Agent Orchestrator, Tool Governance, Parent Dashboard, Voice      │
+│  • DAIS: Obsidian ↔ ArangoDB Bridge, Astro MDX Emission, Cloudflare CI/CD     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+5. Core Layers & Modules (Detailed)
+5.1 KidSafe Safety & Education Layer (unchanged core logic, now with your specific answers applied)
+
+Input Safety Pipeline + Severity Scoring (Bible-aligned weighting)
+Output Safety + Rewrite Engine (auto-adjusts reading level per profile)
+Agent Orchestrator with age-band token budgets and sandboxed tools
+Voice System: Consistent calm storyteller voice, configurable wake-word + always-listening modes
+Vision Safety: Frame moderation with contextual reasoning (medical/educational vs unsafe)
+
+5.2 DAIS Content Intelligence Layer
+
+ObsidianPlugin: Reads/writes Markdown, manages YAML frontmatter, detects AI Classify toggle on images
+AssetPlugin: Local LLaVA entity extraction + Cloudflare Images “washing” for permanent hosting
+GEOPlugin: LM Studio-generated citable GEO/SEO metadata
+PublishPlugin: Emits clean .mdx files to Astro src/content folder
+LegacyGraphPlugin: Creates dual nodes (DAIS publishable + KidSafe safe-retrieval) for every marked “Lived Experience” item
+
+5.3 Shared Agent Orchestration
+Both subsystems use the same Semantic Kernel instance with Automatic Function Calling.
+The orchestrator respects tenant isolation and routes through the shared Safety layer when content will be consumed by children.
+
+6. Shared Infrastructure (Hardware-Specific)
+Host: Framework Desktop, AMD Ryzen AI Max+ 395 (Strix Halo), 128 GB RAM, Bazzite DX (immutable), Podman rootless
+Deployment Model: On-demand / scheduled (power-conscious for RV boondocking)
+Recommended Stack (all local)
+
+LM Studio (all models: reasoning, embeddings, vision, STT, TTS)
+ArangoDB (document + graph + vector)
+.NET 9 background service (KidSafe Gateway API + DAIS bridge)
+Astro 6 + Cloudflare adapter (publishing)
+faster-whisper-large-v3-turbo + Piper (voice)
+LLaVA (vision)
+
+Performance Targets (Strix Halo NPU advantages)
+
+Simple voice query: < 2 seconds
+Complex reasoning or legacy graph traversal: < 10 seconds
+DAIS publish pipeline (12-note initial load): < 5 minutes
+
+
+7. Data Model & Knowledge Graph (ArangoDB)
+Node Types (with tenant_id + versioning)
+
+KidProfile, FamilyLegacyDecision, BuildLog, TheologyNote, EducationalFact, ImageAsset, ArchitectureDecision, CodeModule (future), etc.
+
+Edge Types
+
+implements, derived_from, influenced_by, contradicts, references, refines, similar_to, previous_version, superseded_by, family_wisdom_contribution (for 10/12yo future input)
+
+Initial Seeding (High Priority)
+Phase 1 will import your existing ~12 notes + associated images into the Family Legacy Graph with full provenance.
+
+8. Key Workflows
+Daily KidSafe Use
+Child speaks or types → Safety pipeline → Auto-adjusted response in calm storyteller voice → Real-time parent alert (if topic flagged) + daily summary email
+DAIS Publishing
+You write in Obsidian → Set status ✨ Process → DAIS classifies lived-experience photos, links entities, generates GEO metadata, emits .mdx, commits to Git, triggers Cloudflare deploy → Content also becomes queryable in Family Legacy Graph for safe child retrieval
+Family Legacy Contribution (Future)
+10- or 12-year-old adds a “family wisdom” note → Parent receives push notification + one-tap approve → If approved, node is added to Family Legacy Graph with child attribution and full versioning
+
+9. Parent Dashboard & Approval System
+Visibility
+
+Real-time push alerts for flagged topics
+Daily summary of what each child asked and learned
+One-tap approve/deny for sensitive actions and legacy contributions
+
+Approval Methods (Combination)
+
+Phone push notification + one-tap
+Web dashboard (phone or laptop)
+End-of-day email summary
+
+
+10. Long-Term Evolution & Export
+Profile Evolution
+Profiles automatically graduate with parent-controlled stages (e.g., 12-year-old gains more coding freedom at 14, subject to your approval rules).
+Mobile
+Future PWA (Progressive Web App) with strong offline support for RV use.
+Legacy Export (Absolutely Supported)
+
+Beautiful printed books
+Audio story albums (calm storyteller voice)
+Time-capsule PDFs with full provenance and Family Legacy Graph excerpts
+
+
+11. Phased Implementation Roadmap
+Phase 1 — Foundation (High Priority Items First)
+
+Unified .NET 9 service + ArangoDB on Bazzite + Podman
+KidSafe safety pipelines + age-band profiles + auto-adjust
+DAIS Obsidian ↔ ArangoDB bridge + initial import of ~12 notes
+Basic publishing to Astro + Cloudflare
+Parent dashboard (real-time alerts + daily summary + one-tap approval)
+Calm storyteller voice (Piper)
+
+Phase 2 — Intelligence & Legacy
+
+Full Family Legacy Graph with versioning and dual-node creation
+10/12-year-old contribution workflow with parent approval
+Deeper Semantic Kernel orchestration across both subsystems
+Vision moderation + LLaVA integration
+
+Phase 3 — Advanced Features
+
+Mobile PWA (offline RV)
+Expanded coding sandbox for 12-year-old+
+Export tools (printed books, audio albums, time-capsule PDFs)
+Profile auto-graduation engine
+
+Phase 4 — Embodied & Multi-Generational
+
+Robotics / home automation integration (future)
+Full multi-generational query capabilities for adult children
+
+
+12. Final Engineering Philosophy (Unchanged but Affirmed)
+This platform must behave like:
+
+A calm, trustworthy storyteller for your children
+A faithful librarian of your family’s lived wisdom
+A wise supervisor that never forgets why you built the farm
+A sovereign tool that serves your Kingdom mission without creating new dependencies
+
+It must never become:
+
+An unrestricted autonomous system
+An unsupervised content generator
+A replacement for parental presence and discernment
+
+Reliability > Capability
+Clarity > Cleverness
+Supervision > Autonomy
+Stewardship > Speed

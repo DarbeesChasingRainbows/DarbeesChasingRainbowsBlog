@@ -1,17 +1,29 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace DAIS.Bridge.Plugins;
 
 public class ObsidianPlugin
 {
     private readonly string _vaultPath;
+    private readonly IDeserializer _yamlDeserializer;
+    private readonly ISerializer _yamlSerializer;
 
     public ObsidianPlugin(string vaultPath)
     {
         _vaultPath = vaultPath;
+        _yamlDeserializer = new DeserializerBuilder()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .IgnoreUnmatchedProperties()
+            .Build();
+        _yamlSerializer = new SerializerBuilder()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .Build();
     }
 
     [KernelFunction, Description("Reads an Obsidian note and returns its full content.")]
@@ -37,14 +49,13 @@ public class ObsidianPlugin
 
         var fullContent = await File.ReadAllTextAsync(path);
         
-        // Simple frontmatter parser
         string body;
         if (fullContent.StartsWith("---"))
         {
             var endOfFrontmatter = fullContent.IndexOf("---", 3);
             if (endOfFrontmatter == -1)
             {
-                body = fullContent;
+                body = string.Empty;
             }
             else
             {
@@ -56,7 +67,11 @@ public class ObsidianPlugin
             body = fullContent;
         }
 
-        var newContent = $"---\n{yamlContent.Trim()}\n---\n\n{body}";
+        // Robust parsing of the provided YAML block
+        var metadata = _yamlDeserializer.Deserialize<Dictionary<string, object>>(yamlContent);
+        var serializedMetadata = _yamlSerializer.Serialize(metadata);
+
+        var newContent = $"---\n{serializedMetadata.Trim()}\n---\n\n{body}";
         await File.WriteAllTextAsync(path, newContent);
     }
 }

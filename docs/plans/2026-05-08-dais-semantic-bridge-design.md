@@ -11,21 +11,23 @@ DAIS is a local-first "Librarian Agent" built to manage the persistent architect
 - **Lived Experience Marking:** Every image block in the database has an `AI Classify` toggle. When checked, the system treats the photo as part of the family's "Knowledge Base" (e.g., an actual build photo vs. a stock reference).
 
 ### 2. The Semantic Engine (C# + .NET 9)
-The engine is a background service built using **Microsoft Semantic Kernel**. It operates using **Automatic Function Calling**, allowing an LLM to orchestrate tools based on intent.
+The engine is a background service built using **Microsoft Semantic Kernel (v1.30+)**. It operates using **Automatic Function Calling**, allowing an LLM to orchestrate tools based on intent.
 
 - **Native Plugins:**
     - `ObsidianPlugin`: Reads/Writes Markdown and manages YAML frontmatter injection.
     - `ArangoPlugin`: Executes AQL queries to find historical context and stores new "Intelligence Nodes."
     - `AssetPlugin`: Processes images. It "washes" local vault images into **Cloudflare Images** for permanent hosting and runs local vision models (LLaVA) for entity extraction.
     - `GEOPlugin`: Orchestrates **LM Studio** to generate citable GEO/SEO metadata.
+    - `GitPlugin`: Manages the local version control lifecycle, performing granular `git add`, `commit`, and `push` operations for every published document.
 
 ### 3. The Knowledge Graph (ArangoDB)
 - **Reference-Only Model:** ArangoDB does not duplicate the prose; it stores nodes representing Articles, Images, and Entities (e.g., "Victron Inverter," "Regenerative Principles") and links them with edges.
 - **Agentic Memory:** Semantic Kernel uses ArangoDB as a vector store (via custom connector) to provide the LLM with long-term memory of previous decisions and builds.
 
-### 4. The Publishing Pipeline (Astro)
-- **Astro Loader:** The bridge emits "clean" `.mdx` files into the Astro `src/content` folder. 
-- **Automatic Translation:** Native Obsidian blocks and `[[block:links]]` are translated into standard Astro components during the emission phase.
+### 4. The Publishing Pipeline (Astro 6 + Cloudflare)
+- **Autonomous Emission:** The bridge emits "clean" `.mdx` files into the Astro `src/content` folder. 
+- **Astro Content Layer:** Astro 6 uses `glob` loaders in `src/content.config.ts` to pick up the emitted files.
+- **CI/CD:** GitHub Actions triggers on every bridge push, builds the site with the `@astrojs/cloudflare` adapter, and deploys to Cloudflare Pages.
 
 ## Workflow
 1. **Brainstorm:** User sets an Obsidian note status to `🧠 Brainstorm`. DAIS generates an outline based on the graph.
@@ -35,9 +37,11 @@ The engine is a background service built using **Microsoft Semantic Kernel**. It
     - DAIS links entities to ArangoDB.
     - DAIS generates GEO metadata.
     - DAIS injects metadata back into the Obsidian file.
-4. **Publish:** DAIS emits the final MDX for Astro and sets status to `🚀 Published`.
+4. **Publish:** DAIS emits the final MDX for Astro, commits the file to Git, pushes to GitHub, and sets status to `🚀 Published`.
+5. **Deploy:** GitHub Actions rebuilds the site and deploys it to Cloudflare Pages.
 
 ## Benefits
 - **Longevity:** Data is local and portable (Markdown + Graph).
 - **Intelligence:** The system "learns" from every post, providing deeper context over time.
 - **Privacy:** All AI inference (LM Studio) and database hosting (ArangoDB) is local.
+- **Efficiency:** Fully automated Git-to-Cloudflare pipeline requires zero manual CLI steps.

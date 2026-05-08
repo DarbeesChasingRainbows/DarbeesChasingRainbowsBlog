@@ -13,8 +13,10 @@ public class GEOPluginTests
         var plugin = new GEOPlugin("http://localhost:1234/v1", "local-model");
         var content = "This is a test blog post.";
 
-        // Act & Assert
-        // (Just compilation check for now)
-        await Task.CompletedTask;
+        // Act
+        var result = await plugin.GenerateMetadata(content);
+
+        // Assert
+        Assert.Contains("summary", result);
     }
 }
