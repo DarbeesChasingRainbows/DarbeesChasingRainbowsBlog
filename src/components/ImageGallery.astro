@@ -1,0 +1,34 @@
+---
+interface GalleryImage {
+  src: string;
+  alt: string;
+  caption?: string;
+}
+
+interface Props {
+  images: GalleryImage[];
+  columns?: 2 | 3 | 4;
+}
+
+const { images, columns = 3 } = Astro.props;
+
+// Map columns prop to Tailwind grid classes
+const colClasses = {
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-2 md:grid-cols-3',
+  4: 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+};
+const gridClass = colClasses[columns] || colClasses[3];
+---
+<div class={`not-prose grid grid-cols-1 ${gridClass} gap-4 my-8`}>
+  {images.map((img) => (
+    <div class="flex flex-col group relative overflow-hidden rounded-box shadow-md bg-base-200 aspect-square">
+      <img src={img.src} alt={img.alt} class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+      {img.caption && (
+        <div class="absolute bottom-0 left-0 right-0 bg-base-300/90 backdrop-blur p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+          <p class="text-sm m-0 leading-tight">{img.caption}</p>
+        </div>
+      )}
+    </div>
+  ))}
+</div>

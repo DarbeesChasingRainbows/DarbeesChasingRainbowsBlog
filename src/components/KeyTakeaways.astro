@@ -13,30 +13,30 @@ if (!items?.length) return null;
 
 <aside
 	class:list={[
-		'not-prose my-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 md:p-8 shadow-sm',
+		'not-prose border-primary/20 bg-primary/5 my-8 rounded-2xl border p-6 shadow-sm md:p-8',
 		className,
 	]}
 	aria-labelledby="key-takeaways-title"
 >
-	<div class="flex items-center gap-3 mb-4">
+	<div class="mb-4 flex items-center gap-3">
 		<span
-			class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-content font-display font-black text-sm"
+			class="bg-primary text-primary-content font-display inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-black"
 			aria-hidden="true"
 		>
 			TL;DR
 		</span>
 		<h2
 			id="key-takeaways-title"
-			class="font-display text-xs uppercase tracking-[0.3em] text-primary/80 m-0"
+			class="font-display text-primary/80 m-0 text-xs tracking-[0.3em] uppercase"
 		>
 			{title}
 		</h2>
 	</div>
-	<ol class="list-none m-0 p-0 space-y-3">
+	<ol class="m-0 list-none space-y-3 p-0">
 		{
 			items.map((item, i) => (
-				<li class="flex gap-3 items-start text-base-content/90 leading-relaxed">
-					<span class="font-display font-black text-primary tabular-nums shrink-0 w-6">
+				<li class="text-base-content/90 flex items-start gap-3 leading-relaxed">
+					<span class="font-display text-primary w-6 shrink-0 font-black tabular-nums">
 						{String(i + 1).padStart(2, '0')}
 					</span>
 					<span>{item}</span>

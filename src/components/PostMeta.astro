@@ -7,15 +7,33 @@ interface Props {
 	updatedDate?: Date | string;
 	author?: string;
 	category?: string;
+	// Optional href the category pill links to. If omitted, the category
+	// renders as a non-clickable label. Blog post layouts pass a `/category/X`
+	// archive URL; project/field-note layouts omit it because their category
+	// strings live in a separate namespace from blog categories.
+	categoryHref?: string;
 	readingTime?: number;
 	class?: string;
 }
 
-const { pubDate, updatedDate, author, category, readingTime, class: className } = Astro.props;
+const {
+	pubDate,
+	updatedDate,
+	author,
+	category,
+	categoryHref,
+	readingTime,
+	class: className,
+} = Astro.props;
 ---
 
-<div class:list={['flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/70', className]}>
-	{category && <CategoryPill label={category} variant="category" href={`/blog?category=${encodeURIComponent(category)}`} />}
+<div
+	class:list={[
+		'text-base-content/70 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm',
+		className,
+	]}
+>
+	{category && <CategoryPill label={category} variant="category" href={categoryHref} />}
 	<FormattedDate date={pubDate} />
 	{
 		updatedDate && (

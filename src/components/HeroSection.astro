@@ -1,0 +1,84 @@
+---
+---
+
+<section class="hero-section relative overflow-hidden">
+	<!-- Decorative sunburst — thin tapered rays + solid amber disc -->
+	<div
+		aria-hidden="true"
+		class="pointer-events-none absolute -top-20 right-8 h-72 w-72 md:-top-24 md:right-72 md:h-96 md:w-96 lg:right-88"
+	>
+		<svg viewBox="0 0 200 200" class="animate-spin-slow text-secondary h-full w-full">
+			<g stroke="currentColor" stroke-width="3.5" stroke-linecap="round" fill="none">
+				{
+					Array.from({ length: 14 }).map((_, i) => {
+						const long = i % 2 === 0;
+						return (
+							<line
+								x1="100"
+								y1={long ? 14 : 22}
+								x2="100"
+								y2={long ? 44 : 40}
+								transform={`rotate(${i * (360 / 14)} 100 100)`}
+							/>
+						);
+					})
+				}
+			</g>
+			<circle cx="100" cy="100" r="46" fill="currentColor"></circle>
+		</svg>
+	</div>
+
+	<div class="relative mx-auto max-w-7xl px-6 pt-14 pb-10 md:pt-20 md:pb-16">
+		<div class="grid items-start gap-8 lg:grid-cols-12 lg:gap-12">
+			<!-- Left: headline + sub -->
+			<div class="lg:col-span-12">
+				<h1 class="masthead text-base-content">
+					Chasing
+					<span class="text-accent relative inline-block italic">
+						Rainbows
+						<!-- Wavy underline under "Rainbows" -->
+						<svg
+							aria-hidden="true"
+							viewBox="0 0 200 20"
+							class="text-accent absolute -bottom-2 left-0 h-3 w-full"
+							preserveAspectRatio="none"
+						>
+							<path
+								d="M2 14 Q 50 2 100 10 T 198 8"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="3"
+								stroke-linecap="round"></path>
+						</svg>
+					</span>,<br />
+					Building the <span class="text-primary">Kingdom&nbsp;Farm.</span>
+				</h1>
+				<p class="text-base-content/70 mt-8 max-w-2xl text-base leading-relaxed md:text-lg">
+					A slow, honest record of family on the road — RV life, faith, homeschool field trips,
+					useful builds, and the long road toward a piece of land worth tending.
+				</p>
+				<div class="mt-8 flex flex-wrap gap-4">
+					<a
+						href="/start-here"
+						class="btn btn-primary btn-lg"
+					>
+						Start Here
+					</a>
+					<a
+						href="/about"
+						class="btn btn-outline btn-lg"
+					>
+						About Us
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<style>
+	/* Hero-specific styles */
+	.hero-section {
+		/* Add any hero-specific styles here */
+	}
+</style>

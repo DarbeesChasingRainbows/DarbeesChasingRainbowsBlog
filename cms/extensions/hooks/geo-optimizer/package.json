@@ -1,0 +1,9 @@
+{
+  "name": "directus-hook-geo-optimizer",
+  "version": "1.0.0",
+  "directus:extension": {
+    "type": "hook",
+    "path": "index.js",
+    "source": "index.js"
+  }
+}

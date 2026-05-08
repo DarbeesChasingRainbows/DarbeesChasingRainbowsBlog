@@ -9,28 +9,35 @@ import { SOCIAL_LINKS } from '../consts';
 >
 	<article class="mx-auto max-w-2xl px-4 py-16 md:py-24">
 		<!-- Page Header -->
-		<div class="text-center mb-12">
-			<div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
-					<path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-					<path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+		<div class="mb-12 text-center">
+			<div
+				class="bg-primary/10 text-primary mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-8 w-8"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+				>
+					<path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+					<path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
 				</svg>
 			</div>
-			<h1 class="font-display text-4xl md:text-5xl font-extrabold mb-4">Contact</h1>
-			<p class="text-lg md:text-xl text-base-content/70">
+			<h1 class="font-display mb-4 text-4xl font-extrabold md:text-5xl">Contact</h1>
+			<p class="text-base-content/70 text-lg md:text-xl">
 				Email's the best way to reach us. We read everything, and reply when we can.
 			</p>
 		</div>
 
-		<div class="rounded-2xl border border-base-300 bg-base-100 p-8 shadow-sm">
-			<h2 class="font-display font-bold text-xl mb-2">Email</h2>
+		<div class="border-base-300 bg-base-100 rounded-2xl border p-8 shadow-sm">
+			<h2 class="font-display mb-2 text-xl font-bold">Email</h2>
 			<p class="mb-4">
 				<a href={SOCIAL_LINKS.email} class="link link-primary break-all">
 					hello@darbeeschasingrainbows.com
 				</a>
 			</p>
 
-			<h2 class="font-display font-bold text-xl mb-2 mt-6">Social</h2>
+			<h2 class="font-display mt-6 mb-2 text-xl font-bold">Social</h2>
 			<ul class="space-y-1">
 				<li>
 					<a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener" class="link link-hover"
@@ -44,8 +51,8 @@ import { SOCIAL_LINKS } from '../consts';
 				</li>
 			</ul>
 
-			<h2 class="font-display font-bold text-xl mb-2 mt-6">What's good to email about</h2>
-			<ul class="list-disc pl-5 space-y-1 text-base-content/80">
+			<h2 class="font-display mt-6 mb-2 text-xl font-bold">What's good to email about</h2>
+			<ul class="text-base-content/80 list-disc space-y-1 pl-5">
 				<li>Questions about projects we've posted</li>
 				<li>RV life or travel suggestions</li>
 				<li>Homeschool resources we should know about</li>

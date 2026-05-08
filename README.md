@@ -11,9 +11,13 @@ A fast, mobile-first static blog built with **Astro 6**, **Tailwind CSS v4**, an
 - **Framework**: [Astro](https://astro.build/) (static output, near-zero JavaScript)
 - **Content**: Markdown + MDX via Astro Content Collections
 - **Styling**: Tailwind CSS v4 + DaisyUI v5 (`forest` and `rainbow` themes)
-- **Fonts**: Nunito (display) + Inter (body), self-hosted via Astro Fonts
+- **Fonts** (self-hosted via `astro:assets`):
+  - **Fraunces** — editorial serif used for the masthead and post titles (`.masthead` / `.font-editorial`)
+  - **Nunito** — display sans for nav, eyebrows, and UI labels
+  - **Inter** — body copy
 - **Hosting**: Cloudflare Pages (free, global edge, unlimited bandwidth)
-- **Analytics**: Cloudflare Web Analytics (token configurable in `src/consts.ts`)
+- **Analytics**: Cloudflare Web Analytics (token via `PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN` env var — see `.env.example`)
+- **Newsletter**: Buttondown (handle via `PUBLIC_BUTTONDOWN_HANDLE` env var)
 
 ## Project structure
 
@@ -55,11 +59,11 @@ Create `src/content/blog/your-slug.mdx`:
 
 ```mdx
 ---
-title: "Your title"
-description: "150–160 char SEO description"
+title: 'Your title'
+description: '150–160 char SEO description'
 pubDate: 2026-04-29
-category: "RV Life"
-tags: ["rv", "family"]
+category: 'RV Life'
+tags: ['rv', 'family']
 draft: false
 ---
 
@@ -72,20 +76,20 @@ Create `src/content/projects/your-slug.mdx`:
 
 ```mdx
 ---
-title: "Project name"
-description: "Short description"
+title: 'Project name'
+description: 'Short description'
 pubDate: 2026-04-29
-category: "RV Automation"
-tags: ["arduino", "diy"]
-difficulty: "medium"          # easy | medium | hard
-estimatedCost: "$45–60"
-estimatedTime: "3–4 hours"
-githubUrl: "https://github.com/..."
+category: 'RV Automation'
+tags: ['arduino', 'diy']
+difficulty: 'medium' # easy | medium | hard
+estimatedCost: '$45–60'
+estimatedTime: '3–4 hours'
+githubUrl: 'https://github.com/...'
 partsList:
-  - name: "Arduino Nano"
+  - name: 'Arduino Nano'
     quantity: 1
-    url: "https://..."
-    notes: "Optional"
+    url: 'https://...'
+    notes: 'Optional'
 ---
 ```
 
@@ -97,14 +101,14 @@ Create `src/content/field-notes/your-slug.mdx`:
 
 ```mdx
 ---
-title: "Place name"
-description: "Short summary"
+title: 'Place name'
+description: 'Short summary'
 pubDate: 2026-04-29
-location: "Bulow Plantation Ruins"
-region: "Florida"
-weather: "Sunny, 78°F"
-category: "History"
-tags: ["florida", "homeschool"]
+location: 'Bulow Plantation Ruins'
+region: 'Florida'
+weather: 'Sunny, 78°F'
+category: 'History'
+tags: ['florida', 'homeschool']
 includesHomeschool: true
 ---
 
@@ -112,7 +116,7 @@ import FieldNotesBlock from '../../components/FieldNotesBlock.astro';
 
 <FieldNotesBlock
   location="..."
-  saw={["one", "two", "three"]}
+  saw={['one', 'two', 'three']}
   heard="..."
   wondered="..."
   learned="..."
@@ -165,26 +169,36 @@ Switch the active theme by changing `data-theme="forest"` to `data-theme="rainbo
 
 Preview deployments are automatic on every PR.
 
-### Cloudflare Web Analytics
+### Environment variables
 
-Once deployed, get a beacon token from Cloudflare and paste it into `src/consts.ts`:
+Copy `.env.example` to `.env` for local development. In production, set the
+same keys in Cloudflare Pages → **Settings → Environment variables**.
 
-```ts
-export const CLOUDFLARE_ANALYTICS_TOKEN = 'your-token-here';
-```
+| Key                                 | What it does                                | Behavior when unset                           |
+| ----------------------------------- | ------------------------------------------- | --------------------------------------------- |
+| `PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN` | Enables the Cloudflare Web Analytics beacon | Beacon script not emitted                     |
+| `PUBLIC_BUTTONDOWN_HANDLE`          | Newsletter form action                      | `NewsletterSignup` falls back (see component) |
 
-The script tag will only render when the token is set.
+All keys are `PUBLIC_*` — they're inlined into the client bundle at build time.
+Anything truly secret should be a server-only variable (no `PUBLIC_` prefix)
+and should never appear in `.env.example`.
 
-## Roadmap (designed for, not yet built)
+## Roadmap
+
+Designed-for but not yet built. **No promised timeline** — these are
+intentional non-goals for the initial launch:
 
 - Cloudflare Images integration
 - [Giscus](https://giscus.app/) comments on post pages
-- Newsletter provider integration (Buttondown / ConvertKit / MailerLite)
 - Tag and category archive pages
+- Per-book detail route (`/bookshelf/[id]`)
 - Search (Pagefind)
 - Photo galleries
 - Map of field notes
 - Members-only resources
+- CI/CD: typecheck + build on PR; preview deploys
+- Lint/format: ESLint + Prettier with Astro presets
+- Tests: Playwright smoke tests on preview deploys
 
 ## License
 

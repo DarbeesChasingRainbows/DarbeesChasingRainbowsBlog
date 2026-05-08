@@ -4,7 +4,24 @@
       "mcp__Claude_Preview__preview_start",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "mcp__Context7__resolve-library-id",
-      "mcp__Context7__get-library-docs"
+      "mcp__Context7__get-library-docs",
+      "Bash(curl -fsI http://localhost:4321/)",
+      "Bash(npm audit *)",
+      "Bash(npm outdated *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies.astro\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\('eslint:',p.devDependencies.eslint,'prettier:',p.devDependencies.prettier,'astro-plugin:',p.devDependencies['eslint-plugin-astro'],'prettier-astro:',p.devDependencies['prettier-plugin-astro']\\)\")",
+      "Bash(npx prettier *)",
+      "Bash(curl -fs http://localhost:4321/ -o /dev/null)",
+      "Bash(curl -fs http://localhost:4321/)",
+      "Bash(npx playwright *)",
+      "Bash(node -e \"console.log\\('@playwright/test', require\\('@playwright/test/package.json'\\).version\\)\")",
+      "Bash(cp dist/index.html dist/index.html.bak)",
+      "Bash(node -e \"let s=require\\('fs'\\).readFileSync\\('dist/index.html','utf8'\\); s=s.replace\\('href=\\\\\"/blog\\\\\"','href=\\\\\"/this-route-does-not-exist\\\\\"'\\); require\\('fs'\\).writeFileSync\\('dist/index.html', s\\);\")",
+      "Bash(node -e \"console.log\\(require\\('typescript/package.json'\\).version\\)\")",
+      "Bash(node -e \"let s='';process.stdin.on\\('data',c=>s+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const d=JSON.parse\\(s\\);console.log\\('vulnerabilities:',JSON.stringify\\(d.metadata.vulnerabilities, null, 2\\)\\);}catch{console.log\\('parse fail'\\)}}\\)\")",
+      "Bash(curl -fs http://localhost:4321/field-notes/ -o /dev/null)"
     ]
   }
 }

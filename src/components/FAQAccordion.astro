@@ -17,20 +17,17 @@ const jsonLd = buildFaqJsonLd(faq);
 ---
 
 <section class:list={['not-prose my-12', className]} aria-labelledby="faq-title">
-	<h2
-		id="faq-title"
-		class="font-display text-2xl md:text-3xl font-extrabold tracking-tight mb-6"
-	>
+	<h2 id="faq-title" class="font-display mb-6 text-2xl font-extrabold tracking-tight md:text-3xl">
 		{title}
 	</h2>
 	<div class="space-y-3">
 		{
 			faq.map((item, i) => (
 				<details
-					class="collapse collapse-arrow border border-base-300 bg-base-100 rounded-xl"
+					class="collapse-arrow border-base-300 bg-base-100 collapse rounded-xl border"
 					open={i === 0}
 				>
-					<summary class="collapse-title font-display font-bold text-lg cursor-pointer list-none">
+					<summary class="collapse-title font-display cursor-pointer list-none text-lg font-bold">
 						{item.question}
 					</summary>
 					<div class="collapse-content text-base-content/85 leading-relaxed">

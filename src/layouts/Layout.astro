@@ -1,0 +1,125 @@
+---
+export interface Props {
+	title: string;
+	description?: string;
+}
+
+const {
+	title,
+	description = 'Darbees - Chasing Rainbows, Building the Kingdom Farm. A family journey of RV life, faith, homeschool, and homesteading.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<!-- Tailwind CDN for demo - in production use @astrojs/tailwind -->
+		<script src="https://cdn.tailwindcss.com"></script>
+		<style>
+			@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap');
+
+			:root {
+				--primary-green: #2e5a3c;
+				--accent-orange: #e07b39;
+				--cream: #f8f4eb;
+				--dark: #2c2522;
+			}
+
+			body {
+				font-family: 'Inter', system_ui, sans-serif;
+			}
+
+			.heading-serif {
+				font-family: 'Playfair Display', Georgia, serif;
+			}
+
+			.nav-link {
+				transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+
+			.nav-link:hover {
+				color: var(--primary-green);
+				transform: translateY(-1px);
+			}
+
+			.post-card {
+				transition:
+					transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+
+			.post-card:hover {
+				transform: translateY(-4px);
+				box-shadow:
+					0 20px 25px -5px rgb(0 0 0 / 0.1),
+					0 8px 10px -6px rgb(0 0 0 / 0.1);
+			}
+
+			.rainbow-text {
+				background: linear-gradient(90deg, #e07b39, #f4a261, #e9c46a, #2a9d8f);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+				background-size: 200% 100%;
+				animation: rainbow 3s ease infinite;
+			}
+
+			@keyframes rainbow {
+				0% {
+					background-position: 0% 50%;
+				}
+				50% {
+					background-position: 100% 50%;
+				}
+				100% {
+					background-position: 0% 50%;
+				}
+			}
+
+			.section-header {
+				position: relative;
+				display: inline-block;
+			}
+
+			.section-header::after {
+				content: '';
+				position: absolute;
+				bottom: -2px;
+				left: 0;
+				width: 60%;
+				height: 3px;
+				background: linear-gradient(to right, #e07b39, #f4a261);
+				border-radius: 3px;
+			}
+
+			.sun-icon {
+				animation: gentle-float 4s ease-in-out infinite;
+			}
+
+			.issue-stat {
+				transition: all 0.2s ease;
+			}
+
+			.nav-active {
+				color: var(--primary-green);
+				font-weight: 600;
+			}
+		</style>
+	</head>
+	<body class="bg-[#f8f4eb] text-[#2c2522] antialiased">
+		<slot />
+
+		<script>
+			// Tailwind script
+			function initializeTailwind() {
+				document.documentElement.style.setProperty('--accent-orange', '#e07b39');
+			}
+			initializeTailwind();
+		</script>
+	</body>
+</html>

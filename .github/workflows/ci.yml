@@ -1,0 +1,132 @@
+name: CI
+
+# Runs on every PR and on direct pushes to main.
+# Catches: type errors, lint errors, formatting drift, build failures.
+# Does NOT deploy — Cloudflare Pages handles deploys directly from the GitHub
+# integration on push to main and on PR (preview deploys).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch when a new commit lands.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Type-check, lint, format, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Astro type check
+        run: npm run check
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier (check only)
+        run: npm run format:check
+
+      - name: Build
+        # Build last so we know type/lint/format issues surface first — they're
+        # cheaper to fix than a build failure caused by something earlier.
+        run: npm run build
+
+      - name: Check internal links
+        # Static post-build link audit. Catches things like the `/newsletter`
+        # link that shipped before this checker existed. ~1s for ~1200 links.
+        run: npm run check:links
+
+  test:
+    name: Playwright smoke tests
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        # --with-deps installs the OS libraries Chromium needs on Ubuntu.
+        run: npx playwright install --with-deps chromium
+
+      - name: Build site
+        # Tests hit the production build via `npm run preview`, so we need a
+        # fresh dist/ first. Playwright auto-starts the preview server.
+        run: npm run build
+
+      - name: Run smoke tests
+        run: npm test
+        env:
+          CI: true
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  lighthouse:
+    name: Lighthouse perf + a11y + SEO budgets
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site
+        run: npm run build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Run Lighthouse CI mobile
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.mobile.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true

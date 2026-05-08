@@ -1,449 +1,94 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import FormattedDate from '../components/FormattedDate.astro';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
-import { getBlogPosts, getProjects, getFieldNotes } from '../utils/getPosts';
-import HeroSidebar from '../components/HeroSidebar.astro';
-import { getCollection } from 'astro:content';
+import { getBlogPosts } from '../utils/getPosts';
+import Departments from '../components/Departments.astro';
 
-const [allBlog, allProjects, allFieldNotes, allBooks] = await Promise.all([
-	getBlogPosts(),
-	getProjects(),
-	getFieldNotes(),
-	getCollection('books', ({ data }) => !data.draft || import.meta.env.DEV),
-]);
+const allBlog = await getBlogPosts();
 
-// Group blog posts by category for newspaper columns
-const categorized = new Map<string, typeof allBlog>();
-for (const post of allBlog) {
-	const cat = post.data.category;
-	if (!categorized.has(cat)) categorized.set(cat, []);
-	categorized.get(cat)!.push(post);
-}
-
-// Build the 3-column sections matching the Stitch design:
-// Column 1: RV / Projects / Systems
-// Column 2: Books / Homeschool / Reviews
-// Column 3: Kingdom Farm / Faith / Vision
-type ColumnSection = {
-	label: string;
-	href: string;
-	posts: Array<{
-		title: string;
-		description: string;
-		date: Date;
-		href: string;
-	}>;
-};
-
-const rvPosts = [
-	...allProjects.map((p) => ({
-		title: p.data.title,
-		description: p.data.description,
-		date: p.data.pubDate,
-		href: `/projects/${p.id}/`,
-	})),
-	...allBlog
-		.filter((p) => p.data.category === 'RV Life')
-		.map((p) => ({
-			title: p.data.title,
-			description: p.data.description,
-			date: p.data.pubDate,
-			href: `/blog/${p.id}/`,
-		})),
-].sort((a, b) => b.date.valueOf() - a.date.valueOf());
-
-const bookPosts = [
-	...allBlog
-		.filter((p) =>
-			['Homeschool', 'Book Reviews', 'Books', 'Education'].includes(
-				p.data.category,
-			),
-		)
-		.map((p) => ({
-			title: p.data.title,
-			description: p.data.description,
-			date: p.data.pubDate,
-			href: `/blog/${p.id}/`,
-		})),
-	...allBooks.map((b) => ({
-		title: b.data.title,
-		description: b.data.description,
-		date: b.data.pubDate,
-		href: `/bookshelf/${b.id}/`,
-	})),
-].sort((a, b) => b.date.valueOf() - a.date.valueOf());
-
-const farmPosts = allBlog
-	.filter((p) =>
-		['Kingdom Farm', 'Faith', 'Family', 'Faith & Reflections'].includes(
-			p.data.category,
-		),
-	)
-	.map((p) => ({
-		title: p.data.title,
-		description: p.data.description,
-		date: p.data.pubDate,
-		href: `/blog/${p.id}/`,
-	}))
-	.sort((a, b) => b.date.valueOf() - a.date.valueOf());
-
-const columns: ColumnSection[] = [
-	{
-		label: 'RV Systems',
-		href: '/projects',
-		posts: rvPosts.slice(0, 3),
-	},
-	{
-		label: 'Book Reviews',
-		href: '/bookshelf',
-		posts: bookPosts.slice(0, 3),
-	},
-	{
-		label: 'Farm Vision',
-		href: '/kingdom-farm',
-		posts: farmPosts.slice(0, 3),
-	},
+const departments = [
+	{ title: 'Field Notes', href: '/field-notes', tag: '01', description: 'Hikes, historic sites, nature studies, and homeschool field trips.' },
+	{ title: 'RV Life', href: '/rv-life', tag: '02', description: "The honest road between the house that wasn't forever and the roots we're working toward." },
+	{ title: 'Homeschool', href: '/homeschool', tag: '03', description: 'How travel, projects, and faith shape what we learn together.' },
+	{ title: 'Projects & Builds', href: '/projects', tag: '04', description: 'DIY, RV automation, and useful things we ship and document.' },
+	{ title: 'Kingdom Farm', href: '/kingdom-farm', tag: '05', description: 'The long-term family vision: regenerative food, hospitality, and deeper roots.' },
+	{ title: 'Faith & Reflections', href: '/category/Faith%20%26%20Reflections/', tag: '06', description: 'Quiet thoughts on faith, family, and ordinary days.' },
+	{ title: 'Darbees Bookshelf', href: '/bookshelf', tag: '07', description: "Family book reviews — Dad's take, Mom's take, kids' take. Christian discernment for every age." },
+	{ title: 'Resources', href: '/resources', tag: '08', description: 'Free templates, field note printables, gear lists, and project guides.' },
 ];
 
-const marqueeWords = [
-	'Family',
-	'Faith',
-	'Field Notes',
-	'RV Life',
-	'Homeschool',
-	'Builds',
-	'Kingdom Farm',
-	'Slow Living',
-	'Wandering',
-	'Home',
-];
+const featuredPost = allBlog[0];
+const recentPosts = allBlog.slice(1, 7);
 ---
 
 <BaseLayout>
-	<!-- ========= HERO — newspaper masthead ========= -->
-	<section class="hero-section relative overflow-hidden">
-		<!-- Decorative sunburst — thin tapered rays + solid amber disc -->
-		<div
-			aria-hidden="true"
-			class="pointer-events-none absolute -top-20 right-8 md:-top-24 md:right-[18rem] lg:right-[22rem] w-72 h-72 md:w-[24rem] md:h-[24rem]"
-		>
-			<svg viewBox="0 0 200 200" class="w-full h-full animate-spin-slow text-secondary">
-				<g stroke="currentColor" stroke-width="3.5" stroke-linecap="round" fill="none">
-					{Array.from({ length: 14 }).map((_, i) => {
-						const long = i % 2 === 0;
-						return (
-							<line
-								x1="100"
-								y1={long ? 14 : 22}
-								x2="100"
-								y2={long ? 44 : 40}
-								transform={`rotate(${i * (360 / 14)} 100 100)`}
-							/>
-						);
-					})}
-				</g>
-				<circle cx="100" cy="100" r="46" fill="currentColor" />
-			</svg>
-		</div>
-
-		<div class="relative mx-auto max-w-7xl px-6 pt-14 md:pt-20 pb-10 md:pb-16">
-			<div class="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-				<!-- Left: headline + sub -->
-				<div class="lg:col-span-8">
-					<h1 class="masthead text-base-content">
-						Chasing
-						<span class="relative inline-block text-accent italic">
-							Rainbows
-							<!-- Wavy underline under "Rainbows" -->
-							<svg
-								aria-hidden="true"
-								viewBox="0 0 200 20"
-								class="absolute -bottom-2 left-0 w-full h-3 text-accent"
-								preserveAspectRatio="none"
-							>
-								<path
-									d="M2 14 Q 50 2 100 10 T 198 8"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="3"
-									stroke-linecap="round"
-								/>
-							</svg>
-							<!-- Hand-drawn rainbow swoop tucked over the comma -->
-							<svg
-								aria-hidden="true"
-								viewBox="0 0 80 60"
-								class="rainbow-swoop absolute -right-12 -top-4 w-16 h-12 md:-right-14 md:-top-5 md:w-20 md:h-14"
-							>
-								<path d="M6 50 Q 35 -2 74 28" fill="none" stroke="var(--color-accent)" stroke-width="6" stroke-linecap="round" />
-								<path d="M6 50 Q 35 8 70 34" fill="none" stroke="var(--color-secondary)" stroke-width="6" stroke-linecap="round" transform="translate(0 6)" />
-								<path d="M6 50 Q 35 18 66 40" fill="none" stroke="var(--color-darbees-soft-yellow)" stroke-width="6" stroke-linecap="round" transform="translate(0 12)" />
-							</svg>
-						</span>,<br />
-						Building the <span class="text-primary">Kingdom&nbsp;Farm.</span>
-					</h1>
-					<p
-						class="mt-8 max-w-2xl text-base md:text-lg text-base-content/70 leading-relaxed"
-					>
-						A slow, honest record of family on the road — RV life, faith, homeschool
-						field trips, useful builds, and the long road toward a piece of land worth
-						tending.
-					</p>
-				</div>
-
-				<!-- Right: sidebar -->
-				<HeroSidebar
-					fieldNotesCount={allFieldNotes.length}
-					blogCount={allBlog.length}
-					projectsCount={allProjects.length}
-				/>
-			</div>
-		</div>
+	<!-- ========= HERO ========= -->
+	<section class="mx-auto max-w-4xl px-6 py-16 md:py-24 text-center">
+		<h1 class="font-editorial text-5xl md:text-6xl font-bold text-base-content mb-6">
+			Chasing <span class="text-accent italic">Rainbows</span>, Building the <span class="text-primary">Kingdom Farm</span>
+		</h1>
+		<p class="text-base-content/70 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+			A slow, honest record of family on the road — RV life, faith, homeschool field trips, useful builds, and the long road toward a piece of land worth tending.
+		</p>
 	</section>
 
-	<!-- ========= NEWSPAPER COLUMNS — 3-column article grid ========= -->
-	<section class="newspaper-columns mx-auto max-w-7xl px-6 pb-12 md:pb-20">
-		<div class="newspaper-divider mb-8"></div>
-		<div class="grid md:grid-cols-3 gap-0">
-			{columns.map((col, colIdx) => (
-				<div
-					class:list={[
-						'newspaper-col py-2 md:py-0',
-						colIdx > 0 && 'md:border-l md:border-base-content/15 md:pl-6',
-						colIdx < columns.length - 1 && 'md:pr-6',
-						colIdx < columns.length - 1 && 'border-b md:border-b-0 border-base-content/15 pb-6 md:pb-0',
-					]}
-				>
-					<div class="flex items-baseline gap-3 mb-5 mt-4 md:mt-0">
-						<span class="eyebrow text-base-content/50 text-[0.65rem]">{col.label}</span>
-						<span class="flex-1 border-t border-dashed border-base-content/15"></span>
+	<!-- ========= FEATURED POST ========= -->
+	{featuredPost && (
+		<section class="mx-auto max-w-5xl px-6 pb-12">
+			<a href={`/blog/${featuredPost.id}/`} class="group block">
+				<article class="bg-base-200 rounded-2xl p-8 md:p-12 hover:bg-base-200/80 transition-colors">
+					<div class="flex items-center gap-3 mb-4">
+						<span class="badge badge-primary badge-lg">{featuredPost.data.category}</span>
+						<span class="text-base-content/50 text-sm">
+							{featuredPost.data.pubDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+						</span>
 					</div>
+					<h2 class="font-editorial text-3xl md:text-4xl font-bold text-base-content group-hover:text-primary transition-colors mb-4">
+						{featuredPost.data.title}
+					</h2>
+					<p class="text-base-content/70 text-lg leading-relaxed">
+						{featuredPost.data.description}
+					</p>
+				</article>
+			</a>
+		</section>
+	)}
 
-					<div class="space-y-6">
-						{col.posts.map((post, postIdx) => (
-							<a
-								href={post.href}
-								class="group block"
-							>
-								{postIdx === 0 ? (
-									<>
-										<h3 class="font-editorial text-xl md:text-2xl leading-tight mb-2">
-											<span class="title-sweep">{post.title}</span>
-										</h3>
-										<p class="text-sm text-base-content/65 leading-relaxed mb-2 line-clamp-3">
-											{post.description}
-										</p>
-										<div class="text-[11px] font-display font-semibold tracking-[0.15em] uppercase text-base-content/40">
-											<FormattedDate date={post.date} />
-										</div>
-									</>
-								) : (
-									<div class="border-t border-dotted border-base-content/10 pt-4">
-										<h4 class="font-display font-bold text-sm leading-snug mb-1.5">
-											<span class="title-sweep">{post.title}</span>
-										</h4>
-										<p class="text-xs text-base-content/55 leading-relaxed mb-1.5 line-clamp-2">
-											{post.description}
-										</p>
-										<div class="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-base-content/35">
-											<FormattedDate date={post.date} />
-										</div>
-									</div>
-								)}
-							</a>
-						))}
-					</div>
-				</div>
+	<!-- ========= RECENT POSTS GRID ========= -->
+	<section class="mx-auto max-w-6xl px-6 pb-16">
+		<h3 class="font-display text-sm font-bold tracking-widest uppercase text-base-content/50 mb-8">
+			Recent Posts
+		</h3>
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+			{recentPosts.map((post) => (
+				<a href={`/blog/${post.id}/`} class="group">
+					<article class="bg-base-100 border border-base-content/10 rounded-xl p-6 hover:border-primary/30 hover:shadow-lg transition-all h-full flex flex-col">
+						<span class="badge badge-ghost badge-sm mb-3">{post.data.category}</span>
+						<h4 class="font-editorial text-xl font-semibold text-base-content group-hover:text-primary transition-colors mb-2">
+							{post.data.title}
+						</h4>
+						<p class="text-base-content/60 text-sm leading-relaxed line-clamp-3 flex-1">
+							{post.data.description}
+						</p>
+						<span class="text-base-content/40 text-xs mt-4">
+							{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+						</span>
+					</article>
+				</a>
 			))}
 		</div>
 	</section>
 
-	<!-- ========= MARQUEE category strip ========= -->
-	<div
-		class="marquee relative border-y border-primary/15 bg-primary text-primary-content overflow-hidden"
-	>
-		<div class="marquee-track py-4">
-			{
-				[...marqueeWords, ...marqueeWords].map((w) => (
-					<span class="flex items-center gap-6 px-6 font-editorial text-2xl md:text-3xl whitespace-nowrap">
-						{w}
-						<svg
-							aria-hidden="true"
-							viewBox="0 0 20 20"
-							class="w-3 h-3 opacity-60"
-							fill="currentColor"
-						>
-							<circle cx="10" cy="10" r="6" />
-						</svg>
-					</span>
-				))
-			}
-		</div>
-	</div>
-
-	<!-- ========= DEPARTMENTS — section index ========= -->
-	<section class="mx-auto max-w-7xl px-6 pt-16 md:pt-24">
-		<div class="grid lg:grid-cols-12 gap-10 mb-10">
-			<div class="lg:col-span-5">
-				<span class="eyebrow">The Departments</span>
-				<h2 class="font-editorial text-4xl md:text-5xl mt-3">
-					Where to wander next.
-				</h2>
-			</div>
-			<p
-				class="lg:col-span-7 lg:pl-8 text-lg text-base-content/70 leading-relaxed lg:border-l lg:border-primary/15"
-			>
-				Eight lanes of writing, looking, and building — pick whichever
-				matches the kind of afternoon you're having. None of it is in a hurry.
-			</p>
-		</div>
-		<div class="grid gap-x-10 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-			{
-				[
-					{
-						title: 'Field Notes',
-						href: '/field-notes',
-						description:
-							'Hikes, historic sites, nature studies, and homeschool field trips.',
-						tag: '01',
-					},
-					{
-						title: 'RV Life',
-						href: '/rv-life',
-						description:
-							"The honest road between the house that wasn't forever and the roots we're working toward.",
-						tag: '02',
-					},
-					{
-						title: 'Homeschool',
-						href: '/homeschool',
-						description:
-							'How travel, projects, and faith shape what we learn together.',
-						tag: '03',
-					},
-					{
-						title: 'Projects & Builds',
-						href: '/projects',
-						description:
-							'DIY, RV automation, and useful things we ship and document.',
-						tag: '04',
-					},
-					{
-						title: 'Kingdom Farm',
-						href: '/kingdom-farm',
-						description:
-							'The long-term family vision: regenerative food, hospitality, and deeper roots.',
-						tag: '05',
-					},
-					{
-						title: 'Faith & Reflections',
-						href: '/blog?category=Faith+%26+Reflections',
-						description:
-							'Quiet thoughts on faith, family, and ordinary days.',
-						tag: '06',
-					},
-					{
-						title: 'Darbees Bookshelf',
-						href: '/bookshelf',
-						description:
-							"Family book reviews — Dad's take, Mom's take, kids' take. Christian discernment for every age.",
-						tag: '07',
-					},
-					{
-						title: 'Resources',
-						href: '/resources',
-						description:
-							'Free templates, field note printables, gear lists, and project guides.',
-						tag: '08',
-					},
-				].map((lane) => (
-					<a
-						href={lane.href}
-						class="group flex items-start gap-5 py-6 border-t border-base-content/15 hover:border-primary transition-colors"
-					>
-						<span class="font-display font-black text-3xl text-primary/40 group-hover:text-primary transition-colors tabular-nums tracking-tight pt-1">
-							{lane.tag}
-						</span>
-						<div class="flex-1">
-							<h3 class="font-editorial text-2xl mb-1.5">
-								<span class="title-sweep">{lane.title}</span>
-							</h3>
-							<p class="text-sm text-base-content/65 leading-relaxed">
-								{lane.description}
-							</p>
-						</div>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="w-4 h-4 mt-2 text-base-content/30 group-hover:text-primary group-hover:translate-x-1 transition-all"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
-								fill-rule="evenodd"
-								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-					</a>
-				))
-			}
-		</div>
-	</section>
+	<!-- ========= DEPARTMENTS ========= -->
+	<Departments departments={departments} />
 
 	<!-- ========= Newsletter ========= -->
-	<section id="newsletter" class="mx-auto max-w-5xl px-6 pt-24 md:pt-32 pb-16">
-		<div
-			class="relative overflow-hidden rounded-3xl border border-primary/15 bg-base-100 p-10 md:p-14"
-		>
-			<div
-				aria-hidden="true"
-				class="absolute -top-24 -right-16 w-56 h-56 rounded-full bg-secondary/15 blur-3xl"
-			>
-			</div>
-			<div
-				aria-hidden="true"
-				class="absolute -bottom-28 -left-20 w-56 h-56 rounded-full bg-primary/10 blur-3xl"
-			>
-			</div>
+	<section id="newsletter" class="mx-auto max-w-5xl px-6 pt-16 pb-16 md:pt-24">
+		<div class="border-primary/15 bg-base-100 relative overflow-hidden rounded-3xl border p-10 md:p-14">
+			<div aria-hidden="true" class="bg-secondary/15 absolute -top-24 -right-16 h-56 w-56 rounded-full blur-3xl"></div>
 			<div class="relative">
 				<NewsletterSignup />
 			</div>
 		</div>
 	</section>
 </BaseLayout>
-
-<style>
-	/* Newspaper-style double rule divider */
-	.newspaper-divider {
-		position: relative;
-		height: 4px;
-		border-top: 2px solid var(--color-base-content);
-		border-bottom: 1px solid var(--color-base-content);
-		opacity: 0.25;
-	}
-
-	/* Subtle column typography refinements */
-	.newspaper-col h3 {
-		font-family: var(--font-display);
-	}
-
-	/* Line-clamp utility */
-	.line-clamp-2 {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-	.line-clamp-3 {
-		display: -webkit-box;
-		-webkit-line-clamp: 3;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	/* NOW box italic styling */
-	.newspaper-now p {
-		font-style: italic;
-	}
-</style>

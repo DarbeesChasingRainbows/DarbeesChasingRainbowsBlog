@@ -34,27 +34,45 @@ export async function getFieldNotes(): Promise<CollectionEntry<'field-notes'>[]>
 }
 
 /**
- * Get the latest N entries across all three collections combined.
+ * Get all published book reviews, sorted by pubDate descending.
  */
-export async function getLatestAll(limit = 6) {
-	const [blog, projects, fieldNotes] = await Promise.all([
+export async function getBooks(): Promise<CollectionEntry<'books'>[]> {
+	const posts = await getCollection('books', ({ data }) => !data.draft || import.meta.env.DEV);
+	return posts.sort(
+		(a, b) => new Date(b.data.pubDate).valueOf() - new Date(a.data.pubDate).valueOf(),
+	);
+}
+
+/**
+ * Get all published entries across all primary collections, sorted by pubDate descending.
+ * Each entry is tagged with its collection type.
+ */
+export async function getAllEntries() {
+	const [blog, projects, fieldNotes, books] = await Promise.all([
 		getBlogPosts(),
 		getProjects(),
 		getFieldNotes(),
+		getBooks(),
 	]);
 
 	const all = [
 		...blog.map((p) => ({ ...p, _type: 'blog' as const })),
 		...projects.map((p) => ({ ...p, _type: 'projects' as const })),
 		...fieldNotes.map((p) => ({ ...p, _type: 'field-notes' as const })),
+		...books.map((p) => ({ ...p, _type: 'books' as const })),
 	];
 
-	return all
-		.sort(
-			(a, b) =>
-				new Date(b.data.pubDate).valueOf() - new Date(a.data.pubDate).valueOf(),
-		)
-		.slice(0, limit);
+	return all.sort(
+		(a, b) => new Date(b.data.pubDate).valueOf() - new Date(a.data.pubDate).valueOf(),
+	);
+}
+
+/**
+ * Get the latest N entries across all collections combined.
+ */
+export async function getLatestAll(limit = 6) {
+	const all = await getAllEntries();
+	return all.slice(0, limit);
 }
 
 /**
@@ -114,6 +132,45 @@ export function getRelatedPosts<
 	);
 	const seen = new Set<string>();
 	const merged: T[] = [];
+	for (const e of [...sameCategory, ...tagMatches, ...others]) {
+		if (seen.has(e.id)) continue;
+		seen.add(e.id);
+		merged.push(e);
+		if (merged.length >= limit) break;
+	}
+	return merged;
+}
+
+/**
+ * Find related entries across all collections (blog, projects, field-notes) based on tags and category.
+ * Returns entries from any collection that share tags or category with the current entry.
+ */
+export async function getRelatedPostsCrossCollection(
+	currentEntry: { id: string; data: { category: string; tags?: string[] } },
+	limit = 3,
+): Promise<Array<CollectionEntry<'blog'> | CollectionEntry<'projects'> | CollectionEntry<'field-notes'>>> {
+	const [blog, projects, fieldNotes] = await Promise.all([
+		getBlogPosts(),
+		getProjects(),
+		getFieldNotes(),
+	]);
+
+	const all = [
+		...blog,
+		...projects,
+		...fieldNotes,
+	];
+
+	const others = all.filter((e) => e.id !== currentEntry.id);
+	const sameCategory = others.filter((e) => e.data.category === currentEntry.data.category);
+	const currentTags = new Set(currentEntry.data.tags ?? []);
+	const tagMatches = others.filter(
+		(e) =>
+			e.data.category !== currentEntry.data.category &&
+			(e.data.tags ?? []).some((t) => currentTags.has(t)),
+	);
+	const seen = new Set<string>();
+	const merged: typeof all = [];
 	for (const e of [...sameCategory, ...tagMatches, ...others]) {
 		if (seen.has(e.id)) continue;
 		seen.add(e.id);

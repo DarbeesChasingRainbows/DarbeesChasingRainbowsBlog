@@ -1,63 +1,21 @@
 ---
+import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
-import { getCollection } from 'astro:content';
+import {
+	BOOKSHELF_RATINGS as ratings,
+	BOOKSHELF_LOOK_FOR as lookFor,
+	BOOKSHELF_COMING_SOON as comingSoon,
+} from '../consts';
 
-let books: Awaited<ReturnType<typeof getCollection<'books'>>> = [];
+// Books collection may not exist yet (it's schemaed but currently empty).
+// Try-catch keeps the page rendering when no entries exist.
+let books: CollectionEntry<'books'>[] = [];
 try {
 	books = await getCollection('books', ({ data }) => !data.draft);
 } catch {
 	books = [];
 }
-
-const ratings = [
-	{
-		icon: '🟢',
-		label: 'Green Light',
-		desc: 'We would hand this to our kids confidently.',
-		color: 'border-green-300 bg-green-50',
-	},
-	{
-		icon: '🟡',
-		label: 'Yellow Light',
-		desc: 'Worth reading with discussion.',
-		color: 'border-yellow-300 bg-yellow-50',
-	},
-	{
-		icon: '📖',
-		label: 'Parent Read First',
-		desc: 'Preview before handing over.',
-		color: 'border-blue-300 bg-blue-50',
-	},
-	{
-		icon: '🔴',
-		label: 'Red Light',
-		desc: 'Not for our family.',
-		color: 'border-red-300 bg-red-50',
-	},
-];
-
-const lookFor = [
-	'Truth',
-	'Goodness',
-	'Beauty',
-	'Faith & worldview',
-	'Family portrayal',
-	'Authority & courage',
-	'Repentance & growth',
-	'Content notes',
-	'Formation',
-	'Read-aloud value',
-	'Audiobook value',
-	'Age fit',
-];
-
-const comingSoon = [
-	'Carry On, Mr. Bowditch',
-	'Favorite family read-alouds for the road',
-	'Books for Christian tweens',
-	'What we\'re reading for Kingdom Farm',
-];
 ---
 
 <BaseLayout
@@ -65,139 +23,167 @@ const comingSoon = [
 	description="Family book reviews with a Dad's take, Mom's take, and kids' take. Christian discernment for kids, tweens, teens, and family read-alouds."
 >
 	<article class="mx-auto max-w-3xl px-4 py-16 md:py-24">
-
 		<!-- Hero -->
-		<div class="text-center mb-16 md:mb-20">
+		<div class="mb-16 text-center md:mb-20">
 			<div class="eyebrow mb-4">Family book reviews</div>
-			<h1 class="font-display text-5xl md:text-6xl font-extrabold tracking-tight mb-4">Darbees Bookshelf</h1>
-			<p class="text-xl md:text-2xl text-base-content/70 max-w-2xl mx-auto leading-snug">
+			<h1 class="font-display mb-4 text-5xl font-extrabold tracking-tight md:text-6xl">
+				Darbees Bookshelf
+			</h1>
+			<p class="text-base-content/70 mx-auto max-w-2xl text-xl leading-snug md:text-2xl">
 				Not every good book is a good fit for every family.
 			</p>
 		</div>
 
 		<!-- Why reading matters -->
-		<div class="prose prose-lg max-w-none mb-16">
+		<div class="prose prose-lg mb-16 max-w-none">
 			<h2>Why reading matters to us</h2>
 			<p>
-				Books are central to our homeschool. We use read-alouds, audiobooks, and direct reading across every subject — historical fiction, theology, nature guides, living books, biographies, and literature tied to the places we visit.
+				Books are central to our homeschool. We use read-alouds, audiobooks, and direct reading
+				across every subject — historical fiction, theology, nature guides, living books,
+				biographies, and literature tied to the places we visit.
 			</p>
 			<p>
-				Reading Fridays are a rhythm we protect. My wife reads aloud for hours. The kids listen, imagine, and ask questions. Some of our best family conversations have started from a chapter.
+				Reading Fridays are a rhythm we protect. My wife reads aloud for hours. The kids listen,
+				imagine, and ask questions. Some of our best family conversations have started from a
+				chapter.
 			</p>
 		</div>
 
 		<!-- Why discernment matters -->
-		<div class="mb-16 rounded-3xl bg-base-200 p-8 md:p-10">
-			<h2 class="font-display text-2xl font-bold mb-4">Why discernment matters</h2>
+		<div class="bg-base-200 mb-16 rounded-3xl p-8 md:p-10">
+			<h2 class="font-display mb-4 text-2xl font-bold">Why discernment matters</h2>
 			<p class="text-base-content/80 mb-4">
-				Not every book our kids read has to be explicitly Christian, but every book is forming them. Books shape imagination, loves, courage, conscience, and worldview — whether or not we're paying attention.
+				Not every book our kids read has to be explicitly Christian, but every book is forming them.
+				Books shape imagination, loves, courage, conscience, and worldview — whether or not we're
+				paying attention.
 			</p>
-			<p class="font-medium text-base-content">
+			<p class="text-base-content font-medium">
 				We want to pay attention. This page is where we do that out loud.
 			</p>
 		</div>
 
 		<!-- Split review format -->
 		<div class="mb-16">
-			<h2 class="font-display text-2xl font-bold mb-6">How our reviews work</h2>
-			<p class="text-base-content/80 mb-6">Every review includes three honest perspectives, because a book can be genuinely valuable and still not work as a family read-aloud. Or the parents can love it and the kids be miserable.</p>
-			<div class="grid sm:grid-cols-3 gap-5">
-				<div class="rounded-2xl border border-base-300 p-6 text-center">
-					<div class="text-3xl mb-3">📚</div>
-					<div class="font-display font-bold text-lg mb-1">Dad's Take</div>
-					<p class="text-sm text-base-content/70">The worldview angle, educational value, and literary quality.</p>
+			<h2 class="font-display mb-6 text-2xl font-bold">How our reviews work</h2>
+			<p class="text-base-content/80 mb-6">
+				Every review includes three honest perspectives, because a book can be genuinely valuable
+				and still not work as a family read-aloud. Or the parents can love it and the kids be
+				miserable.
+			</p>
+			<div class="grid gap-5 sm:grid-cols-3">
+				<div class="border-base-300 rounded-2xl border p-6 text-center">
+					<div class="mb-3 text-3xl">📚</div>
+					<div class="font-display mb-1 text-lg font-bold">Dad's Take</div>
+					<p class="text-base-content/70 text-sm">
+						The worldview angle, educational value, and literary quality.
+					</p>
 				</div>
-				<div class="rounded-2xl border border-base-300 p-6 text-center">
-					<div class="text-3xl mb-3">📖</div>
-					<div class="font-display font-bold text-lg mb-1">Mom's Take</div>
-					<p class="text-sm text-base-content/70">Read-aloud experience, pacing, and whether it held the kids' attention.</p>
+				<div class="border-base-300 rounded-2xl border p-6 text-center">
+					<div class="mb-3 text-3xl">📖</div>
+					<div class="font-display mb-1 text-lg font-bold">Mom's Take</div>
+					<p class="text-base-content/70 text-sm">
+						Read-aloud experience, pacing, and whether it held the kids' attention.
+					</p>
 				</div>
-				<div class="rounded-2xl border border-base-300 p-6 text-center">
-					<div class="text-3xl mb-3">🧡</div>
-					<div class="font-display font-bold text-lg mb-1">Kids' Take</div>
-					<p class="text-sm text-base-content/70">Did they ask for more? Were they bored? What stuck with them?</p>
+				<div class="border-base-300 rounded-2xl border p-6 text-center">
+					<div class="mb-3 text-3xl">🧡</div>
+					<div class="font-display mb-1 text-lg font-bold">Kids' Take</div>
+					<p class="text-base-content/70 text-sm">
+						Did they ask for more? Were they bored? What stuck with them?
+					</p>
 				</div>
 			</div>
 		</div>
 
 		<!-- Rating system -->
 		<div class="mb-16">
-			<h2 class="font-display text-2xl font-bold mb-6">Our rating system</h2>
-			<div class="grid sm:grid-cols-2 gap-4">
-				{ratings.map((r) => (
-					<div class={`rounded-2xl border p-5 ${r.color}`}>
-						<div class="flex items-center gap-3 mb-1">
-							<span class="text-xl">{r.icon}</span>
-							<span class="font-display font-bold">{r.label}</span>
+			<h2 class="font-display mb-6 text-2xl font-bold">Our rating system</h2>
+			<div class="grid gap-4 sm:grid-cols-2">
+				{
+					ratings.map((r) => (
+						<div class={`rounded-2xl border p-5 ${r.color}`}>
+							<div class="mb-1 flex items-center gap-3">
+								<span class="text-xl">{r.icon}</span>
+								<span class="font-display font-bold">{r.label}</span>
+							</div>
+							<p class="text-base-content/80 text-sm">{r.desc}</p>
 						</div>
-						<p class="text-sm text-base-content/80">{r.desc}</p>
-					</div>
-				))}
+					))
+				}
 			</div>
 		</div>
 
 		<!-- What we look for -->
 		<div class="mb-16">
-			<h2 class="font-display text-2xl font-bold mb-6">What we look for</h2>
-			<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-				{lookFor.map((item) => (
-					<div class="rounded-xl border border-base-300 px-4 py-3 text-sm font-medium text-base-content/80">
-						{item}
-					</div>
-				))}
+			<h2 class="font-display mb-6 text-2xl font-bold">What we look for</h2>
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+				{
+					lookFor.map((item) => (
+						<div class="border-base-300 text-base-content/80 rounded-xl border px-4 py-3 text-sm font-medium">
+							{item}
+						</div>
+					))
+				}
 			</div>
 		</div>
 
 		<!-- Review grid or empty state -->
-		{books.length > 0 ? (
-			<div class="mb-16">
-				<div class="flex items-baseline gap-4 mb-8">
-					<span class="eyebrow">Reviews</span>
-					<span class="flex-1 border-t border-base-content/15"></span>
+		{
+			books.length > 0 ? (
+				<div class="mb-16">
+					<div class="mb-8 flex items-baseline gap-4">
+						<span class="eyebrow">Reviews</span>
+						<span class="border-base-content/15 flex-1 border-t" />
+					</div>
+					<div class="grid gap-6 sm:grid-cols-2">
+						{books.map((book) => (
+							<div class="border-base-300 rounded-2xl border p-6">
+								<div class="font-display mb-1 text-lg font-bold">{book.data.bookTitle}</div>
+								<div class="text-base-content/60 mb-3 text-sm">by {book.data.author}</div>
+								<p class="text-base-content/80 mb-4 text-sm">{book.data.description}</p>
+								<a
+									href={`/bookshelf/${book.id}`}
+									class="font-display text-primary text-sm font-bold hover:underline"
+								>
+									Read the family verdict →
+								</a>
+							</div>
+						))}
+					</div>
 				</div>
-				<div class="grid gap-6 sm:grid-cols-2">
-					{books.map((book) => (
-						<div class="rounded-2xl border border-base-300 p-6">
-							<div class="font-display font-bold text-lg mb-1">{book.data.bookTitle}</div>
-							<div class="text-sm text-base-content/60 mb-3">by {book.data.author}</div>
-							<p class="text-sm text-base-content/80 mb-4">{book.data.description}</p>
-							<a href={`/bookshelf/${book.id}`} class="text-sm font-display font-bold text-primary hover:underline">
-								Read the family verdict →
-							</a>
-						</div>
-					))}
+			) : (
+				<div class="border-base-300 mb-16 rounded-3xl border p-10 text-center">
+					<div class="mb-4 text-4xl">📚</div>
+					<h2 class="font-display mb-3 text-2xl font-bold">First reviews coming soon</h2>
+					<p class="text-base-content/70 mx-auto mb-6 max-w-md">
+						We're building this shelf carefully — family-tested reviews with Dad's take, Mom's take,
+						the kids' take, content notes, worldview notes, and a final family verdict.
+					</p>
+					<div class="mx-auto max-w-xs space-y-2 text-left">
+						<p class="font-display text-base-content/50 mb-3 text-xs font-bold tracking-widest uppercase">
+							On the reading list:
+						</p>
+						{comingSoon.map((title) => (
+							<div class="text-base-content/70 flex items-center gap-2 text-sm">
+								<span class="text-primary">—</span>
+								<span>{title}</span>
+							</div>
+						))}
+					</div>
 				</div>
-			</div>
-		) : (
-			<div class="mb-16 rounded-3xl border border-base-300 p-10 text-center">
-				<div class="text-4xl mb-4">📚</div>
-				<h2 class="font-display text-2xl font-bold mb-3">First reviews coming soon</h2>
-				<p class="text-base-content/70 max-w-md mx-auto mb-6">
-					We're building this shelf carefully — family-tested reviews with Dad's take, Mom's take, the kids' take, content notes, worldview notes, and a final family verdict.
-				</p>
-				<div class="text-left max-w-xs mx-auto space-y-2">
-					<p class="text-xs font-display font-bold uppercase tracking-widest text-base-content/50 mb-3">On the reading list:</p>
-					{comingSoon.map((title) => (
-						<div class="flex items-center gap-2 text-sm text-base-content/70">
-							<span class="text-primary">—</span>
-							<span>{title}</span>
-						</div>
-					))}
-				</div>
-			</div>
-		)}
+			)
+		}
 
 		<!-- Links -->
-		<div class="flex flex-wrap gap-4 mb-12">
+		<div class="mb-12 flex flex-wrap gap-4">
 			<a href="/homeschool" class="btn btn-outline btn-sm">Our Homeschool →</a>
 			<a href="/resources" class="btn btn-outline btn-sm">Resources →</a>
 		</div>
 
 		<!-- Newsletter -->
-		<div class="border-t border-base-300 pt-12">
-			<p class="text-base-content/70 text-center mb-6">Get notified when new reviews are posted.</p>
+		<div class="border-base-300 border-t pt-12">
+			<p class="text-base-content/70 mb-6 text-center">Get notified when new reviews are posted.</p>
 			<NewsletterSignup />
 		</div>
-
 	</article>
 </BaseLayout>

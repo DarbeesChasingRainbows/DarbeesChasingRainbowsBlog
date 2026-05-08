@@ -7,107 +7,144 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 	description="No display ads. Honest affiliate links. Digital products from real family life. Here's how Darbees Chasing Rainbows is supported."
 >
 	<article class="mx-auto max-w-3xl px-4 py-16 md:py-24">
-
 		<!-- Hero -->
-		<div class="text-center mb-16 md:mb-20">
-			<div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
-					<path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+		<div class="mb-16 text-center md:mb-20">
+			<div
+				class="bg-primary/10 text-primary mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-8 w-8"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+				>
+					<path
+						fill-rule="evenodd"
+						d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+						clip-rule="evenodd"></path>
 				</svg>
 			</div>
-			<h1 class="font-display text-4xl md:text-5xl font-extrabold mb-4">How This Site Is Supported</h1>
-			<p class="text-lg md:text-xl text-base-content/70 max-w-2xl mx-auto">
-				We want this site to stay useful, calm, honest, and uncluttered. Here's what that looks like in practice.
+			<h1 class="font-display mb-4 text-4xl font-extrabold md:text-5xl">
+				How This Site Is Supported
+			</h1>
+			<p class="text-base-content/70 mx-auto max-w-2xl text-lg md:text-xl">
+				We want this site to stay useful, calm, honest, and uncluttered. Here's what that looks like
+				in practice.
 			</p>
 		</div>
 
 		<!-- Core principle -->
-		<div class="mb-16 rounded-3xl border border-primary/20 bg-primary/5 p-8 md:p-10 text-center">
-			<p class="font-display text-xl font-bold text-base-content mb-2">
+		<div class="border-primary/20 bg-primary/5 mb-16 rounded-3xl border p-8 text-center md:p-10">
+			<p class="font-display text-base-content mb-2 text-xl font-bold">
 				"We try to monetize the resources, not the relationship."
 			</p>
 			<p class="text-base-content/70 text-sm">
-				The blog should stay clean and readable. Monetization belongs where it naturally helps the reader.
+				The blog should stay clean and readable. Monetization belongs where it naturally helps the
+				reader.
 			</p>
 		</div>
 
 		<!-- No display ads -->
-		<div class="prose prose-lg max-w-none mb-10">
+		<div class="prose prose-lg mb-10 max-w-none">
 			<h2>No display ads</h2>
 			<p>
-				This site does not use display advertising. We don't want banner ads, popups, or auto-playing content cluttering the reading experience or promoting things we haven't chosen to recommend. We want the site to feel calm and trustworthy — and display ads work against that.
+				This site does not use display advertising. We don't want banner ads, popups, or
+				auto-playing content cluttering the reading experience or promoting things we haven't chosen
+				to recommend. We want the site to feel calm and trustworthy — and display ads work against
+				that.
 			</p>
 		</div>
 
 		<!-- Affiliate links -->
-		<div class="prose prose-lg max-w-none mb-10">
+		<div class="prose prose-lg mb-10 max-w-none">
 			<h2>Affiliate links</h2>
 			<p>
-				Some links on this site may be affiliate links. If you click a link and make a purchase, we may receive a small commission at no extra cost to you.
+				Some links on this site may be affiliate links. If you click a link and make a purchase, we
+				may receive a small commission at no extra cost to you.
 			</p>
 			<p>
-				Our rule: we only link to things we actually use, have used, or would recommend to a family we know personally. We don't do generic roundups of gear we've never touched. Reviews include downsides as well as upsides. Affiliate relationships are always disclosed.
+				Our rule: we only link to things we actually use, have used, or would recommend to a family
+				we know personally. We don't do generic roundups of gear we've never touched. Reviews
+				include downsides as well as upsides. Affiliate relationships are always disclosed.
 			</p>
 		</div>
 
 		<!-- Digital products -->
-		<div class="mb-16 rounded-2xl border border-base-300 bg-base-100 p-8">
-			<h2 class="font-display text-2xl font-bold mb-4">Digital products</h2>
+		<div class="border-base-300 bg-base-100 mb-16 rounded-2xl border p-8">
+			<h2 class="font-display mb-4 text-2xl font-bold">Digital products</h2>
 			<p class="text-base-content/80 mb-4">
-				We create homeschool resources, field notes templates, book discernment tools, RV checklists, and project guides — built from real family life, not generic worksheets. These are field-tested in an actual RV homeschool with four kids.
+				We create homeschool resources, field notes templates, book discernment tools, RV
+				checklists, and project guides — built from real family life, not generic worksheets. These
+				are field-tested in an actual RV homeschool with four kids.
 			</p>
 			<p class="text-base-content/80">
-				Products are available through the <a href="/resources" class="text-primary hover:underline">Resources</a> page. Free resources are offered as lead magnets to build the newsletter list. Paid resources are priced to be accessible.
+				Products are available through the <a href="/resources" class="text-primary hover:underline"
+					>Resources</a
+				> page. Free resources are offered as lead magnets to build the newsletter list. Paid resources
+				are priced to be accessible.
 			</p>
 		</div>
 
 		<!-- YouTube -->
-		<div class="prose prose-lg max-w-none mb-10">
+		<div class="prose prose-lg mb-10 max-w-none">
 			<h2>YouTube</h2>
 			<p>
-				YouTube is a companion format to blog posts — not a replacement for them. Videos for projects, field notes, homeschool rhythms, and Kingdom Farm updates will live alongside written posts and full documentation. The blog is the archive; YouTube is the window.
+				YouTube is a companion format to blog posts — not a replacement for them. Videos for
+				projects, field notes, homeschool rhythms, and Kingdom Farm updates will live alongside
+				written posts and full documentation. The blog is the archive; YouTube is the window.
 			</p>
 		</div>
 
 		<!-- Sponsors -->
-		<div class="prose prose-lg max-w-none mb-10">
+		<div class="prose prose-lg mb-10 max-w-none">
 			<h2>Sponsors</h2>
 			<p>
-				We may work with sponsors in the future. If we do, sponsors must be values-aligned — companies we would be comfortable recommending to families we know personally. We would not sponsor anything that conflicts with our faith, family values, or the honest posture of the site. Sponsored content will always be clearly labeled.
+				We may work with sponsors in the future. If we do, sponsors must be values-aligned —
+				companies we would be comfortable recommending to families we know personally. We would not
+				sponsor anything that conflicts with our faith, family values, or the honest posture of the
+				site. Sponsored content will always be clearly labeled.
 			</p>
 			<p>
-				Good categories: homeschool tools, books, RV gear, outdoor gear, farming tools, food preservation, practical maker tools. Poor fits: random apps, fear-based products, low-quality preparedness brands, anything requiring health claims we can't verify.
+				Good categories: homeschool tools, books, RV gear, outdoor gear, farming tools, food
+				preservation, practical maker tools. Poor fits: random apps, fear-based products,
+				low-quality preparedness brands, anything requiring health claims we can't verify.
 			</p>
 		</div>
 
 		<!-- Support / Donations -->
-		<div class="mb-16 rounded-2xl border border-base-300 bg-base-100 p-8">
-			<h2 class="font-display text-2xl font-bold mb-4">Direct support</h2>
+		<div class="border-base-300 bg-base-100 mb-16 rounded-2xl border p-8">
+			<h2 class="font-display mb-4 text-2xl font-bold">Direct support</h2>
 			<p class="text-base-content/80 mb-4">
 				Some readers have asked how to support the journey directly. We're grateful for that.
 			</p>
 			<p class="text-base-content/80 mb-4">
-				For now, the most meaningful support is: subscribe to the newsletter, share the site with someone who'd find it useful, and follow along on Instagram. That does more than most people realize.
+				For now, the most meaningful support is: subscribe to the newsletter, share the site with
+				someone who'd find it useful, and follow along on Instagram. That does more than most people
+				realize.
 			</p>
 			<p class="text-base-content/80 mb-4">
-				If we open a formal support channel for Kingdom Farm, it will be tied to specific milestones, fully transparent about how funds are used, and free of pressure. We will never use "investment" language or make promises we cannot keep. Support is support — not a transaction.
+				If we open a formal support channel for Kingdom Farm, it will be tied to specific
+				milestones, fully transparent about how funds are used, and free of pressure. We will never
+				use "investment" language or make promises we cannot keep. Support is support — not a
+				transaction.
 			</p>
-			<p class="text-sm text-base-content/60 italic">
-				No support program is currently active.
-			</p>
+			<p class="text-base-content/60 text-sm italic">No support program is currently active.</p>
 		</div>
 
 		<!-- How We Share -->
-		<div class="mb-16 rounded-3xl bg-base-200 p-8 md:p-10">
-			<h2 class="font-display text-2xl font-bold mb-6">How we share</h2>
-			<ul class="space-y-3 text-base-content/80">
+		<div class="bg-base-200 mb-16 rounded-3xl p-8 md:p-10">
+			<h2 class="font-display mb-6 text-2xl font-bold">How we share</h2>
+			<ul class="text-base-content/80 space-y-3">
 				<li class="flex items-start gap-3">
 					<span class="text-primary mt-1 shrink-0">→</span>
 					<span>We tell the truth, but not everything.</span>
 				</li>
 				<li class="flex items-start gap-3">
 					<span class="text-primary mt-1 shrink-0">→</span>
-					<span>We protect our children. No faces, no private moments, no content that makes them the product.</span>
+					<span
+						>We protect our children. No faces, no private moments, no content that makes them the
+						product.</span
+					>
 				</li>
 				<li class="flex items-start gap-3">
 					<span class="text-primary mt-1 shrink-0">→</span>
@@ -131,7 +168,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 		<!-- Closing -->
 		<div class="text-center">
 			<p class="text-base-content/70 mb-6">
-				Questions about any of this? <a href="/contact" class="text-primary hover:underline">Get in touch.</a>
+				Questions about any of this? <a href="/contact" class="text-primary hover:underline"
+					>Get in touch.</a
+				>
 			</p>
 			<div class="flex flex-wrap justify-center gap-4">
 				<a href="/about" class="btn btn-outline btn-sm">Our Story</a>
@@ -139,6 +178,5 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 				<a href="/start-here" class="btn btn-primary btn-sm">Start Here</a>
 			</div>
 		</div>
-
 	</article>
 </BaseLayout>

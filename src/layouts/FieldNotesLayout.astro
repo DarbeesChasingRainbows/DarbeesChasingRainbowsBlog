@@ -1,180 +1,122 @@
 ---
-import { Image } from 'astro:assets';
+// Thin wrapper around PostLayout for field notes. The two collection-specific
+// pieces are: the location/region/weather metadata grid (slot="meta") and the
+// homeschool badge (slot="header-extras").
+
 import type { CollectionEntry } from 'astro:content';
 import type { MarkdownHeading } from 'astro';
-import BaseLayout from './BaseLayout.astro';
-import FormattedDate from '../components/FormattedDate.astro';
-import CategoryPill from '../components/CategoryPill.astro';
-import TableOfContents from '../components/TableOfContents.astro';
-import NewsletterSignup from '../components/NewsletterSignup.astro';
-import Breadcrumbs from '../components/Breadcrumbs.astro';
-import PostFooterNav from '../components/PostFooterNav.astro';
-import KeyTakeaways from '../components/KeyTakeaways.astro';
-import Sources from '../components/Sources.astro';
-import FAQAccordion from '../components/FAQAccordion.astro';
-import EntityCard from '../components/EntityCard.astro';
-import AISummary from '../components/AISummary.astro';
-import StructuredData from '../components/StructuredData.astro';
-import {
-	buildBlogPostingJsonLd,
-	buildBreadcrumbJsonLd,
-	buildFaqJsonLd,
-} from '../utils/seo';
-import { getFieldNotes, getAdjacentPosts, getRelatedPosts } from '../utils/getPosts';
+import PostLayout from './PostLayout.astro';
+import PostMeta from '../components/PostMeta.astro';
+import FieldNotesBlock from '../components/FieldNotesBlock.astro';
+import { getFieldNotes, getAdjacentPosts, getRelatedPostsCrossCollection } from '../utils/getPosts';
 
 const allNotes = await getFieldNotes();
 
 interface Props {
 	post: CollectionEntry<'field-notes'>;
 	headings?: MarkdownHeading[];
+	// readingTime accepted for parity with the other post layouts; field notes
+	// don't display it because the metadata grid above already shows date/place.
 	readingTime?: number;
 }
 
 const { post, headings = [], readingTime } = Astro.props;
 const { data } = post;
 const hero = data.featuredImage ?? data.heroImage;
+const heroImage = hero && typeof hero === 'object' && 'src' in hero ? hero : undefined;
 
 const { prev, next } = getAdjacentPosts(allNotes, post.id);
-const related = getRelatedPosts(allNotes, post, 2);
+const related = await getRelatedPostsCrossCollection(post, 3);
 
-const postUrl = new URL(Astro.url.pathname, Astro.site).toString();
-const heroUrl = hero ? new URL(hero.src, Astro.site).toString() : undefined;
+// Format date for the block
+const displayDate = data.pubDate.toLocaleDateString('en-US', {
+	year: 'numeric',
+	month: 'long',
+	day: 'numeric',
+});
 
-const breadcrumbItems = [
-	{ label: 'Home', href: '/' },
-	{ label: 'Field Notes', href: '/field-notes' },
-	{ label: data.title },
-];
-
-const graph = [
-	buildBlogPostingJsonLd({
-		title: data.title,
-		description: data.description,
-		url: postUrl,
-		image: heroUrl,
-		publishDate: data.pubDate,
-		category: data.category,
-		tags: data.tags,
-		aiSummary: data.aiSummary,
-	}),
-	buildBreadcrumbJsonLd(breadcrumbItems),
-	...(data.faq?.length ? [buildFaqJsonLd(data.faq)] : []),
-];
+// Check if we have any observations to show
+const hasObservations = data.saw?.length || data.heard || data.wondered || data.learned;
 ---
 
-<BaseLayout
+<PostLayout
 	title={data.title}
 	description={data.description}
-	image={hero}
-	ogType="article"
+	hero={heroImage}
+	imageAlt={data.imageAlt}
+	imageAttribution={data.imageAttribution}
 	publishDate={data.pubDate}
+	category={data.category}
+	tags={data.tags}
+	headings={headings}
+	keyTakeaways={data.keyTakeaways}
+	faq={data.faq}
+	sources={data.sources}
+	aiSummary={data.aiSummary}
+	draft={data.draft}
+	collection="field-notes"
+	collectionLabel="Field Notes"
+	collectionHref="/field-notes"
+	backLabel="all field notes"
+	prev={prev}
+	next={next}
+	related={related}
 >
-	<article class="mx-auto max-w-3xl px-4 py-8 md:py-12">
-		<Breadcrumbs class="mb-6" items={breadcrumbItems} />
-		<header class="mb-8">
-			<h1 class="font-display text-3xl md:text-5xl font-extrabold leading-tight mb-4">
-				{data.title}
-			</h1>
-			<p class="text-lg text-base-content/80 mb-4">{data.description}</p>
-
-			<dl
-				class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm border border-base-300 rounded-xl p-4 bg-base-200/40"
-			>
-				<div>
-					<dt class="text-xs uppercase tracking-wide text-base-content/60">Location</dt>
-					<dd class="mt-1 font-medium">{data.location}</dd>
-				</div>
-				{
-					data.region && (
-						<div>
-							<dt class="text-xs uppercase tracking-wide text-base-content/60">Region</dt>
-							<dd class="mt-1 font-medium">{data.region}</dd>
-						</div>
-					)
-				}
-				{
-					data.weather && (
-						<div>
-							<dt class="text-xs uppercase tracking-wide text-base-content/60">Weather</dt>
-							<dd class="mt-1 font-medium">{data.weather}</dd>
-						</div>
-					)
-				}
-				<div>
-					<dt class="text-xs uppercase tracking-wide text-base-content/60">Date</dt>
-					<dd class="mt-1 font-medium"><FormattedDate date={data.pubDate} /></dd>
-				</div>
-			</dl>
-
+	<Fragment slot="meta">
+		<PostMeta
+			pubDate={data.pubDate}
+			category={data.category}
+			categoryHref={`/category/${encodeURIComponent(data.category)}/`}
+			readingTime={readingTime}
+			class="mb-6"
+		/>
+		<dl
+			class="border-base-300 bg-base-200/40 grid grid-cols-2 gap-3 rounded-xl border p-4 text-sm sm:grid-cols-3"
+		>
+			<div>
+				<dt class="text-base-content/60 text-xs tracking-wide uppercase">Location</dt>
+				<dd class="mt-1 font-medium">{data.location}</dd>
+			</div>
 			{
-				data.includesHomeschool && (
-					<p class="mt-3">
-						<span class="badge badge-secondary badge-soft">🎒 Includes homeschool material</span>
-					</p>
+				data.region && (
+					<div>
+						<dt class="text-base-content/60 text-xs tracking-wide uppercase">Region</dt>
+						<dd class="mt-1 font-medium">{data.region}</dd>
+					</div>
 				)
 			}
-		</header>
+			{
+				data.weather && (
+					<div>
+						<dt class="text-base-content/60 text-xs tracking-wide uppercase">Weather</dt>
+						<dd class="mt-1 font-medium">{data.weather}</dd>
+					</div>
+				)
+			}
+		</dl>
+	</Fragment>
 
-		{
-			hero && (
-				<figure class="mb-8 -mx-4 md:mx-0">
-					<Image
-						src={hero}
-						alt={data.title}
-						width={1200}
-						height={675}
-						class="w-full md:rounded-2xl shadow-md"
-						loading="eager"
-					/>
-				</figure>
-			)
-		}
+	{
+		data.includesHomeschool && (
+			<p slot="header-extras" class="mt-3">
+				<span class="badge badge-secondary badge-soft">🎒 Includes homeschool material</span>
+			</p>
+		)
+	}
 
-		{data.keyTakeaways && data.keyTakeaways.length > 0 && (
-			<KeyTakeaways items={data.keyTakeaways} />
-		)}
-
-		<TableOfContents headings={headings} />
-
-		<div class="prose prose-lg max-w-none">
-			<slot />
-		</div>
-
-		{data.faq && data.faq.length > 0 && <FAQAccordion faq={data.faq} />}
-
-		{data.sources && data.sources.length > 0 && <Sources sources={data.sources} />}
-
-		{data.aiSummary && (
-			<AISummary
-				summary={data.aiSummary}
-				url={postUrl}
-				title={data.title}
-				publishDate={data.pubDate}
+	{
+		hasObservations && (
+			<FieldNotesBlock
+				location={data.location}
+				date={displayDate}
+				weather={data.weather}
+				saw={data.saw}
+				heard={data.heard}
+				wondered={data.wondered}
+				learned={data.learned}
 			/>
-		)}
+		)
+	}
 
-		<EntityCard />
-
-		{
-			data.tags && data.tags.length > 0 && (
-				<div class="mt-10 flex flex-wrap gap-2">
-					{data.tags.map((tag: string) => (
-						<CategoryPill label={`#${tag}`} variant="tag" />
-					))}
-				</div>
-			)
-		}
-
-		<PostFooterNav collection="field-notes" prev={prev} next={next} related={related} />
-
-		<hr class="my-12 border-base-300" />
-
-		<NewsletterSignup />
-
-		<div class="mt-10 text-center">
-			<a href="/field-notes" class="btn btn-ghost">← Back to all field notes</a>
-		</div>
-	</article>
-
-	<StructuredData graph={graph} />
-</BaseLayout>
+	<slot />
+</PostLayout>

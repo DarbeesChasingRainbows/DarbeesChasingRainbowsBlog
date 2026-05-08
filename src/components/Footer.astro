@@ -1,5 +1,5 @@
 ---
-import { SITE_TITLE, SITE_TAGLINE, SOCIAL_LINKS, NAV_LINKS } from '../consts';
+import { SITE_TITLE, SITE_TAGLINE, SOCIAL_LINKS } from '../consts';
 
 const today = new Date();
 
@@ -18,19 +18,20 @@ const resourceLinks = [
 	{ label: 'Kingdom Farm', href: '/kingdom-farm' },
 	{ label: 'Darbees Bookshelf', href: '/bookshelf' },
 	{ label: 'How This Site Is Supported', href: '/support' },
+	{ label: 'For AI Agents', href: '/for-ai-agents' },
 	{ label: 'RSS Feed', href: '/rss.xml' },
 ];
 ---
 
-<footer class="bg-base-200 border-t border-base-300 mt-20">
+<footer class="bg-base-200 border-base-300 mt-20 border-t">
 	<div class="mx-auto max-w-6xl px-4 py-16">
 		<div class="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
 			<!-- Brand -->
 			<div class="lg:col-span-2">
-				<a href="/" class="inline-block mb-4">
-					<span class="font-display text-2xl font-bold text-primary">{SITE_TITLE}</span>
+				<a href="/" class="mb-4 inline-block">
+					<span class="font-display text-primary text-2xl font-bold">{SITE_TITLE}</span>
 				</a>
-				<p class="text-base-content/70 max-w-md leading-relaxed mb-6">
+				<p class="text-base-content/70 mb-6 max-w-md leading-relaxed">
 					{SITE_TAGLINE}
 				</p>
 				<div class="flex gap-4">
@@ -38,76 +39,114 @@ const resourceLinks = [
 						href={SOCIAL_LINKS.instagram}
 						target="_blank"
 						rel="noopener"
-						class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-base-300 text-base-content/70 hover:bg-primary hover:text-primary-content transition-all"
+						class="bg-base-300 text-base-content/70 hover:bg-primary hover:text-primary-content inline-flex h-10 w-10 items-center justify-center rounded-full transition-all"
 						aria-label="Instagram"
 					>
-						<svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
-							<path d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.05 1.8.25 2.23.42.56.22.96.48 1.38.9.42.42.68.82.9 1.38.17.43.37 1.06.42 2.23.06 1.27.07 1.65.07 4.85s0 3.6-.07 4.85c-.05 1.17-.25 1.8-.42 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.43.17-1.06.37-2.23.42-1.27.06-1.65.07-4.85.07s-3.6 0-4.85-.07c-1.17-.05-1.8-.25-2.23-.42-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.17-.43-.37-1.06-.42-2.23C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.85c.05-1.17.25-1.8.42-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.43-.17 1.06-.37 2.23-.42C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.14 0-3.51 0-4.74.07-1.07.05-1.65.23-2.04.38-.51.2-.88.44-1.27.83-.39.39-.63.76-.83 1.27-.15.39-.33.97-.38 2.04C2.7 8.49 2.7 8.86 2.7 12s0 3.51.07 4.74c.05 1.07.23 1.65.38 2.04.2.51.44.88.83 1.27.39.39.76.63 1.27.83.39.15.97.33 2.04.38 1.23.06 1.6.07 4.74.07s3.51 0 4.74-.07c1.07-.05 1.65-.23 2.04-.38.51-.2.88-.44 1.27-.83.39-.39.63-.76.83-1.27.15-.39.33-.97.38-2.04.06-1.23.07-1.6.07-4.74s0-3.51-.07-4.74c-.05-1.07-.23-1.65-.38-2.04-.2-.51-.44-.88-.83-1.27-.39-.39-.76-.63-1.27-.83-.39-.15-.97-.33-2.04-.38C15.51 4 15.14 4 12 4zM12 7.4a4.6 4.6 0 110 9.2 4.6 4.6 0 010-9.2zm0 1.8a2.8 2.8 0 100 5.6 2.8 2.8 0 000-5.6zm5.85-1.95a1.07 1.07 0 11-2.15 0 1.07 1.07 0 012.15 0z"/>
-					</svg>
+						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor">
+							<path
+								d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.05 1.8.25 2.23.42.56.22.96.48 1.38.9.42.42.68.82.9 1.38.17.43.37 1.06.42 2.23.06 1.27.07 1.65.07 4.85s0 3.6-.07 4.85c-.05 1.17-.25 1.8-.42 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.43.17-1.06.37-2.23.42-1.27.06-1.65.07-4.85.07s-3.6 0-4.85-.07c-1.17-.05-1.8-.25-2.23-.42-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.17-.43-.37-1.06-.42-2.23C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.85c.05-1.17.25-1.8.42-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.43-.17 1.06-.37 2.23-.42C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.14 0-3.51 0-4.74.07-1.07.05-1.65.23-2.04.38-.51.2-.88.44-1.27.83-.39.39-.63.76-.83 1.27-.15.39-.33.97-.38 2.04C2.7 8.49 2.7 8.86 2.7 12s0 3.51.07 4.74c.05 1.07.23 1.65.38 2.04.2.51.44.88.83 1.27.39.39.76.63 1.27.83.39.15.97.33 2.04.38 1.23.06 1.6.07 4.74.07s3.51 0 4.74-.07c1.07-.05 1.65-.23 2.04-.38.51-.2.88-.44 1.27-.83.39-.39.63-.76.83-1.27.15-.39.33-.97.38-2.04.06-1.23.07-1.6.07-4.74s0-3.51-.07-4.74c-.05-1.07-.23-1.65-.38-2.04-.2-.51-.44-.88-.83-1.27-.39-.39-.76-.63-1.27-.83-.39-.15-.97-.33-2.04-.38C15.51 4 15.14 4 12 4zM12 7.4a4.6 4.6 0 110 9.2 4.6 4.6 0 010-9.2zm0 1.8a2.8 2.8 0 100 5.6 2.8 2.8 0 000-5.6zm5.85-1.95a1.07 1.07 0 11-2.15 0 1.07 1.07 0 012.15 0z"
+							></path>
+						</svg>
 					</a>
 					<a
 						href={SOCIAL_LINKS.github}
 						target="_blank"
 						rel="noopener"
-						class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-base-300 text-base-content/70 hover:bg-primary hover:text-primary-content transition-all"
+						class="bg-base-300 text-base-content/70 hover:bg-primary hover:text-primary-content inline-flex h-10 w-10 items-center justify-center rounded-full transition-all"
 						aria-label="GitHub"
 					>
-						<svg viewBox="0 0 16 16" class="w-5 h-5" fill="currentColor">
-							<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-					</svg>
+						<svg viewBox="0 0 16 16" class="h-5 w-5" fill="currentColor">
+							<path
+								d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+							></path>
+						</svg>
 					</a>
 					<a
 						href={SOCIAL_LINKS.email}
-						class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-base-300 text-base-content/70 hover:bg-primary hover:text-primary-content transition-all"
+						class="bg-base-300 text-base-content/70 hover:bg-primary hover:text-primary-content inline-flex h-10 w-10 items-center justify-center rounded-full transition-all"
 						aria-label="Email"
 					>
-						<svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
-							<path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm2.4.5l7.6 5.7 7.6-5.7V6H4.4v.5zm15.2 1.7l-7 5.25a1 1 0 01-1.2 0L4.4 8.2V18h15.2V8.2z"/>
-					</svg>
+						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor">
+							<path
+								d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm2.4.5l7.6 5.7 7.6-5.7V6H4.4v.5zm15.2 1.7l-7 5.25a1 1 0 01-1.2 0L4.4 8.2V18h15.2V8.2z"
+							></path>
+						</svg>
 					</a>
 				</div>
 			</div>
 
 			<!-- Navigation -->
 			<nav aria-label="Footer">
-				<h3 class="font-display font-bold text-sm uppercase tracking-wider text-base-content/60 mb-4">Explore</h3>
+				<h3
+					class="font-display text-base-content/60 mb-4 text-sm font-bold tracking-wider uppercase"
+				>
+					Explore
+				</h3>
 				<ul class="space-y-2.5">
-					{footerLinks.map((link) => (
-						<li>
-							<a href={link.href} class="text-base-content/80 hover:text-primary transition-colors">
-								{link.label}
-							</a>
-						</li>
-					))}
+					{
+						footerLinks.map((link) => (
+							<li>
+								<a
+									href={link.href}
+									class="text-base-content/80 hover:text-primary transition-colors"
+								>
+									{link.label}
+								</a>
+							</li>
+						))
+					}
 				</ul>
 			</nav>
 
 			<!-- Resources -->
 			<div>
-				<h3 class="font-display font-bold text-sm uppercase tracking-wider text-base-content/60 mb-4">More</h3>
+				<h3
+					class="font-display text-base-content/60 mb-4 text-sm font-bold tracking-wider uppercase"
+				>
+					More
+				</h3>
 				<ul class="space-y-2.5">
-					{resourceLinks.map((link) => (
-						<li>
-							<a href={link.href} class="text-base-content/80 hover:text-primary transition-colors">
-								{link.label}
-							</a>
-						</li>
-					))}
+					{
+						resourceLinks.map((link) => (
+							<li>
+								<a
+									href={link.href}
+									class="text-base-content/80 hover:text-primary transition-colors"
+								>
+									{link.label}
+								</a>
+							</li>
+						))
+					}
 				</ul>
 			</div>
 		</div>
 	</div>
 
 	<!-- Copyright -->
-	<div class="border-t border-base-300">
-		<div class="mx-auto max-w-6xl px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-			<p class="text-sm text-base-content/60">
-				&copy; {today.getFullYear()} {SITE_TITLE}. All rights reserved.
+	<div class="border-base-300 border-t">
+		<div
+			class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-6 sm:flex-row"
+		>
+			<p class="text-base-content/60 text-sm">
+				&copy; {today.getFullYear()}
+				{SITE_TITLE}. All rights reserved.
 			</p>
-			<a href="#" class="text-sm text-base-content/60 hover:text-primary transition-colors flex items-center gap-1">
+			<a
+				href="#"
+				class="text-base-content/60 hover:text-primary flex items-center gap-1 text-sm transition-colors"
+			>
 				<span>Back to top</span>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-					<path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+				>
+					<path
+						fill-rule="evenodd"
+						d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"
+						clip-rule="evenodd"></path>
 				</svg>
 			</a>
 		</div>

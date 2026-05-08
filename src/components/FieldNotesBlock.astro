@@ -13,14 +13,14 @@ const { location, date, weather, saw = [], heard, wondered, learned } = Astro.pr
 ---
 
 <section
-	class="my-8 rounded-2xl border border-success/30 bg-success/5 p-5 md:p-6"
+	class="border-success/30 bg-success/5 my-8 rounded-2xl border p-5 md:p-6"
 	aria-label="Field study observations"
 >
 	<header class="mb-4">
-		<h3 class="font-display font-bold text-xl m-0 flex items-center gap-2">
+		<h3 class="font-display m-0 flex items-center gap-2 text-xl font-bold">
 			<span aria-hidden="true">🌿</span> Field Notes
 		</h3>
-		<dl class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+		<dl class="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
 			<div>
 				<dt class="font-semibold">Location</dt>
 				<dd class="text-base-content/80">{location}</dd>
@@ -47,10 +47,10 @@ const { location, date, weather, saw = [], heard, wondered, learned } = Astro.pr
 	{
 		saw.length > 0 && (
 			<div class="mb-3">
-				<p class="font-display font-bold text-sm uppercase tracking-wide text-base-content/70">
+				<p class="font-display text-base-content/70 text-sm font-bold tracking-wide uppercase">
 					Three things we saw
 				</p>
-				<ul class="list-disc pl-5 mt-1">
+				<ul class="mt-1 list-disc pl-5">
 					{saw.map((item) => (
 						<li>{item}</li>
 					))}

@@ -252,3 +252,55 @@ export function buildBreadcrumbJsonLd(items: Array<{ label: string; href?: strin
 		})),
 	};
 }
+
+export interface ReviewOpts {
+	title: string;
+	description: string;
+	url: string;
+	image?: string;
+	datePublished: Date;
+	itemReviewed: {
+		name: string;
+		author: string;
+	};
+	ratingValue: 'green' | 'yellow' | 'parent-read' | 'red';
+	author?: string;
+}
+
+export function buildReviewJsonLd(opts: ReviewOpts) {
+	const numericRating = {
+		green: 5,
+		'parent-read': 4,
+		yellow: 3,
+		red: 1,
+	}[opts.ratingValue];
+
+	return {
+		'@context': 'https://schema.org',
+		'@type': 'Review',
+		headline: opts.title,
+		description: opts.description,
+		url: opts.url,
+		image: opts.image,
+		datePublished: opts.datePublished.toISOString(),
+		author: {
+			'@type': 'Person',
+			name: opts.author ?? BRAND_FAMILY,
+		},
+		publisher: { '@id': ORG_ID },
+		itemReviewed: {
+			'@type': 'Book',
+			name: opts.itemReviewed.name,
+			author: {
+				'@type': 'Person',
+				name: opts.itemReviewed.author,
+			},
+		},
+		reviewRating: {
+			'@type': 'Rating',
+			ratingValue: numericRating,
+			bestRating: 5,
+			worstRating: 1,
+		},
+	};
+}

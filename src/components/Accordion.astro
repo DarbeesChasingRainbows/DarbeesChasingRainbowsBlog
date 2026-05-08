@@ -1,0 +1,24 @@
+---
+interface AccordionItem {
+  title: string;
+  content: string;
+}
+
+interface Props {
+  items: AccordionItem[];
+}
+
+const { items } = Astro.props;
+---
+<div class="not-prose my-8 flex flex-col gap-2 w-full">
+  {items.map((item, idx) => (
+    <details class="collapse collapse-plus bg-base-200 shadow-sm">
+      <summary class="collapse-title text-lg font-medium">
+        {item.title}
+      </summary>
+      <div class="collapse-content prose prose-sm max-w-none">
+        <p class="m-0 text-base-content/80 leading-relaxed">{item.content}</p>
+      </div>
+    </details>
+  ))}
+</div>

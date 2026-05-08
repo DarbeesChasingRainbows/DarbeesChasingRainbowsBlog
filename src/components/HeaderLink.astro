@@ -12,8 +12,10 @@ const isActive = pathname === href || (href !== '/' && pathname.startsWith(href 
 <a
 	href={href}
 	class:list={[
-		'link-reveal px-1 py-1 font-display text-[10px] font-bold tracking-[0.18em] uppercase transition-colors',
-		isActive ? 'text-primary' : 'text-base-content/70 hover:text-primary',
+		'link-reveal font-display rounded-full px-2 py-1.5 text-[9px] font-bold tracking-[0.16em] uppercase transition-colors',
+		isActive
+			? 'bg-primary/5 text-primary'
+			: 'text-base-content/70 hover:bg-primary/5 hover:text-primary',
 		className,
 	]}
 	aria-current={isActive ? 'page' : undefined}

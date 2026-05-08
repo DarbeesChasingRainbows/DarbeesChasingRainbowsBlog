@@ -17,27 +17,24 @@ const { sources, class: className = '' } = Astro.props;
 if (!sources?.length) return null;
 ---
 
-<section
-	class:list={['not-prose my-12', className]}
-	aria-labelledby="sources-title"
->
+<section class:list={['not-prose my-12', className]} aria-labelledby="sources-title">
 	<h2
 		id="sources-title"
-		class="font-display text-xs uppercase tracking-[0.3em] text-base-content/60 mb-4 border-t border-base-300 pt-6"
+		class="font-display text-base-content/60 border-base-300 mb-4 border-t pt-6 text-xs tracking-[0.3em] uppercase"
 	>
 		Sources & Further Reading
 	</h2>
-	<ol class="list-none m-0 p-0 space-y-3">
+	<ol class="m-0 list-none space-y-3 p-0">
 		{
 			sources.map((s, i) => (
-				<li class="flex gap-3 items-baseline text-base-content/90">
-					<span class="font-display font-black text-base-content/40 tabular-nums shrink-0 w-8">
+				<li class="text-base-content/90 flex items-baseline gap-3">
+					<span class="font-display text-base-content/40 w-8 shrink-0 font-black tabular-nums">
 						{String(i + 1).padStart(2, '0')}
 					</span>
 					<span class="flex-1">
 						<a
 							href={s.url}
-							class="link link-hover font-medium text-base-content"
+							class="link link-hover text-base-content font-medium"
 							target={s.url.startsWith('http') ? '_blank' : undefined}
 							rel={s.url.startsWith('http') ? 'noopener noreferrer' : undefined}
 						>
@@ -46,10 +43,10 @@ if (!sources?.length) return null;
 						{s.type && (
 							<span
 								class:list={[
-									'ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest',
+									'ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase',
 									s.type === 'primary'
-										? 'bg-primary/10 text-primary border border-primary/20'
-										: 'bg-base-200 text-base-content/60 border border-base-300',
+										? 'bg-primary/10 text-primary border-primary/20 border'
+										: 'bg-base-200 text-base-content/60 border-base-300 border',
 								]}
 							>
 								{s.type}

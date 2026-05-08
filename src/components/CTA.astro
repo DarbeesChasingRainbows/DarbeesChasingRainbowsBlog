@@ -1,0 +1,22 @@
+---
+interface Props {
+  url: string;
+  style?: 'primary' | 'secondary' | 'accent' | 'outline';
+}
+
+const { url, style = 'primary' } = Astro.props;
+
+const styleClasses = {
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  accent: 'btn-accent',
+  outline: 'btn-outline',
+};
+
+const btnClass = styleClasses[style] || styleClasses.primary;
+---
+<div class="not-prose my-8 flex justify-center w-full">
+  <a href={url} class={`btn ${btnClass} btn-lg shadow-lg hover:shadow-xl transition-all duration-300`}>
+    <slot />
+  </a>
+</div>

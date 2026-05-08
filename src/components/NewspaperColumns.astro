@@ -1,0 +1,108 @@
+---
+import FormattedDate from './FormattedDate.astro';
+
+interface ColumnPost {
+	title: string;
+	description: string;
+	date: Date;
+	href: string;
+}
+
+interface ColumnSection {
+	label: string;
+	href: string;
+	posts: ColumnPost[];
+}
+
+interface Props {
+	columns: ColumnSection[];
+}
+
+const { columns } = Astro.props;
+---
+
+<section class="newspaper-columns mx-auto max-w-7xl px-6 pb-12 md:pb-20">
+	<div class="newspaper-divider mb-8"></div>
+	<div class="grid gap-0 md:grid-cols-3">
+		{
+			columns.map((col, colIdx) => (
+				<div
+					class:list={[
+						'newspaper-col py-2 md:py-0',
+						colIdx > 0 && 'md:border-base-content/15 md:border-l md:pl-6',
+						colIdx < columns.length - 1 && 'md:pr-6',
+						colIdx < columns.length - 1 &&
+							'border-base-content/15 border-b pb-6 md:border-b-0 md:pb-0',
+					]}
+				>
+					<div class="mt-4 mb-5 flex items-baseline gap-3 md:mt-0">
+						<span class="eyebrow text-base-content/50 text-[0.65rem]">{col.label}</span>
+						<span class="border-base-content/15 flex-1 border-t border-dashed" />
+					</div>
+
+					<div class="space-y-6">
+						{col.posts.map((post, postIdx) => (
+							<a href={post.href} class="group block">
+								{postIdx === 0 ? (
+									<>
+										<h3 class="font-editorial mb-2 text-xl leading-tight md:text-2xl">
+											<span class="title-sweep">{post.title}</span>
+										</h3>
+										<p class="text-base-content/65 mb-2 line-clamp-3 text-sm leading-relaxed">
+											{post.description}
+										</p>
+										<div class="font-display text-base-content/40 text-[11px] font-semibold tracking-[0.15em] uppercase">
+											<FormattedDate date={post.date} />
+										</div>
+									</>
+								) : (
+									<div class="border-base-content/10 border-t border-dotted pt-4">
+										<h4 class="font-display mb-1.5 text-sm leading-snug font-bold">
+											<span class="title-sweep">{post.title}</span>
+										</h4>
+										<p class="text-base-content/55 mb-1.5 line-clamp-2 text-xs leading-relaxed">
+											{post.description}
+										</p>
+										<div class="font-display text-base-content/35 text-[10px] font-semibold tracking-[0.15em] uppercase">
+											<FormattedDate date={post.date} />
+										</div>
+									</div>
+								)}
+							</a>
+						))}
+					</div>
+				</div>
+			))
+		}
+	</div>
+</section>
+
+<style>
+	/* Newspaper-style double rule divider */
+	.newspaper-divider {
+		position: relative;
+		height: 4px;
+		border-top: 2px solid var(--color-base-content);
+		border-bottom: 1px solid var(--color-base-content);
+		opacity: 0.25;
+	}
+
+	/* Subtle column typography refinements */
+	.newspaper-col h3 {
+		font-family: var(--font-display);
+	}
+
+	/* Line-clamp utility */
+	.line-clamp-2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.line-clamp-3 {
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+</style>

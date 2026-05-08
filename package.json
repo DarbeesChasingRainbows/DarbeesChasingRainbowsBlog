@@ -1,29 +1,52 @@
 {
-  "name": "darbeeschasingrainbows",
-  "type": "module",
-  "version": "0.0.1",
-  "engines": {
-    "node": ">=22.12.0"
-  },
-  "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "check": "astro check",
-    "astro": "astro"
-  },
-  "dependencies": {
-    "@astrojs/check": "^0.9.9",
-    "@astrojs/mdx": "^5.0.4",
-    "@astrojs/rss": "^4.0.18",
-    "@astrojs/sitemap": "^3.7.2",
-    "@tailwindcss/vite": "^4.2.4",
-    "astro": "^6.1.10",
-    "astro-icon": "^1.1.5",
-    "daisyui": "^5.5.19",
-    "sharp": "^0.34.3",
-    "tailwindcss": "^4.2.4",
-    "typescript": "^5.9.3"
-  }
+	"name": "darbeeschasingrainbows",
+	"type": "module",
+	"version": "0.0.1",
+	"engines": {
+		"node": ">=22.12.0"
+	},
+	"scripts": {
+		"dev": "astro dev",
+		"start": "astro dev",
+		"build": "astro build && pagefind --site dist",
+		"postbuild": "npm run check:links",
+		"preview": "astro preview",
+		"check": "astro check",
+		"astro": "astro",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"test": "playwright test",
+		"test:ui": "playwright test --ui",
+		"test:report": "playwright show-report",
+		"check:links": "node scripts/check-internal-links.mjs"
+	},
+	"dependencies": {
+		"@astrojs/check": "^0.9.9",
+		"@astrojs/mdx": "^5.0.4",
+		"@astrojs/rss": "^4.0.18",
+		"@astrojs/sitemap": "^3.7.2",
+		"@directus/sdk": "^21.3.0",
+		"@tailwindcss/vite": "^4.2.4",
+		"astro": "^6.2.1",
+		"astro-icon": "^1.1.5",
+		"daisyui": "^5.5.19",
+		"sharp": "^0.34.3",
+		"tailwindcss": "^4.2.4",
+		"tinacms": "^3.7.5",
+		"typescript": "^6.0.3"
+	},
+	"devDependencies": {
+		"@playwright/test": "1.59.1",
+		"@tinacms/cli": "^2.2.5",
+		"@typescript-eslint/parser": "8.59.1",
+		"eslint": "10.3.0",
+		"eslint-plugin-astro": "1.7.0",
+		"pagefind": "^1.5.2",
+		"prettier": "3.8.3",
+		"prettier-plugin-astro": "0.14.1",
+		"prettier-plugin-tailwindcss": "0.8.0",
+		"typescript-eslint": "8.59.1"
+	}
 }

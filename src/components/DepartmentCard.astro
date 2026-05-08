@@ -1,0 +1,23 @@
+---
+interface Props {
+	number: string;
+	name: string;
+	href: string;
+}
+
+const { number, name, href } = Astro.props;
+---
+
+<a
+	href={href}
+	class="card bg-base-100 border-base-content/15 hover:border-primary hover:shadow-md transition-all duration-300 group"
+>
+	<div class="card-body items-center text-center">
+		<div class="text-5xl font-display font-black text-primary/40 group-hover:text-primary transition-colors">
+			{number}
+		</div>
+		<h3 class="text-lg font-editorial font-semibold text-base-content group-hover:text-primary transition-colors">
+			{name}
+		</h3>
+	</div>
+</a>

@@ -1,0 +1,214 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import NewsletterSignup from '../../components/NewsletterSignup.astro';
+
+const guideLanes = [
+	{
+		title: 'You want a more faithful family life',
+		description:
+			'Start with the big picture: why we are trying to live intentionally, what we are not trying to become, and how faith shapes the ordinary decisions.',
+		href: '/start-here',
+		cta: 'Start with the big picture',
+		items: ['Faith-forward family rhythms', 'Privacy and online boundaries', 'Learning in public'],
+	},
+	{
+		title: 'You are homeschooling under constraints',
+		description:
+			'Read about flexible but rigorous homeschool rhythms in small spaces, interrupted weeks, travel days, read-alouds, and field learning.',
+		href: '/homeschool',
+		cta: 'Explore homeschool notes',
+		items: [
+			'Roadschool rhythms',
+			'Living books and read-alouds',
+			'Field learning without forcing it',
+		],
+	},
+	{
+		title: 'You are considering RV life',
+		description:
+			'Start with honest posts about what RV life gives, what it costs, what breaks, and why the RV is the road we are walking — not the dream.',
+		href: '/rv-life',
+		cta: 'Read honest RV notes',
+		items: ['Moving days', 'Costs and repairs', 'Space, friendship, and community'],
+	},
+	{
+		title: 'You want to learn from real places',
+		description:
+			'Use field notes to turn hikes, historic sites, nature observations, and travel days into natural learning without making every outing feel over-schooled.',
+		href: '/field-notes',
+		cta: 'Browse field notes',
+		items: ['Nature observations', 'Historic sites', 'Read-before-you-go ideas'],
+	},
+	{
+		title: 'You want book discernment',
+		description:
+			'Browse family book reviews with Dad’s take, Mom’s take, kids’ take, content notes, worldview notes, and a final family verdict.',
+		href: '/bookshelf',
+		cta: 'Visit the bookshelf',
+		items: ['Green light books', 'Discussion-worthy books', 'Parent preview notes'],
+	},
+	{
+		title: 'You like practical builds',
+		description:
+			'Follow projects and useful builds that solve real family problems, from RV systems to future farm automation, with safety and honesty first.',
+		href: '/projects',
+		cta: 'See useful builds',
+		items: ['Problem-first projects', 'Parts lists', 'Monitoring before automation'],
+	},
+	{
+		title: 'You are interested in Kingdom Farm',
+		description:
+			'Follow the long-term vision for food independence, regenerative systems, business-ministry, and deeper roots without pretending we already have it figured out.',
+		href: '/kingdom-farm',
+		cta: 'Follow Kingdom Farm',
+		items: ['Food independence', 'Business-ministry', 'Counting the cost before land'],
+	},
+];
+
+const firstResources = [
+	{
+		title: 'Homeschool Field Notes Template',
+		description:
+			'A simple printable for noticing, wondering, sketching, and remembering what you learned on an outing.',
+		href: '/resources/homeschool-field-notes-template',
+		label: 'Open & print',
+	},
+	{
+		title: 'Field Notes Starter Pack',
+		description:
+			'Printable observation sheets, vocabulary prompts, and a parent guide for natural family field learning.',
+		href: '/resources',
+		label: 'Coming soon',
+	},
+	{
+		title: 'RV Moving-Day Checklist',
+		description:
+			'Inside and outside walkthroughs for the days when school, travel, packing, repairs, and patience all collide.',
+		href: '/resources',
+		label: 'Coming soon',
+	},
+];
+
+const breadcrumbItems = [
+	{ label: 'Home', href: '/' },
+	{ label: 'Resources', href: '/resources' },
+	{ label: 'Family Field Guide' },
+];
+---
+
+<BaseLayout
+	title="Family Field Guide"
+	description="A reader-friendly map to Darbees Chasing Rainbows: where to start if you want a more faithful, intentional family life under real constraints."
+>
+	<article class="mx-auto max-w-5xl px-4 py-12 md:py-16">
+		<Breadcrumbs class="mb-8" items={breadcrumbItems} />
+
+		<header class="mb-14 text-center">
+			<div class="eyebrow mb-4">Family Field Guide</div>
+			<h1 class="font-editorial text-base-content mx-auto mb-6 max-w-4xl text-5xl md:text-7xl">
+				Where to begin when you want to build something more faithful.
+			</h1>
+			<p class="text-base-content/70 mx-auto max-w-3xl text-lg leading-relaxed md:text-xl">
+				Darbees Chasing Rainbows is not about becoming an RV family, a homeschool brand, a project
+				blog, or a farm account. Those are the lanes we write in. The deeper story is a family
+				learning to live intentionally and faithfully under real constraints.
+			</p>
+		</header>
+
+		<section class="border-primary/20 bg-primary/5 mb-14 rounded-3xl border p-8 md:p-10">
+			<h2 class="font-display mb-4 text-2xl font-bold">The simple test</h2>
+			<p class="text-base-content/80 mb-4 text-lg leading-relaxed">
+				Every useful piece here should answer some version of this question:
+			</p>
+			<p class="font-editorial text-primary text-3xl leading-tight md:text-4xl">
+				How do we live more faithfully and intentionally in the constraints we actually have?
+			</p>
+		</section>
+
+		<section class="mb-16">
+			<div class="mb-8">
+				<span class="eyebrow">Choose your lane</span>
+				<h2 class="font-editorial mt-3 text-4xl md:text-5xl">What are you trying to build?</h2>
+			</div>
+
+			<div class="grid gap-5 md:grid-cols-2">
+				{
+					guideLanes.map((lane) => (
+						<a
+							href={lane.href}
+							class="group border-base-300 bg-base-100 hover:border-primary hover:bg-primary/5 rounded-3xl border p-6 transition-all"
+						>
+							<h3 class="font-display group-hover:text-primary mb-3 text-xl font-bold transition-colors">
+								{lane.title}
+							</h3>
+							<p class="text-base-content/70 mb-5 text-sm leading-relaxed">{lane.description}</p>
+							<ul class="mb-5 space-y-2">
+								{lane.items.map((item) => (
+									<li class="text-base-content/65 flex items-start gap-2 text-sm">
+										<span class="text-primary mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full" />
+										<span>{item}</span>
+									</li>
+								))}
+							</ul>
+							<span class="font-display text-primary inline-flex items-center gap-2 text-sm font-bold tracking-wide transition-all group-hover:gap-3">
+								{lane.cta} →
+							</span>
+						</a>
+					))
+				}
+			</div>
+		</section>
+
+		<section class="bg-base-200 mb-16 rounded-3xl p-8 md:p-10">
+			<div class="mb-8">
+				<span class="eyebrow">Start with something useful</span>
+				<h2 class="font-display mt-3 text-2xl font-bold md:text-3xl">
+					First resources to use or watch for
+				</h2>
+			</div>
+			<div class="grid gap-4 md:grid-cols-3">
+				{
+					firstResources.map((resource) => (
+						<a href={resource.href} class="border-base-300 bg-base-100 rounded-2xl border p-5">
+							<h3 class="font-display mb-2 font-bold">{resource.title}</h3>
+							<p class="text-base-content/70 mb-4 text-sm leading-relaxed">
+								{resource.description}
+							</p>
+							<span class="text-primary text-sm font-medium">{resource.label}</span>
+						</a>
+					))
+				}
+			</div>
+		</section>
+
+		<section class="mb-16 grid gap-8 md:grid-cols-2">
+			<div class="prose prose-lg max-w-none">
+				<h2>What this is not</h2>
+				<p>
+					This is not a polished influencer roadmap, a promise that RV life fixes everything, or a
+					claim that we have already arrived. It is a public notebook from a real family learning in
+					public.
+				</p>
+			</div>
+			<div class="prose prose-lg max-w-none">
+				<h2>What this is</h2>
+				<p>
+					This is a guide to the lanes we are walking: faithful family life, homeschool, RV
+					constraints, field learning, books, useful builds, and the long road toward Kingdom Farm.
+				</p>
+			</div>
+		</section>
+
+		<section class="border-base-300 border-t pt-12">
+			<div class="mx-auto max-w-xl text-center">
+				<h2 class="font-display mb-3 text-2xl font-bold">Follow the journey</h2>
+				<p class="text-base-content/70 mb-8 leading-relaxed">
+					The Darbees Dispatch is where we share what we are learning, reading, fixing, observing,
+					and building toward next.
+				</p>
+				<NewsletterSignup />
+			</div>
+		</section>
+	</article>
+</BaseLayout>

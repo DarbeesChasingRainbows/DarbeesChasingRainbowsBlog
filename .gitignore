@@ -20,5 +20,16 @@ pnpm-debug.log*
 # macOS-specific files
 .DS_Store
 
+# Obsidian vault config (local only — never deploy)
+.obsidian/
+obsidian-templates/
+#cms/
+
 # jetbrains setting folder
 .idea/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

@@ -1,0 +1,39 @@
+---
+import { BRAND_FAMILY } from '../consts';
+
+interface Props {
+	author?: string;
+}
+
+const { author = BRAND_FAMILY } = Astro.props;
+
+const isPatrick = author.toLowerCase().includes('patrick');
+
+const displayName = isPatrick ? 'Patrick Darbee' : BRAND_FAMILY;
+const role = isPatrick
+	? 'Christian husband, father of four, full-time software engineer, and homeschool dad'
+	: 'A Christian family of six documenting faith-rooted family life under real constraints';
+const bio = isPatrick
+	? 'Patrick writes from the middle of real family life, full-time work, RV constraints, homeschool support, practical stewardship, and the long road toward Kingdom Farm. Darbees Chasing Rainbows has not made money from blog posts or social media; it is currently a public notebook for what the family is learning, building, reading, and trying to steward faithfully.'
+	: 'The Darbees share firsthand notes from RV life, homeschool, field learning, useful projects, book discernment, and the slow work of building toward Kingdom Farm. The site is a family blog and public notebook, not a polished lifestyle brand.';
+---
+
+<aside class="border-base-300 bg-base-200/50 mt-12 rounded-3xl border p-6 md:p-8">
+	<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+		<div
+			class="bg-primary/10 text-primary font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-black"
+			aria-hidden="true"
+		>
+			{isPatrick ? 'PD' : 'TD'}
+		</div>
+		<div>
+			<div class="eyebrow mb-2">About the author</div>
+			<h2 class="font-display text-base-content mb-1 text-xl font-bold">{displayName}</h2>
+			<p class="text-base-content/75 mb-3 text-sm font-semibold">{role}</p>
+			<p class="text-base-content/70 text-sm leading-relaxed">{bio}</p>
+			<a href="/about" class="text-primary mt-4 inline-flex text-sm font-medium hover:underline">
+				Read more about the Darbees →
+			</a>
+		</div>
+	</div>
+</aside>

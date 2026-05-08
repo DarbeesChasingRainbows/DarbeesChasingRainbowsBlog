@@ -1,0 +1,53 @@
+---
+interface DepartmentLane {
+	title: string;
+	href: string;
+	tag: string;
+	description: string;
+}
+
+interface Props {
+	departments: DepartmentLane[];
+}
+
+const { departments } = Astro.props;
+---
+
+<section class="mx-auto max-w-7xl px-6 pt-16 md:pt-24">
+	<div class="mb-8">
+		<span class="eyebrow">The Departments</span>
+		<h2 class="font-editorial mt-3 text-4xl md:text-5xl">Where to wander next.</h2>
+	</div>
+	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+		{
+			departments.map((lane) => (
+				<a
+					href={lane.href}
+					class="group border-base-content/15 hover:border-primary hover:bg-base-50 flex flex-col gap-4 border rounded-xl p-6 transition-colors"
+				>
+					<span class="font-display text-primary/40 group-hover:text-primary text-3xl font-black tracking-tight tabular-nums transition-colors">
+						{lane.tag}
+					</span>
+					<div class="flex-1">
+						<h3 class="font-editorial mb-2 text-xl font-semibold">
+							<span class="title-sweep">{lane.title}</span>
+						</h3>
+						<p class="text-base-content/65 text-sm leading-relaxed">{lane.description}</p>
+					</div>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="text-base-content/30 group-hover:text-primary h-4 w-4 transition-all group-hover:translate-x-1"
+						viewBox="0 0 20 20"
+						fill="currentColor"
+					>
+						<path
+							fill-rule="evenodd"
+							d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+				</a>
+			))
+		}
+	</div>
+</section>

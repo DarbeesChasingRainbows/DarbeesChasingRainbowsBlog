@@ -14,9 +14,9 @@ interface Props {
 const { items, title = 'Parts List' } = Astro.props;
 ---
 
-<section class="my-8 rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
-	<header class="px-5 py-3 bg-base-200 border-b border-base-300">
-		<h3 class="font-display font-bold text-lg m-0">{title}</h3>
+<section class="border-base-300 bg-base-200/40 my-8 overflow-hidden rounded-2xl border">
+	<header class="bg-base-200 border-base-300 border-b px-5 py-3">
+		<h3 class="font-display m-0 text-lg font-bold">{title}</h3>
 	</header>
 	<div class="overflow-x-auto">
 		<table class="table">
@@ -46,7 +46,7 @@ const { items, title = 'Parts List' } = Astro.props;
 								)}
 							</td>
 							<td class="text-right tabular-nums">{part.quantity ?? '—'}</td>
-							<td class="text-sm text-base-content/80">{part.notes ?? ''}</td>
+							<td class="text-base-content/80 text-sm">{part.notes ?? ''}</td>
 						</tr>
 					))
 				}

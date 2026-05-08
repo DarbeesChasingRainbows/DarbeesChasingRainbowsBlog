@@ -1,0 +1,80 @@
+---
+// Tag archive page. One static page per unique tag across all content types.
+// Works across blog posts, projects, field-notes, and book reviews.
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getAllEntries } from '../../utils/getPosts';
+import type { CollectionEntry } from 'astro:content';
+
+type AllEntry =
+	| { entry: CollectionEntry<'blog'>; kind: 'blog' }
+	| { entry: CollectionEntry<'projects'>; kind: 'project' }
+	| { entry: CollectionEntry<'field-notes'>; kind: 'field-note' }
+	| { entry: CollectionEntry<'books'>; kind: 'book' };
+
+export async function getStaticPaths() {
+	const all = await getAllEntries();
+	const byTag = new Map<string, AllEntry[]>();
+
+	for (const entry of all) {
+		const kindMap = {
+			blog: 'blog',
+			projects: 'project',
+			'field-notes': 'field-note',
+			books: 'book',
+		} as const;
+
+		const kind = kindMap[entry.collection];
+
+		for (const tag of entry.data.tags ?? []) {
+			if (!byTag.has(tag)) byTag.set(tag, []);
+			byTag.get(tag)!.push({ entry: entry as any, kind });
+		}
+	}
+
+	return [...byTag.entries()].map(([tag, items]) => ({
+		params: { tag },
+		props: { tag, items },
+	}));
+}
+
+interface Props {
+	tag: string;
+	items: AllEntry[];
+}
+
+const { tag, items } = Astro.props;
+
+const breadcrumbItems = [
+	{ label: 'Home', href: '/' },
+	{ label: `#${tag}` },
+];
+---
+
+<BaseLayout title={`#${tag}`} description={`All content tagged #${tag}.`}>
+	<section class="mx-auto max-w-7xl px-6 pt-10 pb-12 md:pt-14">
+		<Breadcrumbs class="mb-6" items={breadcrumbItems} />
+		<div class="mb-10 flex items-end gap-4">
+			<div class="flex-1">
+				<div class="eyebrow mb-2">Filed under</div>
+				<h1 class="font-display text-4xl font-extrabold md:text-6xl">
+					<span class="text-accent">#</span>{tag}
+				</h1>
+				<p class="text-base-content/70 mt-3 text-lg">
+					{items.length}
+					{items.length === 1 ? 'item' : 'items'} tagged with this.
+				</p>
+			</div>
+		</div>
+
+		<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+			{
+				items.map(({ entry, kind }) => (
+					<PostCard kind={kind as any} entry={entry as any} />
+				))
+			}
+		</div>
+	</section>
+</BaseLayout>

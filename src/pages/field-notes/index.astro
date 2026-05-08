@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import FieldNoteCard from '../../components/FieldNoteCard.astro';
+import PostCard from '../../components/PostCard.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getFieldNotes } from '../../utils/getPosts';
 
@@ -12,52 +12,65 @@ const regions = Array.from(new Set(notes.map((n) => n.data.region).filter(Boolea
 	title="Field Notes"
 	description="Hikes, historic sites, nature studies, and homeschool field trips. Real places, real questions, written down."
 >
-	<section class="mx-auto max-w-7xl px-6 pt-10 md:pt-14 pb-12">
+	<section class="mx-auto max-w-7xl px-6 pt-10 pb-12 md:pt-14">
 		<Breadcrumbs class="mb-6" items={[{ label: 'Home', href: '/' }, { label: 'Field Notes' }]} />
-		<div class="grid lg:grid-cols-12 gap-8 items-end">
+		<div class="grid items-end gap-8 lg:grid-cols-12">
 			<div class="lg:col-span-8">
-				<div class="flex items-center gap-3 mb-6">
-					<span class="inline-block w-10 h-px bg-primary"></span>
+				<div class="mb-6 flex items-center gap-3">
+					<span class="bg-primary inline-block h-px w-10"></span>
 					<span class="eyebrow">The Trail Log</span>
 				</div>
 				<h1 class="font-editorial text-[clamp(3rem,8vw,7rem)]">
-					Real places, <span class="italic text-accent">written down</span>.
+					Real places, <span class="text-accent italic">written down</span>.
 				</h1>
-				<p class="mt-6 max-w-xl text-lg text-base-content/70 leading-relaxed">
-					Hikes, historic sites, nature studies, and homeschool field trips — short dispatches from the road.
+				<p class="text-base-content/70 mt-6 max-w-xl text-lg leading-relaxed">
+					Hikes, historic sites, nature studies, and homeschool field trips — short dispatches from
+					the road.
 				</p>
 			</div>
-			{regions.length > 0 && (
-				<div class="lg:col-span-4 lg:pl-8 lg:border-l lg:border-primary/15">
-					<div class="eyebrow mb-3">Regions visited</div>
-					<div class="flex flex-wrap gap-x-4 gap-y-1 font-display font-bold text-base-content/75">
-						{regions.map((r, i) => (
-							<>
-								{i > 0 && <span class="text-base-content/30">·</span>}
-								<span class="text-base-content/80">{r}</span>
-							</>
-						))}
+			{
+				regions.length > 0 && (
+					<div class="lg:border-primary/15 lg:col-span-4 lg:border-l lg:pl-8">
+						<div class="eyebrow mb-3">Regions visited</div>
+						<div class="font-display text-base-content/75 flex flex-wrap gap-x-4 gap-y-1 font-bold">
+							{regions.map((r, i) => (
+								<>
+									{i > 0 && <span class="text-base-content/30">·</span>}
+									<span class="text-base-content/80">{r}</span>
+								</>
+							))}
+						</div>
+						<p class="text-base-content/55 mt-4 text-sm">
+							{notes.length} {notes.length === 1 ? 'note' : 'notes'} filed so far.
+						</p>
 					</div>
-					<p class="mt-4 text-sm text-base-content/55">{notes.length} {notes.length === 1 ? 'note' : 'notes'} filed so far.</p>
-				</div>
-			)}
+				)
+			}
 		</div>
 	</section>
 
-	{notes.length === 0 ? (
-		<section class="mx-auto max-w-3xl px-6 py-24 text-center">
-			<p class="font-editorial text-3xl text-base-content/40">No field notes yet. We're out walking.</p>
-		</section>
-	) : (
-		<section class="mx-auto max-w-7xl px-6 pb-16">
-			<div class="flex items-baseline gap-4 mb-10">
-				<span class="eyebrow">All entries</span>
-				<span class="flex-1 border-t border-base-content/15"></span>
-				<span class="font-display text-xs font-bold tracking-[0.2em] uppercase text-base-content/50 tabular-nums">{notes.length} entries</span>
-			</div>
-			<div class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-				{notes.map((note) => <FieldNoteCard note={note} />)}
-			</div>
-		</section>
-	)}
+	{
+		notes.length === 0 ? (
+			<section class="mx-auto max-w-3xl px-6 py-24 text-center">
+				<p class="font-editorial text-base-content/40 text-3xl">
+					No field notes yet. We're out walking.
+				</p>
+			</section>
+		) : (
+			<section class="mx-auto max-w-7xl px-6 pb-16">
+				<div class="mb-10 flex items-baseline gap-4">
+					<span class="eyebrow">All entries</span>
+					<span class="border-base-content/15 flex-1 border-t" />
+					<span class="font-display text-base-content/50 text-xs font-bold tracking-[0.2em] uppercase tabular-nums">
+						{notes.length} entries
+					</span>
+				</div>
+				<div class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+					{notes.map((note) => (
+						<PostCard kind="field-note" entry={note} />
+					))}
+				</div>
+			</section>
+		)
+	}
 </BaseLayout>

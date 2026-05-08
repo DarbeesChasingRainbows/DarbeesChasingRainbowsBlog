@@ -1,0 +1,7 @@
+# Directus local data
+database/
+uploads/
+.env
+
+# Node
+node_modules/

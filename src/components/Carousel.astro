@@ -1,0 +1,36 @@
+---
+interface Slide {
+  src: string;
+  alt: string;
+  caption?: string;
+}
+
+interface Props {
+  slides: Slide[];
+}
+
+const { slides } = Astro.props;
+---
+<div class="not-prose my-8">
+  <div class="carousel w-full rounded-box gap-4 shadow-xl bg-base-200">
+    {slides.map((slide, idx) => (
+      <div id={`slide-${idx}`} class="carousel-item relative w-full flex-col">
+        <img src={slide.src} alt={slide.alt} class="w-full object-cover aspect-video" loading="lazy" />
+        {slide.caption && (
+          <div class="absolute bottom-0 w-full bg-base-300/80 backdrop-blur text-base-content p-4">
+            <p class="m-0 text-sm">{slide.caption}</p>
+          </div>
+        )}
+        <div class="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between">
+          <a href={`#slide-${idx === 0 ? slides.length - 1 : idx - 1}`} class="btn btn-circle btn-sm bg-base-100/50 hover:bg-base-100 border-none">❮</a>
+          <a href={`#slide-${idx === slides.length - 1 ? 0 : idx + 1}`} class="btn btn-circle btn-sm bg-base-100/50 hover:bg-base-100 border-none">❯</a>
+        </div>
+      </div>
+    ))}
+  </div>
+  <div class="flex w-full justify-center gap-2 py-2 mt-2">
+    {slides.map((_, idx) => (
+      <a href={`#slide-${idx}`} class="btn btn-xs btn-circle">{idx + 1}</a>
+    ))}
+  </div>
+</div>

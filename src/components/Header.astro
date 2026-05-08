@@ -1,94 +1,311 @@
 ---
 import { NAV_LINKS } from '../consts';
 import HeaderLink from './HeaderLink.astro';
+import Search from './Search.astro';
 ---
 
-<header class="relative z-40 w-full pt-2">
-	<!-- Background layers -->
-	<div class="absolute inset-x-0 top-0 h-14 bg-primary -z-10"></div>
-	<div class="absolute inset-x-0 top-14 bottom-0 bg-base-100 -z-10 border-b border-base-content/10"></div>
+<header class="relative z-50 w-full">
+	<a href="#main-content" class="skip-link">Skip to content</a>
 
-	<div class="mx-auto max-w-[90rem] px-6 pb-4 flex items-start justify-between">
-		
-		<!-- Left: Logos -->
-		<div class="flex flex-col mt-3">
-			<a href="/" class="group flex flex-col" aria-label="Darbees Chasing Rainbows — home">
-				<span class="font-display font-black text-3xl tracking-tight text-primary-content">darbees</span>
-				<!-- This text sits in the off-white area below the green strip -->
-				<span class="font-display text-[10px] font-bold tracking-[0.25em] uppercase text-base-content/60 mt-5 pl-1">
-					Chasing Rainbows
-				</span>
+	<!-- Magazine-style top bar -->
+	<div class="bg-primary text-primary-content/80">
+		<div class="mx-auto max-w-7xl px-5 sm:px-6">
+			<div class="flex items-center justify-between py-2 text-[10px] font-semibold tracking-[0.18em] uppercase">
+				<div class="flex items-center gap-4">
+					<span>EST. 2024</span>
+					<span class="text-primary-content/30">•</span>
+					<span>A Family Public Notebook</span>
+				</div>
+				<div class="flex items-center gap-4">
+					<a href="/start-here" class="hover:text-secondary transition-colors">Start Here</a>
+					<a href="/about" class="hover:text-secondary transition-colors">About</a>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Masthead -->
+	<div class="bg-base-100 border-base-content/10 border-b">
+		<div class="mx-auto max-w-7xl px-5 sm:px-6">
+			<div class="flex items-center justify-between py-6">
+				<a
+					href="/"
+					class="group flex flex-col"
+					aria-label="Darbees Chasing Rainbows — home"
+				>
+					<span
+						class="font-display text-primary group-hover:text-accent text-3xl leading-none font-black tracking-tight transition-colors"
+					>
+						darbees
+					</span>
+					<span
+						class="font-display text-base-content/50 mt-1 text-[9px] leading-none font-bold tracking-[0.32em] uppercase"
+					>
+						Chasing Rainbows
+					</span>
+				</a>
+
+				<!-- Desktop navigation -->
+				<nav class="hidden items-center gap-1 lg:flex" aria-label="Primary">
+					{
+						NAV_LINKS.map((link) => (
+							<HeaderLink href={link.href}>{link.label}</HeaderLink>
+						))
+					}
+					<a
+						href="/rss.xml"
+						class="link-reveal font-display text-base-content/50 hover:text-primary rounded-full px-2 py-1.5 text-[9px] font-bold tracking-[0.16em] uppercase transition-colors"
+					>
+						RSS
+					</a>
+
+					<!-- Search trigger -->
+					<button
+						type="button"
+						class="text-base-content/50 hover:text-primary ml-2 rounded-full p-1.5 transition-colors"
+						aria-label="Search site"
+						data-search-trigger
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+						</svg>
+					</button>
+				</nav>
+
+				<!-- Mobile menu button -->
+				<button
+					type="button"
+					class="text-base-content hover:bg-base-200 hover:text-primary inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors lg:hidden"
+					aria-label="Open navigation"
+					aria-controls="mobile-nav-sheet"
+					aria-expanded="false"
+					data-mobile-menu-trigger
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 7h16M4 12h16M4 17h16"></path>
+					</svg>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Mobile menu backdrop -->
+	<div
+		class="bg-neutral/35 pointer-events-none fixed inset-0 z-50 opacity-0 transition-opacity duration-200 data-[open=true]:pointer-events-auto data-[open=true]:opacity-100"
+		data-mobile-menu-backdrop
+		data-open="false"
+	>
+	</div>
+
+	<!-- Mobile menu sheet -->
+	<aside
+		id="mobile-nav-sheet"
+		class="border-base-content/10 bg-base-100 fixed inset-y-0 right-0 z-50 flex w-[min(22rem,calc(100vw-2rem))] translate-x-full flex-col border-l shadow-2xl transition-transform duration-300 ease-out data-[open=true]:translate-x-0"
+		aria-label="Mobile navigation"
+		data-mobile-menu-sheet
+		data-open="false"
+	>
+		<div class="border-base-content/10 flex items-start justify-between gap-4 border-b px-6 py-5">
+			<a href="/" class="flex flex-col" aria-label="Darbees Chasing Rainbows — home">
+				<span class="font-display text-primary text-2xl leading-none font-black tracking-tight"
+					>darbees</span
+				>
+				<span
+					class="font-display text-base-content/55 mt-1 text-[10px] font-bold tracking-[0.28em] uppercase"
+					>Chasing Rainbows</span
+				>
 			</a>
+			<button
+				type="button"
+				class="border-base-content/10 text-base-content/70 hover:bg-base-200 hover:text-primary inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
+				aria-label="Close menu"
+				data-mobile-menu-close
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"></path>
+				</svg>
+			</button>
 		</div>
 
-		<!-- Right: The Nav Pill -->
-		<div class="relative flex flex-col items-center mt-2">
-			<!-- The 'd' logo sits at the very top, overlapping the green and pill -->
-			<div class="absolute -top-4 z-20">
-				<a href="/" aria-label="Home" class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-base-100 text-primary font-display font-black text-xl shadow-sm ring-1 ring-base-content/10 hover:text-accent transition-colors">
-					d
-				</a>
-			</div>
-			
-			<!-- The rounded pill -->
-			<nav class="bg-base-100 rounded-full shadow-sm ring-1 ring-base-content/10 px-3 py-2 flex items-center mt-1" aria-label="Primary">
-				
-				<!-- Left nav links -->
-				<ul class="hidden xl:flex items-center gap-6 pl-4 pr-8">
-					{NAV_LINKS.slice(0, 3).map((link) => (
-						<li>
-							<HeaderLink href={link.href}>{link.label}</HeaderLink>
-						</li>
-					))}
-				</ul>
+		<nav class="flex flex-1 flex-col gap-1 overflow-y-auto px-4 py-5" aria-label="Mobile primary">
+			{
+				NAV_LINKS.map((link) => (
+					<HeaderLink
+						href={link.href}
+						class="hover:bg-primary/5 rounded-xl px-4 py-3 text-sm tracking-[0.16em]"
+						data-mobile-menu-link
+					>
+						{link.label}
+					</HeaderLink>
+				))
+			}
+			<a
+				href="/rss.xml"
+				class="link-reveal font-display text-base-content/70 hover:bg-primary/5 hover:text-primary rounded-xl px-4 py-3 text-sm font-bold tracking-[0.16em] uppercase transition-colors"
+				data-mobile-menu-link
+			>
+				RSS
+			</a>
+		</nav>
 
-				<!-- Spacer for the 'd' logo -->
-				<div class="hidden xl:block w-8"></div>
-
-				<!-- Right nav links -->
-				<ul class="hidden xl:flex items-center gap-6 pl-8 pr-4">
-					{NAV_LINKS.slice(3).map((link) => (
-						<li>
-							<HeaderLink href={link.href}>{link.label}</HeaderLink>
-						</li>
-					))}
-					<li>
-						<a
-							href="/rss.xml"
-							class="link-reveal px-1 py-1 font-display text-[10px] font-bold tracking-[0.18em] uppercase text-base-content/70 hover:text-primary transition-colors"
-							aria-label="RSS feed"
-						>RSS</a>
-					</li>
-				</ul>
-
-				<!-- Say Hi (right, green) -->
-				<a
-					href="/contact"
-					class="hidden md:inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-content text-[11px] font-display font-bold tracking-[0.12em] uppercase hover:bg-accent hover:text-accent-content transition-colors shrink-0 shadow-md ml-4"
+		<div class="border-base-content/10 flex flex-col gap-2 border-t p-4">
+			<button
+				type="button"
+				class="border-base-content/20 text-base-content/80 hover:bg-base-200 flex w-full items-center justify-center gap-2 rounded-full border px-5 py-3 text-xs font-bold tracking-[0.18em] uppercase transition-colors"
+				data-search-trigger
+				data-mobile-menu-link
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
 				>
-					Say Hi
-				</a>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+				</svg>
+				Search
+			</button>
+			<a
+				href="/contact"
+				class="bg-primary font-display text-primary-content hover:bg-accent hover:text-accent-content inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-xs font-black tracking-[0.18em] uppercase transition-colors"
+				data-mobile-menu-link
+			>
+				Say Hi
+			</a>
+		</div>
+	</aside>
 
-				<!-- Mobile hamburger -->
-				<details class="dropdown dropdown-end xl:hidden ml-4">
-					<summary class="list-none cursor-pointer p-3 rounded-full hover:bg-base-200 transition-colors" aria-label="Open menu">
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-base-content" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>
-						</svg>
-					</summary>
-					<ul class="dropdown-content bg-base-100 rounded-2xl z-10 mt-3 w-60 p-3 shadow-xl border border-base-300 space-y-1">
-						{NAV_LINKS.map((link) => (
-							<li><HeaderLink href={link.href}>{link.label}</HeaderLink></li>
-						))}
-						<li class="pt-2 mt-2 border-t border-base-300">
-							<a href="/contact" class="link-reveal px-1 py-1 font-display text-sm font-semibold tracking-wide uppercase text-base-content/80 hover:text-primary">Contact</a>
-						</li>
-						<li>
-							<a href="/rss.xml" class="link-reveal px-1 py-1 font-display text-sm font-semibold tracking-wide uppercase text-base-content/80 hover:text-primary">RSS</a>
-						</li>
-					</ul>
-				</details>
-			</nav>
+	<!-- Search Modal -->
+	<div
+		class="bg-neutral/80 fixed inset-0 z-[100] hidden items-start justify-center px-4 pt-16 backdrop-blur-sm transition-opacity md:pt-32"
+		data-search-modal
+	>
+		<div class="bg-base-100 ring-base-content/10 w-full max-w-2xl rounded-2xl p-6 shadow-2xl ring-1">
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="font-display text-xl font-bold">Search the Notebook</h2>
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm btn-circle"
+					aria-label="Close search"
+					data-search-close
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<Search />
+			<div class="mt-6 text-center text-xs text-stone-500">
+				Tip: Use <kbd class="kbd kbd-xs">/</kbd> to search from anywhere.
+			</div>
 		</div>
 	</div>
 </header>
+
+<script>
+	const trigger = document.querySelector('[data-mobile-menu-trigger]');
+	const closeButton = document.querySelector('[data-mobile-menu-close]');
+	const backdrop = document.querySelector('[data-mobile-menu-backdrop]');
+	const sheet = document.querySelector('[data-mobile-menu-sheet]');
+	const links = document.querySelectorAll('[data-mobile-menu-link]');
+
+	const setMenuOpen = (open: boolean) => {
+		trigger?.setAttribute('aria-expanded', String(open));
+		backdrop?.setAttribute('data-open', String(open));
+		sheet?.setAttribute('data-open', String(open));
+		document.body.style.overflow = open ? 'hidden' : '';
+	};
+
+	trigger?.addEventListener('click', () => setMenuOpen(true));
+	closeButton?.addEventListener('click', () => setMenuOpen(false));
+	backdrop?.addEventListener('click', () => setMenuOpen(false));
+	links.forEach((link) => link.addEventListener('click', () => setMenuOpen(false)));
+
+	// Search Modal logic
+	const searchTriggers = document.querySelectorAll('[data-search-trigger]');
+	const searchModal = document.querySelector('[data-search-modal]');
+	const searchClose = document.querySelector('[data-search-close]');
+
+	const setSearchOpen = (open: boolean) => {
+		if (open) {
+			searchModal?.classList.remove('hidden');
+			searchModal?.classList.add('flex');
+			// Focus search input after a short delay
+			setTimeout(() => {
+				const input = searchModal?.querySelector('input') as HTMLInputElement;
+				input?.focus();
+			}, 100);
+		} else {
+			searchModal?.classList.add('hidden');
+			searchModal?.classList.remove('flex');
+		}
+		document.body.style.overflow = open ? 'hidden' : '';
+	};
+
+	searchTriggers.forEach((t) => t.addEventListener('click', () => setSearchOpen(true)));
+	searchClose?.addEventListener('click', () => setSearchOpen(false));
+	searchModal?.addEventListener('click', (e) => {
+		if (e.target === searchModal) setSearchOpen(false);
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			setMenuOpen(false);
+			setSearchOpen(false);
+		}
+		if (
+			event.key === '/' &&
+			!['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '')
+		) {
+			event.preventDefault();
+			setSearchOpen(true);
+		}
+	});
+</script>

@@ -8,34 +8,39 @@ interface Props {
 const { fieldNotesCount, blogCount, projectsCount } = Astro.props;
 ---
 
-<aside class="lg:col-span-4 space-y-5">
+<aside class="space-y-5 lg:col-span-4">
 	<!-- IN THIS ISSUE -->
-	<div class="rounded-xl border border-base-content/12 bg-base-100 px-5 pt-4 pb-5 shadow-sm">
+	<div class="border-base-content/12 bg-base-100 rounded-xl border px-5 pt-4 pb-5 shadow-sm">
 		<div class="eyebrow mb-4 tracking-[0.22em]">In this issue</div>
-		<ul class="space-y-0 font-display font-bold text-sm text-base-content">
-			<li class="flex justify-between items-baseline gap-4 border-b border-dashed border-base-content/15 py-2.5">
+		<ul class="font-display text-base-content space-y-0 text-sm font-bold">
+			<li
+				class="border-base-content/15 flex items-baseline justify-between gap-4 border-b border-dashed py-2.5"
+			>
 				<span>Field Notes</span>
-				<span class="text-base-content/45 tabular-nums text-xs font-semibold">{fieldNotesCount}</span>
+				<span class="text-base-content/45 text-xs font-semibold tabular-nums"
+					>{fieldNotesCount}</span
+				>
 			</li>
-			<li class="flex justify-between items-baseline gap-4 border-b border-dashed border-base-content/15 py-2.5">
+			<li
+				class="border-base-content/15 flex items-baseline justify-between gap-4 border-b border-dashed py-2.5"
+			>
 				<span>Essays &amp; Posts</span>
-				<span class="text-base-content/45 tabular-nums text-xs font-semibold">{blogCount}</span>
+				<span class="text-base-content/45 text-xs font-semibold tabular-nums">{blogCount}</span>
 			</li>
-			<li class="flex justify-between items-baseline gap-4 pt-2.5">
+			<li class="flex items-baseline justify-between gap-4 pt-2.5">
 				<span>Builds &amp; Projects</span>
-				<span class="text-base-content/45 tabular-nums text-xs font-semibold">{projectsCount}</span>
+				<span class="text-base-content/45 text-xs font-semibold tabular-nums">{projectsCount}</span>
 			</li>
 		</ul>
 	</div>
 
 	<!-- NOW box -->
-	<div class="rounded-xl bg-secondary/20 border border-secondary/35 px-5 pt-4 pb-5">
+	<div class="bg-secondary/20 border-secondary/35 rounded-xl border px-5 pt-4 pb-5">
 		<div class="eyebrow mb-2 tracking-[0.22em]">Now</div>
-		<p class="font-display text-sm font-semibold text-base-content/85 leading-relaxed italic">
-			Homeschooling on the road, documenting the honest
-			parts of RV life, learning from the places we visit, and
-			working toward Kingdom Farm — one lesson, repair,
-			field note, and rainbow at a time.
+		<p class="font-display text-base-content/85 text-sm leading-relaxed font-semibold italic">
+			Homeschooling on the road, documenting the honest parts of RV life, learning from the places
+			we visit, and working toward Kingdom Farm — one lesson, repair, field note, and rainbow at a
+			time.
 		</p>
 	</div>
 </aside>

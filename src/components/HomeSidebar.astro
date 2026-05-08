@@ -1,0 +1,21 @@
+---
+interface Props {
+	nowContent: string;
+}
+
+const { nowContent } = Astro.props;
+---
+
+<aside>
+	<!-- Now Section -->
+	<div class="card bg-primary text-primary-content border-primary">
+		<div class="card-body">
+			<h3 class="card-title text-accent text-sm font-bold tracking-wider uppercase">
+				Now
+			</h3>
+			<p class="text-sm leading-relaxed text-primary-content/80">
+				{nowContent}
+			</p>
+		</div>
+	</div>
+</aside>

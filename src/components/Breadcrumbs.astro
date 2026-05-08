@@ -14,33 +14,56 @@ const { items, class: className } = Astro.props;
 const jsonLd = {
 	'@context': 'https://schema.org',
 	'@type': 'BreadcrumbList',
-	itemListElement: items.map((c, i) => ({
-		'@type': 'ListItem',
-		position: i + 1,
-		name: c.label,
-		item: c.href ? new URL(c.href, Astro.site).toString() : undefined,
-	})),
+	itemListElement: items.map((c, i) => {
+		const href = c.href || (i === items.length - 1 ? Astro.url.pathname : undefined);
+		return {
+			'@type': 'ListItem',
+			position: i + 1,
+			name: c.label,
+			item: href ? new URL(href, Astro.site).toString() : undefined,
+		};
+	}),
 };
 ---
 
-<nav aria-label="Breadcrumb" class:list={['text-[11px] font-display font-bold tracking-[0.2em] uppercase text-base-content/55', className]}>
+<nav
+	aria-label="Breadcrumb"
+	class:list={[
+		'font-display text-base-content/55 text-[11px] font-bold tracking-[0.2em] uppercase',
+		className,
+	]}
+>
 	<ol class="flex flex-wrap items-center gap-x-2 gap-y-1">
-		{items.map((crumb, i) => (
-			<li class="flex items-center gap-2">
-				{crumb.href && i < items.length - 1 ? (
-					<a href={crumb.href} class="hover:text-primary transition-colors link-reveal">
-						{crumb.label}
-					</a>
-				) : (
-					<span class="text-primary" aria-current={i === items.length - 1 ? 'page' : undefined}>{crumb.label}</span>
-				)}
-				{i < items.length - 1 && (
-					<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-base-content/30" viewBox="0 0 20 20" fill="currentColor">
-						<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-					</svg>
-				)}
-			</li>
-		))}
+		{
+			items.map((crumb, i) => (
+				<li class="flex items-center gap-2">
+					{crumb.href && i < items.length - 1 ? (
+						<a href={crumb.href} class="hover:text-primary link-reveal transition-colors">
+							{crumb.label}
+						</a>
+					) : (
+						<span class="text-primary" aria-current={i === items.length - 1 ? 'page' : undefined}>
+							{crumb.label}
+						</span>
+					)}
+					{i < items.length - 1 && (
+						<svg
+							aria-hidden="true"
+							xmlns="http://www.w3.org/2000/svg"
+							class="text-base-content/30 h-3 w-3"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					)}
+				</li>
+			))
+		}
 	</ol>
 </nav>
 

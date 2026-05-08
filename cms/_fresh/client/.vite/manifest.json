@@ -1,0 +1,11 @@
+{
+  "fresh:client-entry": {
+    "file": "assets/client-entry-BQluP9SR.js",
+    "name": "client-entry",
+    "src": "fresh:client-entry",
+    "isEntry": true,
+    "css": [
+      "assets/client-entry-CbLW4tEI.css"
+    ]
+  }
+}

@@ -1,34 +1,34 @@
 ---
-title: "RV Water Tank Alert System"
+title: 'RV Water Tank Alert System'
 description: "A simple, reliable Arduino-based alert system that warns us before our RV's gray and fresh water tanks hit critical levels."
 pubDate: 2026-04-20
-category: "RV Automation"
+category: 'Projects & Builds'
 tags:
   - rv
   - arduino
   - automation
   - diy
-difficulty: "medium"
-estimatedCost: "$45–60"
-estimatedTime: "3–4 hours"
-githubUrl: "https://github.com/darbeeschasingrainbows/rv-tank-alert"
+difficulty: 'medium'
+estimatedCost: '$45–60'
+estimatedTime: '3–4 hours'
+githubUrl: 'https://github.com/darbeeschasingrainbows/rv-tank-alert'
 draft: false
 partsList:
-  - name: "Arduino Nano (or compatible)"
+  - name: 'Arduino Nano (or compatible)'
     quantity: 1
-    notes: "ATmega328P. The 5V version is fine."
-  - name: "Capacitive level sensor (non-contact)"
+    notes: 'ATmega328P. The 5V version is fine.'
+  - name: 'Capacitive level sensor (non-contact)'
     quantity: 2
-    notes: "One per tank. Avoid float switches if you can."
-  - name: "Piezo buzzer"
+    notes: 'One per tank. Avoid float switches if you can.'
+  - name: 'Piezo buzzer'
     quantity: 1
-  - name: "10kΩ resistor"
+  - name: '10kΩ resistor'
     quantity: 2
-    notes: "Pull-down for sensor inputs."
-  - name: "12V → 5V buck converter"
+    notes: 'Pull-down for sensor inputs.'
+  - name: '12V → 5V buck converter'
     quantity: 1
-    notes: "RV runs on 12V; Arduino wants 5V."
-  - name: "Project enclosure"
+    notes: 'RV runs on 12V; Arduino wants 5V.'
+  - name: 'Project enclosure'
     quantity: 1
 ---
 
@@ -53,14 +53,15 @@ A non-contact monitor that:
 
 ## Build Steps
 
-1. **Mount the sensors.** The capacitive sensors stick to the *outside* of the tank. No drilling.
+1. **Mount the sensors.** The capacitive sensors stick to the _outside_ of the tank. No drilling.
 2. **Wire to the Nano.** Each sensor goes to a digital input with a pull-down resistor.
 3. **Power from the RV's 12V house bus.** Use the buck converter to step down to 5V.
 4. **Flash the firmware.** See the [GitHub repo](https://github.com/darbeeschasingrainbows/rv-tank-alert) for the sketch.
 5. **Tune thresholds.** Fill the tank slowly and log raw values to find your trip points.
 
 <Callout type="warning" title="RV electrical work">
-Always disconnect shore power and the house battery before tying into the 12V bus. RV wiring is forgiving until it isn't.
+  Always disconnect shore power and the house battery before tying into the 12V bus. RV wiring is
+  forgiving until it isn't.
 </Callout>
 
 ## What Went Wrong
@@ -86,5 +87,6 @@ The buzzer goes off about 90 minutes before we'd actually have a problem, which 
 - Eventually, push to Home Assistant via ESP32.
 
 <Callout type="project" title="Code">
-The full Arduino sketch and wiring diagram live in the [GitHub repo](https://github.com/darbeeschasingrainbows/rv-tank-alert). Pull requests welcome.
+  The full Arduino sketch and wiring diagram live in the [GitHub
+  repo](https://github.com/darbeeschasingrainbows/rv-tank-alert). Pull requests welcome.
 </Callout>

@@ -1,0 +1,20 @@
+---
+interface Props {
+	tags: string[];
+	class?: string;
+}
+
+const { tags, class: className } = Astro.props;
+---
+
+{
+	tags.length > 0 && (
+		<div class:list={['flex flex-wrap gap-2', className]}>
+			{tags.map((tag) => (
+				<span class="badge badge-outline badge-sm text-base-content/70 hover:badge-primary transition-colors">
+					{tag}
+				</span>
+			))}
+		</div>
+	)
+}

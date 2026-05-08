@@ -12,25 +12,38 @@ const exits = [
 ---
 
 <BaseLayout title="Page not found" description="The page you were looking for doesn't exist.">
-	<section class="mx-auto max-w-7xl px-6 pt-16 md:pt-24 pb-12">
-		<div class="grid lg:grid-cols-12 gap-10 items-end">
+	<section class="mx-auto max-w-7xl px-6 pt-16 pb-12 md:pt-24">
+		<div class="grid items-end gap-10 lg:grid-cols-12">
 			<div class="lg:col-span-8">
-				<div class="flex items-center gap-3 mb-6">
-					<span class="inline-block w-10 h-px bg-accent"></span>
+				<div class="mb-6 flex items-center gap-3">
+					<span class="bg-accent inline-block h-px w-10"></span>
 					<span class="eyebrow text-accent">Error 404 · Off-trail</span>
 				</div>
-				<h1 class="font-editorial text-[clamp(4rem,14vw,11rem)] text-base-content leading-[0.9]">
-					This trail<br/>
-					<span class="italic text-accent">doesn't go</span><br/>
+				<h1 class="font-editorial text-base-content text-[clamp(4rem,14vw,11rem)] leading-[0.9]">
+					This trail<br />
+					<span class="text-accent italic">doesn't go</span><br />
 					through.
 				</h1>
 			</div>
-			<div class="lg:col-span-4 lg:pl-8 lg:border-l lg:border-primary/15">
+			<div class="lg:border-primary/15 lg:col-span-4 lg:border-l lg:pl-8">
 				<p class="text-base-content/70 leading-relaxed">
-					The page you were looking for isn't here — maybe a typo, maybe we moved it, maybe it's still being written. Pick a way back in below.
+					The page you were looking for isn't here — maybe a typo, maybe we moved it, maybe it's
+					still being written. Pick a way back in below.
 				</p>
-				<a href="/" class="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-content font-display font-bold tracking-wide hover:bg-accent transition-colors">
-					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+				<a
+					href="/"
+					class="bg-primary text-primary-content font-display hover:bg-accent mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 font-bold tracking-wide transition-colors"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-4 w-4"
+						viewBox="0 0 20 20"
+						fill="currentColor"
+						><path
+							fill-rule="evenodd"
+							d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+							clip-rule="evenodd"></path></svg
+					>
 					Take me home
 				</a>
 			</div>
@@ -38,21 +51,41 @@ const exits = [
 	</section>
 
 	<section class="mx-auto max-w-7xl px-6 pb-24">
-		<div class="flex items-baseline gap-4 mb-8">
+		<div class="mb-8 flex items-baseline gap-4">
 			<span class="eyebrow">Or wander somewhere</span>
-			<span class="flex-1 border-t border-base-content/15"></span>
+			<span class="border-base-content/15 flex-1 border-t"></span>
 		</div>
 		<div class="grid gap-x-10 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-			{exits.map((e) => (
-				<a href={e.href} class="group flex items-start gap-5 py-6 border-t border-base-content/15 hover:border-primary transition-colors">
-					<span class="font-display font-black text-3xl text-primary/40 group-hover:text-primary transition-colors tabular-nums tracking-tight pt-1">{e.tag}</span>
-					<div class="flex-1">
-						<h3 class="font-editorial text-2xl mb-1.5"><span class="title-sweep">{e.label}</span></h3>
-						<p class="text-sm text-base-content/65 leading-relaxed">{e.desc}</p>
-					</div>
-					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-2 text-base-content/30 group-hover:text-primary group-hover:translate-x-1 transition-all" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-				</a>
-			))}
+			{
+				exits.map((e) => (
+					<a
+						href={e.href}
+						class="group border-base-content/15 hover:border-primary flex items-start gap-5 border-t py-6 transition-colors"
+					>
+						<span class="font-display text-primary/40 group-hover:text-primary pt-1 text-3xl font-black tracking-tight tabular-nums transition-colors">
+							{e.tag}
+						</span>
+						<div class="flex-1">
+							<h3 class="font-editorial mb-1.5 text-2xl">
+								<span class="title-sweep">{e.label}</span>
+							</h3>
+							<p class="text-base-content/65 text-sm leading-relaxed">{e.desc}</p>
+						</div>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="text-base-content/30 group-hover:text-primary mt-2 h-4 w-4 transition-all group-hover:translate-x-1"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</a>
+				))
+			}
 		</div>
 	</section>
 </BaseLayout>

@@ -1,0 +1,248 @@
+---
+// Per-book detail page. Uses BaseLayout directly (NOT PostLayout) because
+// the book schema is different enough from blog/projects/field-notes:
+//   - books have a `rating` enum, three "takes" (Dad/Mom/Kids), and notes
+//     fields rather than the standard llmFields shape
+//   - books don't have prev/next/related navigation yet
+// If a fourth bookshelf grows, consider hoisting common pieces into a layout.
+
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import NewsletterSignup from '../../components/NewsletterSignup.astro';
+import EntityCard from '../../components/EntityCard.astro';
+import KeyTakeaways from '../../components/KeyTakeaways.astro';
+import FAQAccordion from '../../components/FAQAccordion.astro';
+import Sources from '../../components/Sources.astro';
+import AISummary from '../../components/AISummary.astro';
+import CategoryPill from '../../components/CategoryPill.astro';
+import { BOOKSHELF_RATING_MAP } from '../../consts';
+import {
+	buildReviewJsonLd,
+	buildFaqJsonLd,
+	buildOrganizationJsonLd,
+	buildPersonJsonLd,
+	buildWebSiteJsonLd,
+} from '../../utils/seo';
+
+export async function getStaticPaths() {
+	let books: CollectionEntry<'books'>[] = [];
+	try {
+		books = await getCollection('books', ({ data }) => !data.draft);
+	} catch {
+		books = [];
+	}
+	return books.map((book) => ({
+		params: { id: book.id },
+		props: { book },
+	}));
+}
+
+type Props = { book: CollectionEntry<'books'> };
+
+const { book } = Astro.props;
+const { data } = book;
+const { Content } = await render(book);
+
+const rating = BOOKSHELF_RATING_MAP[data.rating];
+const postUrl = new URL(Astro.url.pathname, Astro.site).toString();
+const hero = data.featuredImage ?? data.heroImage;
+const heroUrl =
+	hero && typeof hero === 'object' && 'src' in hero
+		? new URL(hero.src, Astro.site).toString()
+		: undefined;
+
+// Build multi-block JSON-LD graph
+const graph = [
+	buildOrganizationJsonLd(),
+	buildPersonJsonLd(),
+	buildWebSiteJsonLd(),
+	buildReviewJsonLd({
+		title: data.title,
+		description: data.description,
+		url: postUrl,
+		image: heroUrl,
+		datePublished: data.pubDate,
+		ratingValue: data.rating,
+		itemReviewed: {
+			name: data.bookTitle,
+			author: data.author,
+		},
+	}),
+];
+
+if (data.faq && data.faq.length > 0) {
+	graph.push(buildFaqJsonLd(data.faq));
+}
+
+const breadcrumbItems = [
+	{ label: 'Home', href: '/' },
+	{ label: 'Bookshelf', href: '/bookshelf' },
+	{ label: data.bookTitle },
+];
+
+// The three "takes" — only render the section if at least one is present.
+const takes = [
+	{ icon: '📚', label: "Dad's Take", body: data.dadTake },
+	{ icon: '📖', label: "Mom's Take", body: data.momTake },
+	{ icon: '🧡', label: "Kids' Take", body: data.kidsTake },
+].filter((t) => t.body);
+---
+
+<BaseLayout
+	title={`${data.bookTitle} by ${data.author}`}
+	description={data.description}
+	ogType="article"
+	publishDate={data.pubDate}
+	graph={graph}
+>
+	<article class="mx-auto max-w-3xl px-4 py-8 md:py-12">
+		<Breadcrumbs class="mb-6" items={breadcrumbItems} />
+
+		<header class="mb-10">
+			<div class="eyebrow text-base-content/60 mb-3">{data.category} · Book review</div>
+			<h1 class="font-display mb-3 text-3xl leading-tight font-extrabold md:text-5xl">
+				{data.bookTitle}
+			</h1>
+			<p class="text-base-content/70 mb-5 text-lg">by {data.author}</p>
+
+			<div class={`inline-flex items-center gap-3 rounded-2xl border p-4 ${rating.color}`}>
+				<span class="text-2xl">{rating.icon}</span>
+				<div>
+					<div class="font-display font-bold">{rating.label}</div>
+					<div class="text-base-content/80 text-xs">{rating.desc}</div>
+				</div>
+			</div>
+
+			{
+				(data.ageRange || data.formatUsed) && (
+					<dl class="border-base-300 mt-6 grid grid-cols-2 gap-3 rounded-xl border p-4 text-sm">
+						{data.ageRange && (
+							<div>
+								<dt class="text-base-content/60 text-xs tracking-wide uppercase">Age fit</dt>
+								<dd class="mt-1 font-medium">{data.ageRange}</dd>
+							</div>
+						)}
+						{data.formatUsed && (
+							<div>
+								<dt class="text-base-content/60 text-xs tracking-wide uppercase">How we read it</dt>
+								<dd class="mt-1 font-medium capitalize">{data.formatUsed.replace('-', ' ')}</dd>
+							</div>
+						)}
+					</dl>
+				)
+			}
+		</header>
+
+		{
+			data.keyTakeaways && data.keyTakeaways.length > 0 && (
+				<KeyTakeaways items={data.keyTakeaways} />
+			)
+		}
+
+		{
+			takes.length > 0 && (
+				<section class="mb-10 grid gap-5 sm:grid-cols-3">
+					{takes.map((t) => (
+						<div class="border-base-300 rounded-2xl border p-5">
+							<div class="mb-2 text-2xl">{t.icon}</div>
+							<div class="font-display mb-2 font-bold">{t.label}</div>
+							<p class="text-base-content/80 text-sm leading-relaxed">{t.body}</p>
+						</div>
+					))}
+				</section>
+			)
+		}
+
+		{
+			(data.readAloudValue || data.audiobookValue || data.educationalValue) && (
+				<section class="mb-10 grid gap-4 sm:grid-cols-3">
+					{data.readAloudValue && (
+						<div class="bg-base-200 rounded-xl p-4">
+							<div class="text-base-content/60 mb-1 text-xs tracking-wide uppercase">
+								Read-aloud value
+							</div>
+							<p class="text-base-content/80 text-sm">{data.readAloudValue}</p>
+						</div>
+					)}
+					{data.audiobookValue && (
+						<div class="bg-base-200 rounded-xl p-4">
+							<div class="text-base-content/60 mb-1 text-xs tracking-wide uppercase">
+								Audiobook value
+							</div>
+							<p class="text-base-content/80 text-sm">{data.audiobookValue}</p>
+						</div>
+					)}
+					{data.educationalValue && (
+						<div class="bg-base-200 rounded-xl p-4">
+							<div class="text-base-content/60 mb-1 text-xs tracking-wide uppercase">
+								Educational value
+							</div>
+							<p class="text-base-content/80 text-sm">{data.educationalValue}</p>
+						</div>
+					)}
+				</section>
+			)
+		}
+
+		<div class="prose prose-lg max-w-none">
+			<Content />
+		</div>
+
+		{
+			(data.contentNotes || data.worldviewNotes) && (
+				<section class="mt-12 grid gap-5 sm:grid-cols-2">
+					{data.contentNotes && (
+						<div class="border-warning/30 bg-warning/5 rounded-2xl border p-5">
+							<div class="font-display text-base-content mb-2 font-bold">Content notes</div>
+							<p class="text-base-content/80 text-sm leading-relaxed">{data.contentNotes}</p>
+						</div>
+					)}
+					{data.worldviewNotes && (
+						<div class="border-primary/20 bg-primary/5 rounded-2xl border p-5">
+							<div class="font-display text-base-content mb-2 font-bold">Worldview notes</div>
+							<p class="text-base-content/80 text-sm leading-relaxed">{data.worldviewNotes}</p>
+						</div>
+					)}
+				</section>
+			)
+		}
+
+		{data.faq && data.faq.length > 0 && <FAQAccordion faq={data.faq} />}
+		{data.sources && data.sources.length > 0 && <Sources sources={data.sources} />}
+		{
+			data.aiSummary && (
+				<AISummary
+					summary={data.aiSummary}
+					url={postUrl}
+					title={data.bookTitle}
+					publishDate={data.pubDate}
+				/>
+			)
+		}
+
+		<EntityCard />
+
+		{
+			data.tags && data.tags.length > 0 && (
+				<div class="mt-10 flex flex-wrap gap-2">
+					{data.tags.map((tag) => (
+						<CategoryPill
+							label={`#${tag}`}
+							variant="tag"
+							href={`/tag/${encodeURIComponent(tag)}/`}
+						/>
+					))}
+				</div>
+			)
+		}
+
+		<hr class="border-base-300 my-12" />
+
+		<NewsletterSignup />
+
+		<div class="mt-10 text-center">
+			<a href="/bookshelf" class="btn btn-ghost">← Back to the bookshelf</a>
+		</div>
+	</article>
+</BaseLayout>

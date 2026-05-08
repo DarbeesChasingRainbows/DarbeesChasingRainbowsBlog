@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.astro/
+.vscode/
+.windsurf/
+.claude/
+.github/
+package-lock.json
+playwright-report/
+test-results/
+
+# Generated / vendor files
+public/llms.txt
+
+# Don't reformat Astro's own type generation
+src/env.d.ts

@@ -3,20 +3,9 @@ import type { ImageMetadata } from 'astro';
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import BackToTop from '../components/BackToTop.astro';
 import StructuredData from '../components/StructuredData.astro';
-import {
-	buildOrganizationJsonLd,
-	buildPersonJsonLd,
-	buildWebSiteJsonLd,
-} from '../utils/seo';
-
-// Site-wide JSON-LD: Organization + Person + WebSite are emitted on every
-// page so the Darbees entity is consistently discoverable by AI agents.
-const siteGraph = [
-	buildOrganizationJsonLd(),
-	buildPersonJsonLd(),
-	buildWebSiteJsonLd(),
-];
+import { buildOrganizationJsonLd, buildPersonJsonLd, buildWebSiteJsonLd } from '../utils/seo';
 
 interface Props {
 	title?: string;
@@ -26,9 +15,28 @@ interface Props {
 	publishDate?: Date;
 	updatedDate?: Date;
 	bodyClass?: string;
+	graph?: unknown[];
 }
 
-const { title, description, image, ogType, publishDate, updatedDate, bodyClass } = Astro.props;
+const {
+	title,
+	description,
+	image,
+	ogType,
+	publishDate,
+	updatedDate,
+	bodyClass,
+	graph = [],
+} = Astro.props;
+
+// Site-wide JSON-LD: Organization + Person + WebSite are emitted on every
+// page so the Darbees entity is consistently discoverable by AI agents.
+const siteGraph = [
+	buildOrganizationJsonLd(),
+	buildPersonJsonLd(),
+	buildWebSiteJsonLd(),
+	...graph,
+];
 ---
 
 <!doctype html>
@@ -43,12 +51,13 @@ const { title, description, image, ogType, publishDate, updatedDate, bodyClass }
 			updatedDate={updatedDate}
 		/>
 	</head>
-	<body class:list={['min-h-screen flex flex-col bg-base-100', bodyClass]}>
+	<body class:list={['bg-base-100 flex min-h-screen flex-col scroll-smooth', bodyClass]}>
 		<Header />
 		<main id="main-content" class="flex-1">
 			<slot />
 		</main>
 		<Footer />
+		<BackToTop />
 		<StructuredData graph={siteGraph} />
 	</body>
 </html>

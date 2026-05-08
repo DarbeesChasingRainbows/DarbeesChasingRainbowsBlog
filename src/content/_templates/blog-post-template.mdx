@@ -1,15 +1,18 @@
 ---
 # === Required ===
-title: "A Specific, First-Person Title (60 chars max for SEO)"
-description: "1–2 sentence summary that works as a meta description and as the article lede."
+title: 'A Specific, First-Person Title (60 chars max for SEO)'
+description: '1–2 sentence summary that works as a meta description and as the article lede.'
 pubDate: 2026-04-29
-category: "RV Life"   # one primary category — keep these consistent across the site
-tags: ["rv", "boondocking", "rome-ga"]
-author: "The Darbees"
+category: 'RV Life' # one primary category — keep these consistent across the site
+tags: ['rv', 'boondocking', 'rome-ga']
+author: 'The Darbees'
 
 # === Optional but recommended ===
 updatedDate: 2026-04-29
-heroImage: "../../assets/blog/your-image.jpg"
+# heroImage: '../../assets/blog/your-image.jpg' # Upload via CMS or set relative path
+# Describe what's IN the image (not what the post is about). Falls back to
+# `title` if omitted; "" opts out of screen-reader announcement.
+# imageAlt: 'Sunset over a Class C RV parked at a Tennessee state park.'
 draft: true
 
 # === LLM / E-E-A-T fields (Phase 1) ===
@@ -23,32 +26,32 @@ aiSummary: >-
 # 3–6 short, scannable bullets shown at the top of the post.
 keyTakeaways:
   - "We logged 47 hours of lost sleep in month one — here's the fix that worked."
-  - "Boondocking saved $1,210 vs. RV parks across 6 weeks."
+  - 'Boondocking saved $1,210 vs. RV parks across 6 weeks.'
   - "Two specific products we'd buy again; one we'd never touch."
-  - "The cheapest route is rarely the one Google Maps suggests for an RV."
+  - 'The cheapest route is rarely the one Google Maps suggests for an RV.'
 
 # Optional Q&A — auto-rendered as accordion + FAQPage JSON-LD.
 faq:
-  - question: "How much does full-time RV life actually cost per month?"
-    answer: "Our 90-day average was $2,840/month, including fuel, food, parks, propane, and unexpected repairs. Detailed spreadsheet linked below."
-  - question: "Do you regret leaving a stationary home?"
-    answer: "Honestly, on day 12 — yes. By day 60, no. We unpack the why."
+  - question: 'How much does full-time RV life actually cost per month?'
+    answer: 'Our 90-day average was $2,840/month, including fuel, food, parks, propane, and unexpected repairs. Detailed spreadsheet linked below.'
+  - question: 'Do you regret leaving a stationary home?'
+    answer: 'Honestly, on day 12 — yes. By day 60, no. We unpack the why.'
 
 # Mention the entities a reader (or AI) should associate with this post.
 entityMentions:
-  - "The Darbees"
-  - "Darbees Chasing Rainbows"
-  - "Rome, Georgia"
-  - "Kingdom Farm"
+  - 'The Darbees'
+  - 'Darbees Chasing Rainbows'
+  - 'Rome, Georgia'
+  - 'Kingdom Farm'
 
 # References. Mark items you wrote or photographed yourself as "primary".
 sources:
-  - title: "Our 90-day cost spreadsheet (Google Sheets)"
-    url: "https://example.com/your-spreadsheet"
-    type: "primary"
-  - title: "RVTrader 2026 mid-year market report"
-    url: "https://www.rvtrader.com/"
-    type: "secondary"
+  - title: 'Our 90-day cost spreadsheet (Google Sheets)'
+    url: 'https://example.com/your-spreadsheet'
+    type: 'primary'
+  - title: 'RVTrader 2026 mid-year market report'
+    url: 'https://www.rvtrader.com/'
+    type: 'secondary'
 ---
 
 import Callout from '../../components/Callout.astro';
@@ -61,16 +64,14 @@ import Callout from '../../components/Callout.astro';
 
 Short paragraphs. Real numbers. Real photos. Real dates.
 
-<Callout title="A note from us">
-This is where a personal aside or pull-quote lives.
-</Callout>
+<Callout title="A note from us">This is where a personal aside or pull-quote lives.</Callout>
 
 ## Use a comparison table when you can
 
 | Option | Cost | Time | Would do again? |
-| --- | --- | --- | --- |
-| A | $X | 2h | Yes |
-| B | $Y | 4h | No |
+| ------ | ---- | ---- | --------------- |
+| A      | $X   | 2h   | Yes             |
+| B      | $Y   | 4h   | No              |
 
 ## Numbered steps for how-to sections
 

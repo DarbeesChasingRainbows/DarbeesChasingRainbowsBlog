@@ -1,0 +1,263 @@
+---
+// Single layout shared by all three post types (blog / projects / field-notes).
+// Replaces BlogPostLayout, ProjectPostLayout, and FieldNotesLayout — those used
+// to share ~85% of their structure verbatim.
+//
+// What's the same across all three:
+//   article wrapper, breadcrumbs, title/description header, hero figure,
+//   KeyTakeaways, TableOfContents, prose, FAQAccordion, Sources, AISummary,
+//   EntityCard, tag pills, PostFooterNav, newsletter, back link, JSON-LD.
+//
+// What varies (and is provided by the caller via slots):
+//   - <Fragment slot="meta"> — the per-collection metadata block
+//     (PostMeta for blog, dl with cost/time/difficulty for projects,
+//      dl with location/region/weather for field-notes)
+//   - <Fragment slot="header-extras"> — anything else under the metadata
+//     (currently: the homeschool-badge for field-notes only)
+//   - <Fragment slot="before-content"> — anything between the TOC and the
+//     prose body (currently: ProjectPartsList for projects only)
+//   - default slot — the actual MDX <Content />
+//
+// What varies via props:
+//   - `collection`, `collectionLabel`, `collectionHref`, `backLabel` — for
+//     PostFooterNav, breadcrumb, and the back link
+//   - `extraJsonLd` — anything beyond the base BlogPosting + Breadcrumb + FAQ
+//     graph (currently: HowTo for projects)
+//
+// The base JSON-LD graph (BlogPosting + Breadcrumb + optional FAQ) is built
+// inside this layout from the props so each caller doesn't repeat it.
+
+import type { ImageMetadata, MarkdownHeading } from 'astro';
+import type { CollectionEntry } from 'astro:content';
+import { Image } from 'astro:assets';
+import BaseLayout from './BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import KeyTakeaways from '../components/KeyTakeaways.astro';
+import Sources from '../components/Sources.astro';
+import FAQAccordion from '../components/FAQAccordion.astro';
+import EntityCard from '../components/EntityCard.astro';
+import AISummary from '../components/AISummary.astro';
+import CategoryPill from '../components/CategoryPill.astro';
+import PostFooterNav from '../components/PostFooterNav.astro';
+import NewsletterSignup from '../components/NewsletterSignup.astro';
+import AuthorBio from '../components/AuthorBio.astro';
+import DraftBanner from '../components/DraftBanner.astro';
+import { buildBlogPostingJsonLd, buildFaqJsonLd } from '../utils/seo';
+// NOTE: BreadcrumbList JSON-LD is emitted by the Breadcrumbs component itself
+// (see Breadcrumbs.astro). We deliberately do NOT call buildBreadcrumbJsonLd
+// here to avoid duplicate <script type="application/ld+json"> blocks.
+
+type Collection = 'blog' | 'projects' | 'field-notes';
+type AnyEntry =
+	| CollectionEntry<'blog'>
+	| CollectionEntry<'projects'>
+	| CollectionEntry<'field-notes'>;
+
+interface FaqItem {
+	question: string;
+	answer: string;
+}
+
+interface SourceItem {
+	title: string;
+	url: string;
+	type?: 'primary' | 'secondary';
+}
+
+interface Props {
+	// Article identity
+	title: string;
+	description: string;
+	hero?: ImageMetadata | string;
+	// Optional alt text for the hero image. Falls back to `title` when undefined.
+	// Empty string is honored (decorative image — skipped by screen readers).
+	imageAlt?: string;
+	// Image attribution — credit the photographer/source
+	imageAttribution?: {
+		name: string;
+		url?: string;
+	};
+	publishDate?: Date;
+	updatedDate?: Date;
+	author?: string;
+	category?: string;
+	tags?: string[];
+	headings?: MarkdownHeading[];
+	draft?: boolean;
+
+	// LLM / E-E-A-T blocks
+	keyTakeaways?: string[];
+	faq?: FaqItem[];
+	sources?: SourceItem[];
+	aiSummary?: string;
+
+	// Routing labels
+	collection: Collection;
+	collectionLabel: string; // "Blog" | "Projects" | "Field Notes"
+	collectionHref: string; // "/blog" | "/projects" | "/field-notes"
+	backLabel: string; // "all posts" | "all projects" | "all field notes"
+
+	// PostFooterNav
+	prev?: AnyEntry;
+	next?: AnyEntry;
+	related?: AnyEntry[];
+
+	// Caller-supplied JSON-LD extras (e.g. HowTo for projects)
+	extraJsonLd?: unknown[];
+}
+
+const {
+	title,
+	description,
+	hero,
+	imageAlt,
+	imageAttribution,
+	publishDate,
+	updatedDate,
+	author,
+	category,
+	tags = [],
+	headings = [],
+	draft = false,
+	keyTakeaways,
+	faq,
+	sources,
+	aiSummary,
+	collection,
+	collectionLabel,
+	collectionHref,
+	backLabel,
+	prev,
+	next,
+	related = [],
+	extraJsonLd = [],
+} = Astro.props;
+
+const postUrl = new URL(Astro.url.pathname, Astro.site).toString();
+const heroUrl = hero && typeof hero === 'object' && 'src' in hero
+	? new URL(hero.src, Astro.site).toString()
+	: undefined;
+const heroImage = hero && typeof hero === 'object' && 'src' in hero ? hero : undefined;
+
+const breadcrumbItems = [
+	{ label: 'Home', href: '/' },
+	{ label: collectionLabel, href: collectionHref },
+	{ label: title },
+];
+
+const graph = [
+	buildBlogPostingJsonLd({
+		title,
+		description,
+		url: postUrl,
+		image: heroUrl,
+		publishDate,
+		updatedDate,
+		author,
+		category,
+		tags,
+		aiSummary,
+	}),
+	// BreadcrumbList is emitted by <Breadcrumbs /> below, not here.
+	...(faq?.length ? [buildFaqJsonLd(faq)] : []),
+	...extraJsonLd,
+];
+---
+
+<BaseLayout
+	title={title}
+	description={description}
+	image={heroImage}
+	ogType="article"
+	publishDate={publishDate}
+	updatedDate={updatedDate}
+	graph={graph}
+>
+	<article class="mx-auto max-w-3xl px-4 py-8 md:py-12">
+		<Breadcrumbs class="mb-6" items={breadcrumbItems} />
+		{draft && <DraftBanner />}
+		<header class="mb-8">
+			<h1 class="font-display mb-4 text-3xl leading-tight font-extrabold md:text-5xl">
+				{title}
+			</h1>
+			<p class="text-base-content/80 mb-4 text-lg">{description}</p>
+			<slot name="meta" />
+			<slot name="header-extras" />
+		</header>
+
+		{
+			heroImage && (
+				<figure class="-mx-4 mb-8 md:mx-0">
+					<Image
+						src={heroImage}
+						alt={imageAlt ?? title}
+						width={1200}
+						height={675}
+						class="w-full shadow-md md:rounded-2xl"
+						loading="eager"
+					/>
+					{imageAttribution && (
+						<figcaption class="mt-2 text-center text-sm text-base-content/50">
+							{imageAttribution.url ? (
+								<a href={imageAttribution.url} target="_blank" rel="noopener" class="hover:text-primary">
+									{imageAttribution.name}
+								</a>
+							) : (
+								imageAttribution.name
+							)}
+						</figcaption>
+					)}
+				</figure>
+			)
+		}
+
+		{keyTakeaways && keyTakeaways.length > 0 && <KeyTakeaways items={keyTakeaways} />}
+
+		<TableOfContents headings={headings} />
+
+		<slot name="before-content" />
+
+		<div class="prose prose-lg max-w-none">
+			<slot />
+		</div>
+
+		{faq && faq.length > 0 && <FAQAccordion faq={faq} />}
+
+		{sources && sources.length > 0 && <Sources sources={sources} />}
+
+		{
+			aiSummary && (
+				<AISummary summary={aiSummary} url={postUrl} title={title} publishDate={publishDate} />
+			)
+		}
+
+		<EntityCard />
+
+		{
+			tags.length > 0 && (
+				<div class="mt-10 flex flex-wrap gap-2">
+					{tags.map((tag) => (
+						<CategoryPill
+							label={`#${tag}`}
+							variant="tag"
+							href={`/tag/${encodeURIComponent(tag)}/`}
+						/>
+					))}
+				</div>
+			)
+		}
+
+		<AuthorBio author={author} />
+
+		<PostFooterNav collection={collection} prev={prev} next={next} related={related} />
+
+		<hr class="border-base-300 my-12" />
+
+		<NewsletterSignup />
+
+		<div class="mt-10 text-center">
+			<a href={collectionHref} class="btn btn-ghost">← Back to {backLabel}</a>
+		</div>
+	</article>
+</BaseLayout>

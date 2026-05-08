@@ -1,0 +1,73 @@
+---
+/**
+ * Pagefind Search component.
+ * Renders a search bar that uses Pagefind for instant, static search.
+ */
+---
+
+<div class="search-container">
+  <div id="search" class="w-full"></div>
+</div>
+
+<link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+
+<style is:global>
+  /* Customizing Pagefind Default UI to match DaisyUI/Darbees theme */
+  :root {
+    --pagefind-ui-primary: #10b981; /* emerald-600 */
+    --pagefind-ui-text: #1f2937; /* stone-900 equivalent */
+    --pagefind-ui-background: #ffffff;
+    --pagefind-ui-border: #e5e7eb;
+    --pagefind-ui-tag: #fbbf24; /* amber-400 */
+    --pagefind-ui-border-radius: 0.75rem;
+    --pagefind-ui-font: inherit;
+  }
+
+  /* Dark mode support (forest theme) */
+  [data-theme="forest"] {
+    --pagefind-ui-primary: #10b981;
+    --pagefind-ui-text: #e5e7eb;
+    --pagefind-ui-background: #171212; /* forest base-100 */
+    --pagefind-ui-border: #2a2121; /* forest base-300 */
+  }
+
+  .pagefind-ui__search-input {
+    font-weight: 500 !important;
+  }
+
+  .pagefind-ui__result-link {
+    font-family: var(--font-editorial);
+    font-weight: 700 !important;
+    text-decoration: none !important;
+  }
+
+  .pagefind-ui__result-link:hover {
+    text-decoration: underline !important;
+  }
+</style>
+
+<script is:inline>
+  window.addEventListener("DOMContentLoaded", (event) => {
+    // @ts-ignore
+    if (typeof PagefindUI !== "undefined") {
+      new PagefindUI({
+        element: "#search",
+        showSubResults: true,
+        showImages: true,
+        resetStyles: false,
+      });
+    } else {
+      console.warn("PagefindUI not loaded. Search will be available after build.");
+      const searchEl = document.querySelector("#search");
+      if (searchEl) {
+        searchEl.innerHTML = `
+          <div class="p-4 text-center border border-dashed border-base-300 rounded-xl text-base-content/50 text-sm">
+            Search is available after site build (npm run build).
+          </div>
+        `;
+      }
+    }
+  });
+</script>
+
+<script src="/pagefind/pagefind-ui.js" is:inline></script>

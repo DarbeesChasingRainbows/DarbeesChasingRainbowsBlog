@@ -1,0 +1,33 @@
+{
+	"//": "Mobile Lighthouse CI config. Mirrors lighthouserc.json URLs and thresholds with the mobile preset.",
+	"ci": {
+		"collect": {
+			"staticDistDir": "./dist",
+			"url": [
+				"http://localhost/index.html",
+				"http://localhost/blog/charlotte-masons-companion/index.html",
+				"http://localhost/projects/off-grid-power-solar-setup/index.html",
+				"http://localhost/field-notes/bulow-plantation-ruins/index.html",
+				"http://localhost/bookshelf/index.html",
+				"http://localhost/bookshelf/wingfeather-saga-book-one/index.html"
+			],
+			"numberOfRuns": 1,
+			"settings": {
+				"preset": "mobile"
+			}
+		},
+		"assert": {
+			"assertions": {
+				"categories:performance": ["error", { "minScore": 0.85 }],
+				"categories:accessibility": ["error", { "minScore": 0.9 }],
+				"categories:best-practices": ["error", { "minScore": 0.9 }],
+				"categories:seo": ["error", { "minScore": 0.95 }],
+				"color-contrast": "error",
+				"image-alt": "error"
+			}
+		},
+		"upload": {
+			"target": "temporary-public-storage"
+		}
+	}
+}

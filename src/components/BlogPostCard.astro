@@ -1,0 +1,31 @@
+---
+interface Props {
+	title: string;
+	description: string;
+	date: string;
+	category: string;
+	href: string;
+}
+
+const { title, description, date, category, href } = Astro.props;
+---
+
+<a
+	href={href}
+	class="card bg-base-100 border-base-content/15 hover:border-primary hover:shadow-lg transition-all duration-300 group"
+>
+	<div class="card-body">
+		<div class="flex items-center gap-2 mb-3">
+			<span class="badge badge-outline border-primary text-primary text-xs font-bold tracking-wider">
+				{category}
+			</span>
+		</div>
+		<h3 class="card-title text-xl font-editorial text-base-content group-hover:text-primary transition-colors">
+			{title}
+		</h3>
+		<p class="text-base-content/65 text-sm leading-relaxed">{description}</p>
+		<div class="card-actions mt-4">
+			<span class="text-base-content/40 text-xs">{date}</span>
+		</div>
+	</div>
+</a>

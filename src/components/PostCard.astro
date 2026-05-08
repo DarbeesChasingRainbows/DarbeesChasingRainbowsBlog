@@ -1,0 +1,239 @@
+---
+// Single card component shared by all three post types. Replaces BlogCard,
+// ProjectCard, and FieldNoteCard, which used to share ~95% of their structure.
+//
+// Per-kind variations:
+//   blog        — top-left badge: data.category. Footer CTA: "Read".
+//   project     — top-left badge: data.category. Top-right badge: difficulty
+//                 (if present, colored via DIFFICULTY_COLORS). Footer also
+//                 shows estimatedCost / estimatedTime when set. CTA: "Build".
+//   field-note  — top-left badge: location (with pin icon). Top-right badge:
+//                 "Homeschool" if includesHomeschool. CTA: "Visit".
+//
+// The discriminated union below means TypeScript only allows the matching
+// `entry` type for each `kind` value — no runtime type errors possible.
+
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import FormattedDate from './FormattedDate.astro';
+import { DIFFICULTY_COLORS, BOOKSHELF_RATING_MAP } from '../consts';
+
+type Props =
+	| { kind: 'blog'; entry: CollectionEntry<'blog'>; compact?: boolean }
+	| { kind: 'project'; entry: CollectionEntry<'projects'>; compact?: boolean }
+	| { kind: 'field-note'; entry: CollectionEntry<'field-notes'>; compact?: boolean }
+	| { kind: 'book'; entry: CollectionEntry<'books'>; compact?: boolean };
+
+const { kind, entry, compact = false } = Astro.props as Props;
+const { id } = entry;
+
+// TypeScript 6 stopped narrowing `data`'s type through `kind === 'X'` checks
+// once it's destructured out of `entry` (the discriminator/value linkage is
+// broken across `const { kind, entry } = props`). Cast to a "loose" data
+// shape that includes the per-kind optional fields. Runtime behavior is
+// unchanged — every access to a kind-specific field is already guarded by a
+// `kind === 'X' && data.field` check below.
+type LooseEntryData = typeof entry.data & {
+	difficulty?: 'easy' | 'medium' | 'hard';
+	estimatedCost?: string;
+	estimatedTime?: string;
+	location?: string;
+	includesHomeschool?: boolean;
+	bookTitle?: string;
+	author?: string;
+	rating?: keyof typeof BOOKSHELF_RATING_MAP;
+};
+const data = entry.data as LooseEntryData;
+const hero = data.featuredImage ?? data.heroImage;
+const heroImage = hero && typeof hero === 'object' && 'src' in hero ? hero : undefined;
+
+// Per-kind config: URL prefix and the footer CTA verb.
+const kindConfig = {
+	blog: { prefix: '/blog', cta: 'Read' },
+	project: { prefix: '/projects', cta: 'Build' },
+	'field-note': { prefix: '/field-notes', cta: 'Visit' },
+	book: { prefix: '/bookshelf', cta: 'Verdict' },
+} as const;
+const { prefix, cta } = kindConfig[kind];
+const href = `${prefix}/${id}/`;
+
+// Top-left badge content varies: field-notes show location with a pin icon,
+// blog/project/book show the category label.
+const topLeftLabel = kind === 'field-note' ? data.location : data.category;
+---
+
+<a {href} class="group block">
+	{
+		heroImage && (
+			<figure
+				class:list={[
+					'bg-base-200 ring-base-300/60 relative mb-4 overflow-hidden rounded-2xl ring-1',
+					compact ? 'aspect-2/1' : 'aspect-4/3',
+				]}
+			>
+				<Image
+					src={heroImage}
+					alt={data.imageAlt ?? data.title}
+					width={800}
+					height={600}
+					class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+				/>
+				<span class="bg-base-100/90 font-display text-primary absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] uppercase shadow-sm backdrop-blur-sm">
+					{kind === 'field-note' && (
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-3 w-3"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					)}
+					{topLeftLabel}
+				</span>
+
+				{kind === 'project' && data.difficulty && (
+					<span
+						class={`badge absolute top-3 right-3 ${DIFFICULTY_COLORS[data.difficulty]} badge-soft text-[10px] font-bold tracking-[0.15em] uppercase`}
+					>
+						{data.difficulty}
+					</span>
+				)}
+
+				{kind === 'field-note' && data.includesHomeschool && (
+					<span class="bg-secondary/90 font-display text-secondary-content absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] uppercase shadow-sm backdrop-blur-sm">
+						Homeschool
+					</span>
+				)}
+
+				{kind === 'book' && data.rating && (
+					<span class="bg-base-100/90 absolute top-3 right-3 rounded-full px-2 py-1 text-xs shadow-sm backdrop-blur-sm">
+						{BOOKSHELF_RATING_MAP[data.rating].icon}
+					</span>
+				)}
+			</figure>
+		)
+	}
+	<div class="space-y-2">
+		{
+			!hero && (
+				<div class="flex items-center gap-2">
+					<span class="font-display text-primary text-[10px] font-bold tracking-[0.22em] uppercase">
+						{topLeftLabel}
+					</span>
+					{kind === 'project' && data.difficulty && (
+						<span
+							class={`badge ${DIFFICULTY_COLORS[data.difficulty]} badge-soft text-[10px] tracking-wider uppercase`}
+						>
+							{data.difficulty}
+						</span>
+					)}
+					{kind === 'book' && data.rating && (
+						<span class="text-xs">{BOOKSHELF_RATING_MAP[data.rating].icon}</span>
+					)}
+				</div>
+			)
+		}
+		<h3
+			class:list={[
+				'font-editorial text-base-content',
+				compact ? 'text-xl' : 'text-2xl md:text-[1.65rem]',
+			]}
+		>
+			<span class="title-sweep">{data.title}</span>
+		</h3>
+		{
+			kind === 'book' && (
+				<p class="text-base-content/50 -mt-1 text-sm italic">
+					{data.bookTitle} by {data.author}
+				</p>
+			)
+		}
+		<p
+			class:list={[
+				'text-base-content/65 leading-relaxed',
+				compact ? 'line-clamp-2 text-sm' : 'line-clamp-3 text-[0.95rem]',
+			]}
+		>
+			{data.preview || data.description}
+		</p>
+
+		{/* Project cards show cost/time strip; blog/field-note cards show date strip. */}
+		{
+			kind === 'project' && (data.estimatedCost || data.estimatedTime) ? (
+				<div class="font-display text-base-content/55 flex flex-wrap items-center gap-3 pt-1 text-[11px] font-semibold tracking-[0.15em] uppercase">
+					{data.estimatedCost && (
+						<span class="inline-flex items-center gap-1">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-3 w-3"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
+								<path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+							</svg>
+							{data.estimatedCost}
+						</span>
+					)}
+					{data.estimatedTime && (
+						<span class="inline-flex items-center gap-1">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-3 w-3"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							{data.estimatedTime}
+						</span>
+					)}
+					<span class="border-base-content/20 flex-1 border-t border-dashed" />
+					<span class="text-primary inline-flex items-center gap-1 transition-all group-hover:gap-2">
+						{cta}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-3 w-3"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</span>
+				</div>
+			) : (
+				<div class="font-display text-base-content/50 flex items-center gap-2 pt-1 text-[11px] font-semibold tracking-[0.18em] uppercase">
+					<FormattedDate date={data.pubDate} />
+					<span class="border-base-content/20 flex-1 border-t border-dashed" />
+					<span class="text-primary inline-flex items-center gap-1 transition-all group-hover:gap-2">
+						{cta}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-3 w-3"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</span>
+				</div>
+			)
+		}
+	</div>
+</a>

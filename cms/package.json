@@ -1,0 +1,18 @@
+{
+  "name": "darbees-cms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Directus CMS tooling for Darbees Chasing Rainbows",
+  "type": "module",
+  "scripts": {
+    "setup": "tsx scripts/setup-schema.ts",
+    "migrate": "tsx scripts/migrate-content.ts"
+  },
+  "dependencies": {
+    "@directus/sdk": "^19.1.0",
+    "dotenv": "^16.4.0",
+    "gray-matter": "^4.0.3",
+    "tsx": "^4.19.0",
+    "yaml": "^2.7.0"
+  }
+}
