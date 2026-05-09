@@ -143,3 +143,5 @@ C:\Work\DarbeesChasingRainbows\dais-bridge.tests\obj\Debug\net9.0\dais-bridge.te
 C:\Work\DarbeesChasingRainbows\dais-bridge.tests\obj\Debug\net9.0\dais-bridge.tests.genruntimeconfig.cache
 C:\Work\DarbeesChasingRainbows\dais-bridge.tests\obj\Debug\net9.0\ref\dais-bridge.tests.dll
 C:\Work\DarbeesChasingRainbows\dais-bridge.tests\bin\Debug\net9.0\safety_policies.json
+C:\Work\DarbeesChasingRainbows\dais-bridge.tests\bin\Debug\net9.0\ModelContextProtocol.dll
+C:\Work\DarbeesChasingRainbows\dais-bridge.tests\bin\Debug\net9.0\ModelContextProtocol.Core.dll

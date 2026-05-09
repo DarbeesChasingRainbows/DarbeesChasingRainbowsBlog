@@ -116,3 +116,5 @@ C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\staticwebassets.deve
 C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\staticwebassets.build.endpoints.json
 C:\Work\DarbeesChasingRainbows\dais-bridge\obj\Debug\net9.0\swae.build.ex.cache
 C:\Work\DarbeesChasingRainbows\dais-bridge\bin\Debug\net9.0\safety_policies.json
+C:\Work\DarbeesChasingRainbows\dais-bridge\bin\Debug\net9.0\ModelContextProtocol.dll
+C:\Work\DarbeesChasingRainbows\dais-bridge\bin\Debug\net9.0\ModelContextProtocol.Core.dll

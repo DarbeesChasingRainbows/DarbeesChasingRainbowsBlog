@@ -29,6 +29,7 @@ public class Program
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
+        var ctx7Endpoint = builder.Configuration["Context7:Endpoint"] ?? "http://localhost:3000/mcp";
 
         // 2. Setup Semantic Kernel and Plugins as Services
         builder.Services.AddSingleton<Kernel>(_ => 
@@ -41,6 +42,7 @@ public class Program
             kernelBuilder.Plugins.AddFromObject(new AssetPlugin(cfAccountId, cfToken), "Assets");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmStudioUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
+            kernelBuilder.Plugins.AddFromObject(new ResearchPlugin(ctx7Endpoint), "Research");
 
             return kernelBuilder.Build();
         });
