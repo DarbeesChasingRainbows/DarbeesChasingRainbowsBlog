@@ -167,3 +167,25 @@ app.MapHub<ParentHub>("/hubs/parent");
 git add dais-bridge/Program.cs
 git commit -m "feat: finalize gateway integration"
 ```
+
+---
+
+### Task 6: External Knowledge Plugin (ResearchPlugin via Context7 MCP)
+
+**Files:**
+- Create: `dais-bridge/Plugins/IMcpToolClient.cs`
+- Create: `dais-bridge/Plugins/Context7McpToolClient.cs`
+- Modify: `dais-bridge/Plugins/ResearchPlugin.cs`
+- Modify: `dais-bridge/Program.cs`
+- Modify: `dais-bridge.tests/ResearchPluginTests.cs`
+
+**Brief:** A Semantic Kernel plugin that lets the LLM look up live library/framework documentation by calling the Context7 MCP server (`resolve-library-id` → `query-docs`). Added because grounding answers in current docs is materially better than relying on training-data recall, especially for fast-moving libraries (Astro, SK, etc.).
+
+**Threat model:**
+- **Outbound MCP egress carries LLM-controlled strings.** A child could (in theory) coax the model into emitting sensitive content as `libraryName` or `query`, which would be transmitted to a third-party endpoint.
+- **Mitigation (i):** ResearchPlugin is excluded from `kernel-kidsafe` and is only available via `kernel-admin` (ParentHub / management surfaces). Children's chat cannot reach Context7 by construction.
+- **Mitigation (ii):** Inputs are length-limited to 200 chars and validated at function entry; oversized/empty arguments return a graceful error string without making any MCP call.
+- **Mitigation (iii):** An outbound `IFunctionInvocationFilter` is recommended as future hardening to log/scrub plugin arguments before egress, even on the admin kernel.
+- **Per-call MCP client lifecycle** is accepted as the initial design — connection pooling, timeouts, retries, and circuit-breaker hardening are deferred to a follow-up.
+
+**Status:** Implemented in commit `49cb6fb`; hardened in the follow-up commit covering the three Critical findings (off-plan, trust-boundary singleton, brittle test).

@@ -1,67 +1,91 @@
 using System.ComponentModel;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
-using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Darbee.Gateway.Plugins;
 
-public class ResearchPlugin
+/// <summary>
+/// Semantic Kernel plugin that lets an LLM look up live library/framework documentation
+/// via an MCP tool client (e.g., Context7). All MCP wire concerns are delegated to
+/// <see cref="IMcpToolClient"/>; this class owns only the orchestration:
+/// (1) call <c>resolve-library-id</c>, (2) parse the canonical library ID,
+/// (3) call <c>query-docs</c>, (4) return the first text block.
+/// </summary>
+public partial class ResearchPlugin
 {
-    private readonly string _endpoint;
+    private const int MaxArgLength = 200;
 
-    public ResearchPlugin(string endpoint)
+    private readonly IMcpToolClient _client;
+
+    public ResearchPlugin(IMcpToolClient client)
     {
-        _endpoint = endpoint;
+        _client = client;
     }
+
+    [GeneratedRegex(@"Context7-compatible library ID:\s+(/[\w.\-]+/[\w.\-]+)")]
+    private static partial Regex LibraryIdRegex();
 
     [KernelFunction, Description("Queries live documentation from Context7 via MCP.")]
     public async Task<string> QueryDocumentation(
         [Description("The name of the library or framework to search for (e.g., 'Astro', 'Semantic Kernel').")] string libraryName,
         [Description("The specific question or technical detail to research.")] string query)
     {
-        var transport = new HttpClientTransport(new HttpClientTransportOptions
+        // Input validation: return graceful strings (do NOT throw) so the LLM can recover
+        // and the SK function-calling loop can continue.
+        libraryName = (libraryName ?? string.Empty).Trim();
+        query = (query ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(libraryName))
         {
-            Endpoint = new System.Uri(_endpoint),
-            TransportMode = HttpTransportMode.StreamableHttp
-        });
-
-        await using var client = await McpClient.CreateAsync(transport);
-
-        // 1. Resolve Library ID
-        var resolveResult = await client.CallToolAsync(
-            "resolve-library-id",
-            new Dictionary<string, object?>
-            {
-                ["libraryName"] = libraryName,
-                ["query"] = query
-            });
-
-        // Simplified logic: assume first match is best for this prototype
-        // In a real scenario, we would parse the result more carefully
-        var resolveText = resolveResult.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? string.Empty;
-        
-        // Extract Library ID (this is a placeholder for actual parsing)
-        // Expected format contains "Context7-compatible library ID: /org/project"
-        var match = System.Text.RegularExpressions.Regex.Match(resolveText, @"library ID: (/\S+)");
-        if (!match.Success)
-        {
-            return $"Could not resolve library ID for {libraryName}. Result: {resolveText}";
+            return "Could not resolve library ID: libraryName is required.";
         }
 
-        var libraryId = match.Groups[1].Value;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return "Could not resolve library ID: query is required.";
+        }
 
-        // 2. Query Documentation
-        var docResult = await client.CallToolAsync(
-            "query-docs",
-            new Dictionary<string, object?>
+        if (libraryName.Length > MaxArgLength || query.Length > MaxArgLength)
+        {
+            return $"Could not resolve library ID: arguments must be {MaxArgLength} characters or fewer.";
+        }
+
+        try
+        {
+            // 1. Resolve Library ID
+            var resolveText = await _client.CallToolAsync(
+                "resolve-library-id",
+                new Dictionary<string, object?>
+                {
+                    ["libraryName"] = libraryName,
+                    ["query"] = query
+                });
+
+            var match = LibraryIdRegex().Match(resolveText);
+            if (!match.Success)
             {
-                ["libraryId"] = libraryId,
-                ["query"] = query
-            });
+                return $"Could not resolve library ID for {libraryName}. Result: {resolveText}";
+            }
 
-        return docResult.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text ?? "No documentation found.";
+            var libraryId = match.Groups[1].Value;
+
+            // 2. Query Documentation
+            var docText = await _client.CallToolAsync(
+                "query-docs",
+                new Dictionary<string, object?>
+                {
+                    ["libraryId"] = libraryId,
+                    ["query"] = query
+                });
+
+            return string.IsNullOrEmpty(docText) ? "No documentation found." : docText;
+        }
+        catch (Exception ex)
+        {
+            // Swallow any MCP/transport exception and return a graceful string.
+            // The plugin is invoked by the LLM via SK; throwing would kill the function-calling
+            // loop. Timeout/retry/circuit-breaker hardening is tracked as plan Task 6 follow-up.
+            return $"Research unavailable: {ex.Message}";
+        }
     }
 }
