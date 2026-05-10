@@ -2,9 +2,9 @@
 
 > **Purpose:** Everything you (or a future agent session) need to pick this work back up cold without re-deriving context.
 
-**Last updated:** 2026-05-09
+**Last updated:** 2026-05-10
 **Branch:** `feature/graph-backed-rag` (off `master`)
-**Status:** Phase A1 complete; Phases A2 → G2 remaining; environment partially blocked.
+**Status:** Phases A1, A2, A3 complete; Phases A4 → G2 remaining; A4 blocked on local v4 ArangoDB.
 
 ---
 
@@ -62,6 +62,66 @@ dais-bridge/Memory/Models/
 
 ---
 
+## What was done in the 2026-05-10 session
+
+### Phases A2 + A3 — Embedding client (DONE)
+
+| Commit | Description |
+|---|---|
+| `78c8b52` | A2: `IEmbeddingClient` interface + failing `LmStudioEmbeddingClientTests` (red via missing-type compile error) |
+| `e3c45bf` | A3: `LmStudioEmbeddingClient` impl + 2 more tests (dim mismatch, batch). 3/3 PASS. |
+
+**Files added:**
+
+```
+dais-bridge/Memory/IEmbeddingClient.cs
+dais-bridge/Memory/LmStudioEmbeddingClient.cs
+dais-bridge.tests/Memory/LmStudioEmbeddingClientTests.cs
+```
+
+### Plan deviation logged in commit `e3c45bf`
+
+Dropped `using var request = new HttpRequestMessage(...)` → `var request = ...`. Reason: `HttpRequestMessage.Dispose` also disposes its `Content`. Two of the three tests inspect the request body via the captured StubHandler reference *after* `EmbedBatchAsync` returns, which threw `ObjectDisposedException` on `JsonContent`. Removing the `using` lets the request body remain readable for assertions; in production the request goes out of scope and is GC'd cleanly. **Future plan rewrites should not re-introduce `using` here.**
+
+### Verification attempts for ArangoDB v4 vector index — all blocked
+
+Attempted to resolve Open Questions #1 (vector index body shape) and #2 (AQL similarity function name) before A4. All three external channels failed:
+
+| Channel | Result |
+|---|---|
+| Context7 `/arangodb/arangodb` (4 queries) | Corpus has the general `/_api/index` API but **no vector-specific examples**. Confirms vector indexes exist as a type; no body shape, no AQL function example. |
+| `docs.arangodb.com/stable/...` | 301 redirects to `docs.arango.ai` (the docs were moved). |
+| `docs.arango.ai/...` | 403 Forbidden via WebFetch — likely blocking automated user agents. |
+
+**Conclusion:** the empirical path is now the cheapest verification. When v4 ArangoDB is running, the first `POST /_api/index` call from `EnsureVectorIndexAsync` is itself the verification — ArangoDB returns descriptive 400s naming any invalid field. Adjust the plan's 3.x body shape based on the live error response.
+
+### Local infrastructure blocker uncovered
+
+`docker ps` on the host showed an **already-running** container:
+
+```
+mustang-arangodb    arangodb:3.12    Up
+```
+
+Two consequences:
+- **Port 8529 is held** by another project's container. The resume guide's prior instruction to `docker run -d --name arango-test ... -p 8529:8529 ...` would fail with a port collision.
+- **3.12 is below the viability floor** stated in the original Environment section ("3.12 or earlier: vector RAG is not viable. Upgrade required."). We cannot reuse this container for our work even if the port were free.
+
+**Fix for next session:** start a separate v4 container on port 8530:
+
+```powershell
+docker run -d --name arango-test `
+  -e ARANGO_ROOT_PASSWORD=password `
+  -p 8530:8529 `
+  arangodb:latest
+
+$env:ARANGO_TEST_URL = "http://localhost:8530"
+```
+
+Capture the major version returned by `curl http://localhost:8530/_api/version` (with auth) — that's the input to A4's body-shape decision.
+
+---
+
 ## Environment state — verify before resuming
 
 ### LM Studio
@@ -98,22 +158,29 @@ Expected: JSON with a 768-element `data[0].embedding` array. If embeddings have 
 
 ### ArangoDB
 
-**Status when session ended:** **NOT running**. User reported Docker issues; `arangodb:4` Docker tag may not exist (Context7 upstream README uses just `arangodb`). Plan was switched to `arangodb:latest` accordingly.
+**Status as of 2026-05-10:** Docker is healthy, but **port 8529 is occupied** by another project's `mustang-arangodb` container running `arangodb:3.12`. Do not reuse that container — it belongs to the mustangcoffee stack and is below the vector-RAG viability floor.
 
 **Required action before resuming:**
 
-1. Resolve Docker daemon issues on host.
-2. Pull and run:
+1. Pull a v4 image:
 
 ```powershell
 docker pull arangodb:latest
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:latest
+```
+
+2. Start on a **non-conflicting port** (8530 instead of 8529):
+
+```powershell
+docker run -d --name arango-test `
+  -e ARANGO_ROOT_PASSWORD=password `
+  -p 8530:8529 `
+  arangodb:latest
 ```
 
 3. Wait ~10s, then verify:
 
 ```bash
-curl -u root:password http://localhost:8529/_api/version
+curl -u root:password http://localhost:8530/_api/version
 ```
 
 4. **Note the major version returned.** This determines which AQL vector function and index body shape Task A4 will use:
@@ -121,11 +188,11 @@ curl -u root:password http://localhost:8529/_api/version
    - **3.13–3.x:** vector index is experimental. The plan's existing body shape (`type: "vector"`, `params: { dimension, metric, nLists }`) is the experimental form and should work; the AQL function `APPROX_NEAR_COSINE` is the experimental name.
    - **3.12 or earlier:** vector RAG is not viable. Upgrade required.
 
-5. For integration tests, set the env var that gates them:
+5. For integration tests, set the env var that gates them (note port `8530`, not 8529):
 
 ```powershell
 $env:ARANGO_TEST_RUN = "1"
-$env:ARANGO_TEST_URL = "http://localhost:8529"
+$env:ARANGO_TEST_URL = "http://localhost:8530"
 $env:ARANGO_TEST_USER = "root"
 $env:ARANGO_TEST_PASS = "password"
 ```
@@ -238,21 +305,23 @@ curl http://localhost:1234/v1/embeddings `
   -H "Authorization: Bearer $env:LMSTUDIO_API_KEY" `
   -d '{"model":"nomic-embed-text-v1.5","input":"hello"}'
 
-# ArangoDB
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:latest
+# ArangoDB v4 — note port 8530 (8529 is held by mustang-arangodb v3.12)
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8530:8529 arangodb:latest
 Start-Sleep -Seconds 10
-curl -u root:password http://localhost:8529/_api/version
+curl -u root:password http://localhost:8530/_api/version
 
 # Test gates
 $env:ARANGO_TEST_RUN = "1"
-$env:ARANGO_TEST_URL = "http://localhost:8529"
+$env:ARANGO_TEST_URL = "http://localhost:8530"
 $env:ARANGO_TEST_USER = "root"
 $env:ARANGO_TEST_PASS = "password"
 ```
 
 ### 3. Pick the next task
 
-Refer to the plan task list. Currently up: **A2 — `IEmbeddingClient` interface + failing test**. This task does not require a running LM Studio or ArangoDB (uses stub `HttpClient` handler).
+Refer to the plan task list. Currently up: **A4 — `MemoryStore` schema migration**. This task **requires a running ArangoDB v4** on port 8530 (see Environment section above). The plan's existing 3.x body shape for the vector index is unverified for v4 — when you write `EnsureVectorIndexAsync`, push the request to the live server and adjust based on any 400 response. ArangoDB returns descriptive errors that name invalid fields.
+
+If A4 is still blocked on ArangoDB, **B1 (`TenantContext` + `ITenantContextAccessor`)** is the easiest pivot — pure C#, no service deps, AsyncLocal-based.
 
 ### 4. Choose execution mode
 
@@ -287,9 +356,9 @@ When G2 is committed:
 
 ```
 [x] A1 — Memory model records                                  (8281b8e + 2b737f0)
-[ ] A2 — IEmbeddingClient interface + failing test
-[ ] A3 — LmStudioEmbeddingClient implementation (Bearer auth)
-[ ] A4 — MemoryStore schema migration                          (ArangoDB required)
+[x] A2 — IEmbeddingClient interface + failing test             (78c8b52)
+[x] A3 — LmStudioEmbeddingClient implementation                (e3c45bf, dropped `using` on request)
+[ ] A4 — MemoryStore schema migration                          (ArangoDB v4 required, port 8530)
 [ ] A5 — MemoryStore write paths                               (ArangoDB + LM Studio)
 [ ] A6 — Program.cs DI wiring + EnsureSchemaAsync at startup
 [ ] B1 — TenantContext + ITenantContextAccessor
