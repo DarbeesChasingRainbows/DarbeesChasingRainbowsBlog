@@ -2,9 +2,9 @@ namespace Darbee.Gateway.Memory.Models;
 
 public record MemoryEdge(
     string Key,
-    string From,              // collection/key form: "memory_decisions/abc123"
+    string From,
     string To,
-    string Kind,              // "mentions" | "depends-on" | "supersedes" | "tagged" | "about-file"
+    string Kind,
     double Weight,
     string TenantId,
     DateTime CreatedAt);

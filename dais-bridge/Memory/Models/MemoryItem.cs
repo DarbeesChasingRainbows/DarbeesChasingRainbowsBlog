@@ -6,7 +6,7 @@ public record MemoryItem(
     string Text,
     float[]? Embedding,
     string TenantId,
-    string Status,            // "ready" | "pending_embedding"
+    string Status,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     Dictionary<string, object>? Metadata = null);
