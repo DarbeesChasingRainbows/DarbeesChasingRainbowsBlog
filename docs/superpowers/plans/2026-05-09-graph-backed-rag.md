@@ -6,7 +6,7 @@
 
 **Architecture:** Layered SK 1.75 memory model — built-in `WhiteboardProvider` (short-term, no code), new `DarbeesContextProvider : AIContextProvider` (auto long-term extract), and explicit `MemoryPlugin` kernel functions — all backed by a single `MemoryStore` that does Arango I/O. Hybrid recall = entity extraction → 1-hop graph expansion → vector top-K rerank, single database, normalized collections per content kind, `tenant_id` field for isolation.
 
-**Tech Stack:** C# .NET 9, Microsoft.SemanticKernel 1.75.0, ArangoDBNetStandard 2.0.0, ArangoDB ≥ 3.13, LM Studio (`/v1/embeddings`), xUnit 2.9.3.
+**Tech Stack:** C# .NET 9, Microsoft.SemanticKernel 1.75.0, ArangoDBNetStandard 2.0.0, ArangoDB ≥ 4.0 (vector index is first-class in 4.x), LM Studio (`/v1/embeddings`), xUnit 2.9.3.
 
 **Spec:** [docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md](../specs/2026-05-09-graph-backed-rag-design.md)
 
@@ -23,10 +23,10 @@ dotnet test dais-bridge.tests/dais-bridge.tests.csproj
 
 Expected: build succeeds; 11 tests pass.
 
-- [ ] **Verify ArangoDB ≥ 3.13 is available locally for integration tests.**
+- [ ] **Verify ArangoDB ≥ 4.0 is available locally for integration tests.**
 
 ```bash
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.13
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:4
 ```
 
 Wait ~10s, then:
@@ -35,7 +35,7 @@ Wait ~10s, then:
 curl -u root:password http://localhost:8529/_api/version
 ```
 
-Expected: JSON with `"version":"3.13.x"`.
+Expected: JSON with major version 4.x. If 3.x is returned, vector index creation in Task A4 will use the 3.x experimental syntax and the plan needs adjustment.
 
 - [ ] **Verify LM Studio is running with an embedding model loaded.**
 
@@ -405,7 +405,13 @@ git commit -m "feat(memory): implement LmStudioEmbeddingClient with batch + dim 
 - Create: `dais-bridge/Memory/MemoryStore.cs`
 - Create: `dais-bridge.tests/Memory/MemoryStoreSchemaTests.cs`
 
-ArangoDBNetStandard 2.0.0 typed API does not expose the experimental vector index. The vector index is created via raw HTTP `POST /_api/index?collection=<name>` with a JSON body. `MemoryStore` will own a `HttpClient` for these escape-hatch calls in addition to the `ArangoDBClient` for typed operations.
+ArangoDBNetStandard 2.0.0 typed API does not expose the vector index. The vector index is created via raw HTTP `POST /_api/index?collection=<name>` with a JSON body. `MemoryStore` will own a `HttpClient` for these escape-hatch calls in addition to the `ArangoDBClient` for typed operations.
+
+**v4 syntax verification (do this before Step 3 of this task):**
+
+Query Context7 with `libraryId: /arangodb/arangodb` and `query: "vector index POST /_api/index type vector body shape v4 dimension metric example"`. Confirm the exact body shape used by the implementation below. The shape used here (`type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`) was the 3.x experimental form; it may be the same in 4.x or may have moved fields out of `params`. If it has changed, update `EnsureVectorIndexAsync` to match before running tests.
+
+Similarly, the AQL similarity function for vector search (`APPROX_NEAR_COSINE` in 3.x experimental) may have stabilized to a different name in 4.x. Verify and update `MemoryRecallEngine.VectorTopKAsync` (Task C3) when you reach it.
 
 - [ ] **Step 1: Write integration test for schema migration (idempotent, creates all collections + indexes).**
 

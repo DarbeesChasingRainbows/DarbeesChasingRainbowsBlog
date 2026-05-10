@@ -305,7 +305,7 @@ No change to existing Playwright suite — Memory layer is backend-only.
 
 ### 10.2 ArangoDB version requirement
 
-ArangoDB ≥ 3.12 (vector index is experimental in 3.12, stable in 3.13+). Document the requirement in `README.md` and `HANDOFF.md`. Local dev `docker-compose.yml` uses `arangodb:3.13` or later.
+ArangoDB ≥ 4.0 (vector index is a first-class index type in 4.x, alongside persistent / geo / ttl / inverted). Document the requirement in `README.md` and `HANDOFF.md`. Local dev `docker-compose.yml` uses `arangodb:4` or later. The exact vector-index creation body shape and AQL similarity function name (`APPROX_NEAR_COSINE` was the 3.x experimental name) must be verified against a running v4 instance during Task A4 — query `/_api/version` and the v4 index docs via Context7 before pinning the body in `MemoryStore.EnsureVectorIndexAsync`.
 
 ## 11. Migration / rollout
 
@@ -349,5 +349,5 @@ These are intentionally not decided here; surface in the implementation plan or 
 
 - Microsoft Semantic Kernel agent-memory guidance: https://learn.microsoft.com/en-us/semantic-kernel/frameworks/agent/agent-memory
 - Microsoft Kernel Memory `ContentStorageService` two-phase write pattern (Context7: `/microsoft/kernel-memory`)
-- ArangoDB vector index documentation (3.12+): `APPROX_NEAR_COSINE` AQL function
+- ArangoDB 4.x vector index documentation (verify exact body shape and AQL function name during implementation; the 3.x experimental form was `APPROX_NEAR_COSINE`)
 - DAIS Bridge implementation history: [HANDOFF.md § Phase 10](../../../HANDOFF.md), commits `f0d09cc` → `71964eb`
