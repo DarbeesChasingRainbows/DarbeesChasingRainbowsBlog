@@ -13,8 +13,10 @@ have everything needed to continue.
 ## Current state at a glance
 
 - **Astro 6.2.1** static site, **TypeScript 6.0.3**, **Tailwind v4**, **DaisyUI v5**, target **Cloudflare Pages**.
+- **.NET 9 Minimal API Gateway** (`Darbee.Gateway`) with **Microsoft Semantic Kernel v1.75**, **SignalR**, and **MCP Client** integration.
 - **72 pages** built in ~8–10 seconds.
 - **3534 internal links** statically verified — zero broken.
+- **11 .NET tests** passing in `dais-bridge.tests`.
 - **14 Playwright smoke tests** passing in ~10 s locally.
 - **CI workflow** runs typecheck → lint → format → build → broken-link check → Playwright tests → Lighthouse budgets on every PR and push to `main`.
 - **Lighthouse budgets** asserted: ≥ 0.9 perf / a11y / best-practices, ≥ 0.95 SEO.
@@ -28,6 +30,8 @@ npm run format:check →  All matched files use Prettier code style
 npm run build        →  72 page(s) built
 npm run check:links  →  Scanned 72 HTML page(s), checked 3534 internal links
 npm test             →  14 / 15 passed (sitemap index 404)
+dotnet build         →  dais-bridge succeeded
+dotnet test          →  11 / 11 passed (dais-bridge.tests)
 ```
 
 ---
@@ -48,6 +52,10 @@ npm test             →  14 / 15 passed (sitemap index 404)
 | Lint | ESLint v10 (flat config) + `eslint-plugin-astro` + `typescript-eslint` |
 | Format | Prettier 3 + `prettier-plugin-astro` + `prettier-plugin-tailwindcss` |
 | CI | GitHub Actions: `verify`, `test`, `lighthouse` jobs |
+| Orchestration | .NET 9 + [Microsoft Semantic Kernel v1.75+](https://github.com/microsoft/semantic-kernel) |
+| API Gateway | ASP.NET Core Minimal API + SignalR |
+| Knowledge Graph| ArangoDB (local) |
+| Research | Context7 via [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk) |
 
 ---
 
@@ -214,6 +222,34 @@ Improved the authoring workflow by adding an explicit trigger for AI metadata ge
 - **Hook Refactor:** Converted Directus hooks to CommonJS for maximum compatibility with the local Docker environment.
 - **Robust Triggering:** Refactored the `geo-optimizer` hook to fire on either a status change or a button click, and to automatically reset the button state after processing.
 
+### Phase 10 — DAIS Bridge & Sovereign Gateway (May 2026)
+
+Files: `dais-bridge/`, `dais-bridge.tests/`, `docs/plans/`, `docs/proposals/`.
+
+Built a local-first "Librarian Agent" gateway to orchestrate the family's architectural intelligence.
+
+**Completed enhancements:**
+- **DAIS Bridge Scaffolding:** Implemented a C# Semantic Kernel orchestrator with 5 native plugins (Obsidian, ArangoDB, Assets, GEO, Git) to automate the flow from Obsidian vault to Astro static site.
+- **Sovereign Gateway Refactor:** Converted the console application into an ASP.NET Core Minimal API with SignalR support for real-time monitoring and kid-safe interactions.
+- **Safety & Isolation:** Implemented `SafetyMiddleware` for deterministic content filtering and tenant-aware graph isolation in the ArangoDB plugin.
+- **MCP Research Integration:** Developed a `ResearchPlugin` utilizing the official `ModelContextProtocol` C# SDK to query live `context7` documentation via HTTP.
+- **Infrastructure:** Aligned project namespaces to `Darbee.Gateway`, updated test projects to .NET 9, and verified 100% test pass rate for backend components.
+
+### Phase 11 — Graph-Backed RAG (in progress, started 2026-05-09)
+
+Branch: `feature/graph-backed-rag`. Spec: [`docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md`](docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md). Plan: [`docs/superpowers/plans/2026-05-09-graph-backed-rag.md`](docs/superpowers/plans/2026-05-09-graph-backed-rag.md). Resume guide: [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md).
+
+Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` namespace backed by ArangoDB (vector index) and LM Studio embeddings (`nomic-embed-text-v1.5`, 768 dim). Hybrid recall: entity extraction → graph expansion → vector top-K rerank. Layered SK 1.75 memory model: built-in `WhiteboardProvider` (short-term), new `DarbeesContextProvider : AIContextProvider` (auto long-term extract), explicit `MemoryPlugin` kernel functions (Remember/Recall). Single DB, normalized collections per content kind, `tenant_id` field on every doc/edge.
+
+**Status as of 2026-05-09:**
+
+- ✅ Phase A1 — Memory model records (`MemoryKind`, `MemoryItem`, `MemoryEdge`, `WriteResult`, `RecallResult`, `ScoredMemoryItem`) — commits `8281b8e`, `2b737f0`
+- ⏸ Phases A2 → G2 pending. Blockers: ArangoDB v4 Docker not running locally; LM Studio Bearer auth token needs to be configured before integration tests can run
+
+See the resume guide for environment setup, deferred verifications (ArangoDB v4 vector index syntax, AQL function name, SK 1.75 `AIContextProvider` overrides), and per-task notes beyond what's in the plan.
+
+**New anti-pattern (to be added to the list when Phase 11 lands):** Don't expose tenant ID as an LLM-bound kernel-function parameter; always read from `ITenantContextAccessor` set by the SignalR hub at connection time. Function parameters are inherently LLM-controllable; non-parameter inputs from DI are not.
+
 ---
 
 ## Project file map (where things live)
@@ -236,6 +272,13 @@ Improved the authoring workflow by adding an explicit trigger for AI metadata ge
 ├── lighthouserc.mobile.json         ← mobile Lighthouse thresholds (NEW)
 ├── docs/
 │   └── security-notes.md            ← yaml@2.x audit warning (won't-fix rationale)
+├── dais-bridge/                     ← .NET 9 Sovereign Gateway
+│   ├── Hubs/                        ← KidSafeHub, ParentHub (SignalR)
+│   ├── Middleware/                  ← SafetyMiddleware (Deterministic Filtering)
+│   ├── Models/                      ← SafetyPolicies, TenantContext
+│   ├── Plugins/                     ← Obsidian, Arango, Asset, GEO, Git, Research (MCP)
+│   └── Program.cs                   ← Minimal API & Semantic Kernel Setup
+├── dais-bridge.tests/               ← xUnit Test Suite for Gateway & Plugins
 ├── scripts/
 │   └── check-internal-links.mjs     ← post-build static link auditor
 ├── tests/
@@ -309,6 +352,9 @@ Improved the authoring workflow by adding an explicit trigger for AI metadata ge
 5. **Don't run multiple parallel `Edit` calls against the same file** — they race and silently drop content. Sequential edits to the same file. (I lost an `import` once and didn't notice until the build broke.)
 6. **Don't add a fourth content type without considering whether it fits the existing layout/card abstractions.** Books were special enough to warrant their own detail page (`/bookshelf/[id].astro` uses `BaseLayout` directly, NOT `PostLayout`) because the rating + 3-takes + notes structure didn't compose cleanly into the `PostLayout` slot model. Use judgment.
 7. **Don't use `locator('h1')` in Playwright without `.first()` if the Astro Dev Toolbar is present.** The toolbar injects several `h1` elements for its own UI (Audit, Settings, etc.), which will cause "strict mode violation" errors in tests.
+8. **Don't use `&&` as a command separator in PowerShell.** It will fail with a syntax error. Use `;` instead (e.g., `dotnet build; dotnet test`).
+9. **Ensure namespace alignment when refactoring C# projects.** If the root namespace changes (e.g., to `Darbee.Gateway`), all plugin and test files must be updated to prevent `CS0234` and `CS0246` resolution errors.
+10. **Enable buffering when reading request bodies in ASP.NET Core Middleware.** Use `context.Request.EnableBuffering()` and reset `Position = 0` if you need to read the body and then allow the rest of the pipeline to process it.
 
 ---
 
@@ -350,6 +396,12 @@ The project has transitioned to a professional, scalable CMS architecture. The *
 1. **Interactive GEO Trigger** — Move the "Auto-Generate GEO Data" trigger into the Directus UI (e.g., as a custom button extension) rather than relying on a `status` dropdown change.
 2. **Media Library Integration** — Ensure the `rich_media` image/gallery blocks are tightly integrated with the Directus assets folder.
 
+### Sovereign Gateway & AI Orchestration (C#)
+1. **Dynamic Policy Engine** — Move safety policies from `safety_policies.json` to ArangoDB, allowing parents to update blocked keywords via the `ParentHub` in real-time.
+2. **SignalR Frontend** — Implement a client for `KidSafeHub` (either as an Obsidian plugin or a lightweight web interface) to allow direct interaction with the "Librarian Supervisor."
+3. **Graph-Backed RAG** — Fully implement ArangoDB as a Semantic Kernel memory store, allowing the agent to "remember" previous architectural decisions across sessions.
+4. **Autonomous Research Loops** — Enhance the `ResearchPlugin` to autonomously trigger documentation lookups when the LLM detects high uncertainty in a technical task.
+
 ---
 
-*Last updated: 2026-05-07. State at this snapshot: all gates green, 72 pages, 3534 internal links verified, 15/15 smoke tests passing, CMS using Native Block Editor with Shortcode resolution, AI optimization button, and Unified Cross-Collection Discovery.*
+*Last updated: 2026-05-08. State at this snapshot: all gates green, 72 pages, 3534 internal links verified, 15/15 smoke tests passing, 11/11 .NET tests passing. DAIS Bridge and Sovereign Gateway operational with SignalR and MCP Research integration.*
