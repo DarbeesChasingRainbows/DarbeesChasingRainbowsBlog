@@ -23,10 +23,12 @@ dotnet test dais-bridge.tests/dais-bridge.tests.csproj
 
 Expected: build succeeds; 11 tests pass.
 
-- [ ] **Verify ArangoDB ≥ 4.0 is available locally for integration tests.**
+- [ ] **Verify ArangoDB is available locally for integration tests.**
+
+The official Docker image is `arangodb` (per upstream README). Use `arangodb:latest` for whatever current version is published; if a `4` tag is unavailable, `latest` gives you the most recent published version.
 
 ```bash
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:4
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:latest
 ```
 
 Wait ~10s, then:
@@ -35,14 +37,17 @@ Wait ~10s, then:
 curl -u root:password http://localhost:8529/_api/version
 ```
 
-Expected: JSON with major version 4.x. If 3.x is returned, vector index creation in Task A4 will use the 3.x experimental syntax and the plan needs adjustment.
+Expected: JSON response. Note the major version returned. If 4.x: vector index is first-class; use modern syntax. If 3.13+: vector index is experimental but available; use experimental syntax in Task A4 and verify against `/_admin/server/role` for capability flags. If 3.12 or earlier: vector RAG is not viable on this instance — upgrade.
 
-- [ ] **Verify LM Studio is running with an embedding model loaded.**
+- [ ] **Verify LM Studio is running with an embedding model loaded AND obtain its API token.**
+
+LM Studio now requires `Authorization: Bearer <token>` on all `/v1/*` calls. Generate a token in LM Studio's developer settings (or copy the existing one). Save it in `appsettings.json` as `AI:LMStudioApiKey` — see Task A6 — or as the `LMSTUDIO_API_KEY` environment variable (overrides config). Without this, every embedding call returns `invalid_api_key`.
 
 In LM Studio, load `nomic-embed-text-v1.5` (768-dim) on the server. Then:
 
 ```bash
-curl http://localhost:1234/v1/embeddings -H "Content-Type: application/json" -d "{\"model\":\"nomic-embed-text-v1.5\",\"input\":\"hello\"}"
+$env:LMSTUDIO_API_KEY="<your-token>"
+curl http://localhost:1234/v1/embeddings -H "Content-Type: application/json" -H "Authorization: Bearer $env:LMSTUDIO_API_KEY" -d "{\"model\":\"nomic-embed-text-v1.5\",\"input\":\"hello\"}"
 ```
 
 Expected: JSON response with a 768-element `data[0].embedding` array.
@@ -286,11 +291,14 @@ public sealed class LmStudioEmbeddingClient : IEmbeddingClient
 
     public int Dimension { get; }
 
-    public LmStudioEmbeddingClient(HttpClient http, string baseUrl, string modelId, int expectedDimension)
+    private readonly string? _apiKey;
+
+    public LmStudioEmbeddingClient(HttpClient http, string baseUrl, string modelId, int expectedDimension, string? apiKey = null)
     {
         _http = http;
         _baseUrl = baseUrl.TrimEnd('/');
         _modelId = modelId;
+        _apiKey = apiKey;
         Dimension = expectedDimension;
     }
 
@@ -304,7 +312,15 @@ public sealed class LmStudioEmbeddingClient : IEmbeddingClient
     {
         var url = $"{_baseUrl}/embeddings";
         var body = new EmbeddingRequest(_modelId, texts.Count == 1 ? (object)texts[0] : texts);
-        var response = await _http.PostAsJsonAsync(url, body, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body)
+        };
+        if (!string.IsNullOrWhiteSpace(_apiKey))
+        {
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+        }
+        var response = await _http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
         var parsed = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("Embedding response was null.");
@@ -989,7 +1005,8 @@ Replace the `AI` block and append a `Memory` block:
     "LMStudioUrl": "http://localhost:1234/v1",
     "ModelId": "local-model",
     "EmbeddingModelId": "nomic-embed-text-v1.5",
-    "EmbeddingDimension": 768
+    "EmbeddingDimension": 768,
+    "LMStudioApiKey": ""
   },
   "Memory": {
     "RecallAlpha": 0.7,
@@ -1012,10 +1029,12 @@ Insert after the existing config reads:
         var embeddingDimension = int.Parse(builder.Configuration["AI:EmbeddingDimension"] ?? "768");
 
         builder.Services.AddHttpClient("memory");
+        var lmStudioApiKey = Environment.GetEnvironmentVariable("LMSTUDIO_API_KEY")
+                            ?? builder.Configuration["AI:LMStudioApiKey"];
         builder.Services.AddSingleton<IEmbeddingClient>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new LmStudioEmbeddingClient(http, lmStudioUrl, embeddingModelId, embeddingDimension);
+            return new LmStudioEmbeddingClient(http, lmStudioUrl, embeddingModelId, embeddingDimension, lmStudioApiKey);
         });
         builder.Services.AddSingleton<MemoryStore>(sp =>
         {
