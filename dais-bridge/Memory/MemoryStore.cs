@@ -244,6 +244,164 @@ public sealed class MemoryStore : IDisposable
         return (false, errorNum, content);
     }
 
+    public async Task<WriteResult> UpsertDecisionAsync(
+        string tenantId, string subject, string chose, string because,
+        IReadOnlyList<string> alternatives, CancellationToken ct = default)
+    {
+        ValidateTenantId(tenantId);
+        var text = $"Decision: {subject}. Chose {chose} because {because}. Alternatives considered: {string.Join(", ", alternatives)}";
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenantId,
+            ["chose"] = chose,
+            ["because"] = because,
+            ["alternatives"] = alternatives,
+            ["status"] = "pending_embedding",
+            ["created_at"] = DateTime.UtcNow.ToString("O"),
+            ["updated_at"] = DateTime.UtcNow.ToString("O")
+        };
+        return await UpsertContentAsync(MemoryCollections.Decisions, text, doc, ct);
+    }
+
+    public async Task<WriteResult> UpsertObservationAsync(
+        string tenantId, string source, string text, object payload, CancellationToken ct = default)
+    {
+        ValidateTenantId(tenantId);
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenantId,
+            ["source"] = source,
+            ["payload"] = payload,
+            ["status"] = "pending_embedding",
+            ["created_at"] = DateTime.UtcNow.ToString("O"),
+            ["updated_at"] = DateTime.UtcNow.ToString("O")
+        };
+        return await UpsertContentAsync(MemoryCollections.Observations, text, doc, ct);
+    }
+
+    public async Task<WriteResult> UpsertFactAsync(
+        string tenantId, string text, string? sourceThread, CancellationToken ct = default)
+    {
+        ValidateTenantId(tenantId);
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenantId,
+            ["source_thread"] = sourceThread,
+            ["status"] = "pending_embedding",
+            ["created_at"] = DateTime.UtcNow.ToString("O"),
+            ["updated_at"] = DateTime.UtcNow.ToString("O")
+        };
+        return await UpsertContentAsync(MemoryCollections.Facts, text, doc, ct);
+    }
+
+    public async Task<WriteResult> UpsertSummaryAsync(
+        string tenantId, string text, string threadId, CancellationToken ct = default)
+    {
+        ValidateTenantId(tenantId);
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenantId,
+            ["thread_id"] = threadId,
+            ["status"] = "pending_embedding",
+            ["created_at"] = DateTime.UtcNow.ToString("O"),
+            ["updated_at"] = DateTime.UtcNow.ToString("O")
+        };
+        return await UpsertContentAsync(MemoryCollections.Summaries, text, doc, ct);
+    }
+
+    public async Task<string> UpsertEntityAsync(
+        string tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
+    {
+        ValidateTenantId(tenantId);
+        var doc = new Dictionary<string, object?>
+        {
+            ["canonical_name"] = canonicalName,
+            ["aliases"] = aliases,
+            ["type"] = type,
+            ["tenant_id"] = tenantId,
+            ["created_at"] = DateTime.UtcNow.ToString("O")
+        };
+        var insert = await _arango.Document.PostDocumentAsync(MemoryCollections.Entities, doc);
+        return insert._key;
+    }
+
+    public async Task<string> UpsertEdgeAsync(
+        string tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
+    {
+        ValidateTenantId(tenantId);
+        var doc = new Dictionary<string, object?>
+        {
+            ["_from"] = fromId,
+            ["_to"] = toId,
+            ["kind"] = kind,
+            ["weight"] = weight,
+            ["tenant_id"] = tenantId,
+            ["created_at"] = DateTime.UtcNow.ToString("O")
+        };
+        var insert = await _arango.Document.PostDocumentAsync(MemoryCollections.Edges, doc);
+        return insert._key;
+    }
+
+    public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100)
+    {
+        var aql = "FOR p IN @@col SORT p.queued_at ASC LIMIT @limit RETURN { id: p._key, targetCollection: p.target_collection, targetKey: p.target_key }";
+        var bindVars = new Dictionary<string, object> { ["@col"] = MemoryCollections.PendingEmbeddings, ["limit"] = limit };
+        var cursor = await _arango.Cursor.PostCursorAsync<PendingEmbeddingRow>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody { Query = aql, BindVars = bindVars });
+        return cursor.Result.Select(r => (r.id, r.targetCollection, r.targetKey)).ToList();
+    }
+
+    private sealed record PendingEmbeddingRow(string id, string targetCollection, string targetKey);
+
+    private async Task<WriteResult> UpsertContentAsync(string collection, string text, Dictionary<string, object?> doc, CancellationToken ct)
+    {
+        var insert = await _arango.Document.PostDocumentAsync(collection, doc);
+        var key = insert._key;
+
+        if (_embeddings is null) return WriteResult.Pending(key);
+        try
+        {
+            var emb = await _embeddings.EmbedAsync(text, ct);
+            var update = new Dictionary<string, object?>
+            {
+                ["embedding"] = emb,
+                ["status"] = "ready",
+                ["updated_at"] = DateTime.UtcNow.ToString("O")
+            };
+            await _arango.Document.PatchDocumentAsync<Dictionary<string, object?>, Dictionary<string, object?>>(
+                collection, key, update);
+            await EnsureVectorIndexAsync(collection, ct);
+            return WriteResult.Ready(key);
+        }
+        catch
+        {
+            await EnqueuePendingEmbeddingAsync(collection, key);
+            return WriteResult.Pending(key);
+        }
+    }
+
+    private async Task EnqueuePendingEmbeddingAsync(string targetCollection, string targetKey)
+    {
+        var doc = new Dictionary<string, object?>
+        {
+            ["target_collection"] = targetCollection,
+            ["target_key"] = targetKey,
+            ["attempts"] = 0,
+            ["queued_at"] = DateTime.UtcNow.ToString("O")
+        };
+        await _arango.Document.PostDocumentAsync(MemoryCollections.PendingEmbeddings, doc);
+    }
+
+    private static void ValidateTenantId(string tenantId)
+    {
+        if (string.IsNullOrWhiteSpace(tenantId))
+            throw new InvalidOperationException("Tenant ID must be a non-empty string.");
+    }
+
     public void Dispose()
     {
         _arango.Dispose();
