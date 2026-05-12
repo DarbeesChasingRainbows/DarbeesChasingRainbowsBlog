@@ -16,7 +16,7 @@ have everything needed to continue.
 - **.NET 9 Minimal API Gateway** (`Darbee.Gateway`) with **Microsoft Semantic Kernel v1.75**, **SignalR**, and **MCP Client** integration.
 - **72 pages** built in ~8–10 seconds.
 - **3534 internal links** statically verified — zero broken.
-- **11 .NET tests** passing in `dais-bridge.tests`.
+- **.NET tests:** 11 passing on `master`; 29 passing on `feature/graph-backed-rag` (adds 18 unit + integration tests for the memory layer; integration tests gated on `ARANGO_TEST_RUN=1`).
 - **14 Playwright smoke tests** passing in ~10 s locally.
 - **CI workflow** runs typecheck → lint → format → build → broken-link check → Playwright tests → Lighthouse budgets on every PR and push to `main`.
 - **Lighthouse budgets** asserted: ≥ 0.9 perf / a11y / best-practices, ≥ 0.95 SEO.
@@ -237,16 +237,29 @@ Built a local-first "Librarian Agent" gateway to orchestrate the family's archit
 
 ### Phase 11 — Graph-Backed RAG (in progress, started 2026-05-09)
 
-Branch: `feature/graph-backed-rag`. Spec: [`docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md`](docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md). Plan: [`docs/superpowers/plans/2026-05-09-graph-backed-rag.md`](docs/superpowers/plans/2026-05-09-graph-backed-rag.md). Resume guide: [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md).
+Branch: `feature/graph-backed-rag`. Spec: [`docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md`](docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md). Plan: [`docs/superpowers/plans/2026-05-09-graph-backed-rag.md`](docs/superpowers/plans/2026-05-09-graph-backed-rag.md). Resume guide: [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md). Active TODO: [`TODO-phase11.md`](TODO-phase11.md).
 
 Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` namespace backed by ArangoDB (vector index) and LM Studio embeddings (`nomic-embed-text-v1.5`, 768 dim). Hybrid recall: entity extraction → graph expansion → vector top-K rerank. Layered SK 1.75 memory model: built-in `WhiteboardProvider` (short-term), new `DarbeesContextProvider : AIContextProvider` (auto long-term extract), explicit `MemoryPlugin` kernel functions (Remember/Recall). Single DB, normalized collections per content kind, `tenant_id` field on every doc/edge.
 
-**Status as of 2026-05-09:**
+**Status as of 2026-05-12:**
 
-- ✅ Phase A1 — Memory model records (`MemoryKind`, `MemoryItem`, `MemoryEdge`, `WriteResult`, `RecallResult`, `ScoredMemoryItem`) — commits `8281b8e`, `2b737f0`
-- ⏸ Phases A2 → G2 pending. Blockers: ArangoDB v4 Docker not running locally; LM Studio Bearer auth token needs to be configured before integration tests can run
+- ✅ A1 — Memory model records (`8281b8e`, `2b737f0`)
+- ✅ A2 — `IEmbeddingClient` interface + failing test (`78c8b52`)
+- ✅ A3 — `LmStudioEmbeddingClient` impl (`e3c45bf`)
+- ✅ B1 — `TenantContext` + AsyncLocal `ITenantContextAccessor` (`4f600e3`)
+- ✅ docs — v4 reversal: realized ArangoDB v4 isn't released yet; retargeted to 3.12.x (`8086a4b`)
+- ✅ docs — A4 redesign based on live smoke-test findings (`666c2bb`)
+- ✅ A4 — `MemoryStore` schema + lazy vector index lifecycle (`ad92b61`)
+- ✅ A5 — `MemoryStore` content/edge/entity write paths with two-phase embedding (`4c3ecf0`)
+- ⏳ A6 → G2 remaining. See [`TODO-phase11.md`](TODO-phase11.md) for the punchlist and [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md) for environment + per-task gotchas.
 
-See the resume guide for environment setup, deferred verifications (ArangoDB v4 vector index syntax, AQL function name, SK 1.75 `AIContextProvider` overrides), and per-task notes beyond what's in the plan.
+**Working state on this branch:** 29/29 tests pass (`ARANGO_TEST_RUN=1 dotnet test`). Local dev requires `arangodb:3.12` Docker container started with `--vector-index` flag on port 8529. LM Studio with `nomic-embed-text-v1.5` and a Bearer token becomes a hard requirement starting at A6 (DI wiring); A4/A5 only needed ArangoDB.
+
+**Smoke-test surprises captured during this work (already baked into spec/plan):**
+- ArangoDB 3.12 vector index requires `--vector-index` startup flag (errorNum 10 without it). `--experimental-vector-index` is a deprecated alias.
+- Vector index POST on an empty collection returns 500/1555 but persists an "unusable" index entry that AQL prefers over later good ones — must be cleaned up. Drives the lazy-creation pattern in A4.
+- AQL `APPROX_NEAR_COSINE` must be bound via `LET sim = APPROX_NEAR_COSINE(...)` and reused; calling it twice in one query is errorNum 1554.
+- ArangoDB rejects chunked Transfer-Encoding (errorNum 9). `JsonContent.Create()` triggers it — must use `StringContent` with serialized JSON for explicit `Content-Length`.
 
 **New anti-pattern (to be added to the list when Phase 11 lands):** Don't expose tenant ID as an LLM-bound kernel-function parameter; always read from `ITenantContextAccessor` set by the SignalR hub at connection time. Function parameters are inherently LLM-controllable; non-parameter inputs from DI are not.
 
