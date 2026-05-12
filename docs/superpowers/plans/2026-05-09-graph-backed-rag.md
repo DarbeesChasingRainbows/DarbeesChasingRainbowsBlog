@@ -6,7 +6,7 @@
 
 **Architecture:** Layered SK 1.75 memory model — built-in `WhiteboardProvider` (short-term, no code), new `DarbeesContextProvider : AIContextProvider` (auto long-term extract), and explicit `MemoryPlugin` kernel functions — all backed by a single `MemoryStore` that does Arango I/O. Hybrid recall = entity extraction → 1-hop graph expansion → vector top-K rerank, single database, normalized collections per content kind, `tenant_id` field for isolation.
 
-**Tech Stack:** C# .NET 9, Microsoft.SemanticKernel 1.75.0, ArangoDBNetStandard 2.0.0, ArangoDB ≥ 4.0 (vector index is first-class in 4.x), LM Studio (`/v1/embeddings`), xUnit 2.9.3.
+**Tech Stack:** C# .NET 9, Microsoft.SemanticKernel 1.75.0, ArangoDBNetStandard 2.0.0, ArangoDB 3.12.x (current stable; vector index ships as an experimental feature — v4 with first-class vector index is in development and not yet released), LM Studio (`/v1/embeddings`), xUnit 2.9.3.
 
 **Spec:** [docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md](../specs/2026-05-09-graph-backed-rag-design.md)
 
@@ -25,10 +25,16 @@ Expected: build succeeds; 11 tests pass.
 
 - [ ] **Verify ArangoDB is available locally for integration tests.**
 
-The official Docker image is `arangodb` (per upstream README). Use `arangodb:latest` for whatever current version is published; if a `4` tag is unavailable, `latest` gives you the most recent published version.
+The official Docker image is `arangodb`. Use `arangodb:3.12` for major-version pinning or `arangodb:latest` (currently aliases to the 3.12.x stable line). v4 is in development and not published.
 
 ```bash
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:latest
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12
+```
+
+If A4 reveals the vector index requires an experimental startup option, restart with the flag — for example:
+
+```bash
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12 --experimental-vector-index
 ```
 
 Wait ~10s, then:
@@ -37,7 +43,7 @@ Wait ~10s, then:
 curl -u root:password http://localhost:8529/_api/version
 ```
 
-Expected: JSON response. Note the major version returned. If 4.x: vector index is first-class; use modern syntax. If 3.13+: vector index is experimental but available; use experimental syntax in Task A4 and verify against `/_admin/server/role` for capability flags. If 3.12 or earlier: vector RAG is not viable on this instance — upgrade.
+Expected: JSON response with `"version": "3.12.x"`. If the response is below 3.12, upgrade — earlier minor versions don't expose the experimental vector index API.
 
 - [ ] **Verify LM Studio is running with an embedding model loaded AND obtain its API token.**
 
@@ -423,11 +429,13 @@ git commit -m "feat(memory): implement LmStudioEmbeddingClient with batch + dim 
 
 ArangoDBNetStandard 2.0.0 typed API does not expose the vector index. The vector index is created via raw HTTP `POST /_api/index?collection=<name>` with a JSON body. `MemoryStore` will own a `HttpClient` for these escape-hatch calls in addition to the `ArangoDBClient` for typed operations.
 
-**v4 syntax verification (do this before Step 3 of this task):**
+**Vector-index syntax — empirical verification posture:**
 
-Query Context7 with `libraryId: /arangodb/arangodb` and `query: "vector index POST /_api/index type vector body shape v4 dimension metric example"`. Confirm the exact body shape used by the implementation below. The shape used here (`type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`) was the 3.x experimental form; it may be the same in 4.x or may have moved fields out of `params`. If it has changed, update `EnsureVectorIndexAsync` to match before running tests.
+The Context7 corpus `/arangodb/arangodb` does not contain vector-index examples (confirmed during the 2026-05-10 session). The plan therefore uses the 3.x experimental form as the starting point: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`. Push this body to a running 3.12 instance — ArangoDB returns descriptive 400s naming any invalid field. Adjust `EnsureVectorIndexAsync` based on the live response.
 
-Similarly, the AQL similarity function for vector search (`APPROX_NEAR_COSINE` in 3.x experimental) may have stabilized to a different name in 4.x. Verify and update `MemoryRecallEngine.VectorTopKAsync` (Task C3) when you reach it.
+If the request returns an error indicating vector indexes are disabled, restart the container with `--experimental-vector-index` (see Pre-flight) and retry.
+
+The AQL similarity function is `APPROX_NEAR_COSINE` — this is the only name available since v4 (which would stabilize naming) is not yet released. C3 uses this name as-is.
 
 - [ ] **Step 1: Write integration test for schema migration (idempotent, creates all collections + indexes).**
 
@@ -661,7 +669,7 @@ $env:ARANGO_TEST_RUN="1"
 dotnet test dais-bridge.tests/dais-bridge.tests.csproj --filter "FullyQualifiedName~MemoryStoreSchemaTests"
 ```
 
-Expected: PASS. If FAIL, capture error and verify ArangoDB ≥ 3.13 (vector index requires it).
+Expected: PASS. If FAIL, capture error and verify ArangoDB ≥ 3.12 and that the experimental vector index is enabled (may require `--experimental-vector-index` startup option; see Pre-flight).
 
 - [ ] **Step 5: Commit.**
 
@@ -2962,13 +2970,13 @@ After the existing Phase 10 section, insert a Phase 11 entry summarizing:
 - `AdminMemoryPlugin` on `kernel-admin` only; `ParentHub.ListMemories` exposed via SignalR
 - Cross-tenant isolation enforced via `TenantContext` AsyncLocal accessor
 - Embedding via LM Studio `/v1/embeddings` (default `nomic-embed-text-v1.5`, 768 dim)
-- Dependency: ArangoDB ≥ 3.13 (vector index)
+- Dependency: ArangoDB 3.12.x (vector index, currently an experimental feature; may require `--experimental-vector-index` startup option)
 
 Also append HANDOFF anti-pattern #11: "Don't expose tenant ID as an LLM-bound kernel-function parameter; always read from `ITenantContextAccessor` set by the hub." Number is 11 because 10 already exists.
 
 - [ ] **Step 2: Add ArangoDB version requirement to `README.md`.**
 
-Find the "Tech stack" or "Dependencies" section and add: "ArangoDB ≥ 3.13 (vector index used by Memory layer)".
+Find the "Tech stack" or "Dependencies" section and add: "ArangoDB 3.12.x (vector index used by Memory layer; currently an experimental feature)".
 
 - [ ] **Step 3: Add a Memory section to `README.md`.**
 
@@ -2999,7 +3007,7 @@ Find the existing job that runs `dotnet test` and add (or amend):
 ```yaml
       services:
         arango:
-          image: arangodb:3.13
+          image: arangodb:3.12
           env:
             ARANGO_ROOT_PASSWORD: password
           ports:
@@ -3034,7 +3042,7 @@ Expected: integration tests run and pass with `ARANGO_TEST_URL` set.
 
 ```bash
 git add .github/workflows/ci.yml
-git commit -m "ci(memory): add ArangoDB 3.13 service container so integration tests run on PRs"
+git commit -m "ci(memory): add ArangoDB 3.12 service container so integration tests run on PRs"
 ```
 
 ---

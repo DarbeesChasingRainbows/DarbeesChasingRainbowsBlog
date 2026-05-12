@@ -305,7 +305,7 @@ No change to existing Playwright suite — Memory layer is backend-only.
 
 ### 10.2 ArangoDB version requirement
 
-ArangoDB ≥ 4.0 (vector index is a first-class index type in 4.x, alongside persistent / geo / ttl / inverted). Document the requirement in `README.md` and `HANDOFF.md`. Local dev `docker-compose.yml` uses `arangodb:4` or later. The exact vector-index creation body shape and AQL similarity function name (`APPROX_NEAR_COSINE` was the 3.x experimental name) must be verified against a running v4 instance during Task A4 — query `/_api/version` and the v4 index docs via Context7 before pinning the body in `MemoryStore.EnsureVectorIndexAsync`.
+ArangoDB 3.12.x is the target (current stable; vector index ships as an experimental feature in 3.12). ArangoDB 4.x — with first-class vector index — is in development and not yet generally available; `arangodb:latest` on Docker Hub currently aliases to the 3.12.x stable line. Document the requirement in `README.md` and `HANDOFF.md`. Local dev `docker-compose.yml` uses `arangodb:3.12` or `arangodb:latest`. The vector-index body shape (`type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`) and the AQL similarity function `APPROX_NEAR_COSINE` are the 3.x experimental forms; verify empirically at Task A4 by issuing `POST /_api/index` against a running 3.12 instance — ArangoDB returns descriptive 400s naming any invalid field. The experimental feature may require a startup option such as `--experimental-vector-index`; surface that flag in `docker run` / docker-compose if A4 verification reveals it's needed.
 
 ## 11. Migration / rollout
 
@@ -349,5 +349,5 @@ These are intentionally not decided here; surface in the implementation plan or 
 
 - Microsoft Semantic Kernel agent-memory guidance: https://learn.microsoft.com/en-us/semantic-kernel/frameworks/agent/agent-memory
 - Microsoft Kernel Memory `ContentStorageService` two-phase write pattern (Context7: `/microsoft/kernel-memory`)
-- ArangoDB 4.x vector index documentation (verify exact body shape and AQL function name during implementation; the 3.x experimental form was `APPROX_NEAR_COSINE`)
+- ArangoDB 3.12.x vector index documentation (experimental feature; AQL function is `APPROX_NEAR_COSINE`; verify exact body shape and any required startup options empirically during Task A4 — Context7 corpus `/arangodb/arangodb` does not currently contain vector-index examples, so the live `POST /_api/index` response is the authoritative reference)
 - DAIS Bridge implementation history: [HANDOFF.md § Phase 10](../../../HANDOFF.md), commits `f0d09cc` → `71964eb`
