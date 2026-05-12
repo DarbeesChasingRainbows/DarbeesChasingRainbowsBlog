@@ -171,7 +171,10 @@ Recall(query, tenantId, topK=8, expandHops=1):
 
   3. VectorTopK(query, tenantId, 2*topK):
        queryEmbedding = LmStudioEmbeddingClient.Embed(query)
-       UNION across content collections, ordered by APPROX_NEAR_COSINE:
+       UNION across content collections, ordered by APPROX_NEAR_COSINE.
+       The AQL must use a LET binding for the similarity and reuse it in
+       SORT and RETURN — calling APPROX_NEAR_COSINE twice in the same query
+       breaks the vector-search optimizer (errorNum 1554).
        AQL: FOR i IN UNION(
               (FOR d IN memory_decisions
                  FILTER d.tenant_id == @tenantId AND d.status == 'ready'
@@ -181,9 +184,10 @@ Recall(query, tenantId, topK=8, expandHops=1):
                  RETURN MERGE(o, { _kind: 'observation' })),
               (FOR f IN memory_facts ...),
               (FOR s IN memory_summaries ...))
-            SORT APPROX_NEAR_COSINE(i.embedding, @queryEmb) DESC
+            LET sim = APPROX_NEAR_COSINE(i.embedding, @queryEmb)
+            SORT sim DESC
             LIMIT @limit
-            RETURN { item: i, similarity: APPROX_NEAR_COSINE(i.embedding, @queryEmb) }
+            RETURN { item: i, similarity: sim }
        Returns: vectorCandidates[]
 
   4. Score & merge:
@@ -305,7 +309,24 @@ No change to existing Playwright suite — Memory layer is backend-only.
 
 ### 10.2 ArangoDB version requirement
 
-ArangoDB 3.12.x is the target (current stable; vector index ships as an experimental feature in 3.12). ArangoDB 4.x — with first-class vector index — is in development and not yet generally available; `arangodb:latest` on Docker Hub currently aliases to the 3.12.x stable line. Document the requirement in `README.md` and `HANDOFF.md`. Local dev `docker-compose.yml` uses `arangodb:3.12` or `arangodb:latest`. The vector-index body shape (`type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`) and the AQL similarity function `APPROX_NEAR_COSINE` are the 3.x experimental forms; verify empirically at Task A4 by issuing `POST /_api/index` against a running 3.12 instance — ArangoDB returns descriptive 400s naming any invalid field. The experimental feature may require a startup option such as `--experimental-vector-index`; surface that flag in `docker run` / docker-compose if A4 verification reveals it's needed.
+ArangoDB 3.12.x is the target (current stable; vector index ships as an experimental feature in 3.12). ArangoDB 4.x — with first-class vector index — is in development and not yet generally available; `arangodb:latest` on Docker Hub currently aliases to the 3.12.x stable line (smoke test 2026-05-12 ran on `arangodb:3.12.9-1` enterprise). Document the requirement in `README.md` and `HANDOFF.md`. Local dev `docker-compose.yml` uses `arangodb:3.12` with the `--vector-index` startup flag.
+
+**Vector index constraints (empirically verified 2026-05-12):**
+
+- **Startup flag required.** Without `--vector-index` (or the deprecated alias `--experimental-vector-index`, which logs a rename warning), `POST /_api/index` with `type: "vector"` returns `400 / errorNum 10 "vector index feature is not enabled"`. Run the container with the flag; CI service container `command:` needs it too.
+- **Body shape:** `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`. ArangoDB returns additional defaulted fields on success (`trainingIterations: 25`, `defaultNProbe: 1`, `trainingState: "ready"` once trained).
+- **Cold-start: vector index cannot be created on an empty / under-populated collection.** The IVF clustering requires `documentCount >= nLists`. POST returns `500 / errorNum 1555 "vector index not ready"` — **but the index entry is still persisted** in `trainingState: "unusable"` state. ArangoDB will subsequently prefer the unusable index over any later-created good one in AQL query planning, so unusable indexes must be cleaned up.
+- **AQL similarity function:** `APPROX_NEAR_COSINE`. No `OPTIONS { useExperimentalVectorIndex: true }` clause is needed (that was an older pre-rename form). Calling `APPROX_NEAR_COSINE` twice in the same query gives `errorNum 1554` — must use `LET sim = APPROX_NEAR_COSINE(...)` and reuse `sim` (see section 6.3).
+
+**Lazy vector index creation pattern.** Because of the cold-start constraint, `EnsureSchemaAsync` cannot create vector indexes at app startup (collections are empty). The pattern: `EnsureSchemaAsync` creates collections + non-vector indexes only; a public `EnsureVectorIndexAsync(collection)` is called from write paths after each successful insert. It is idempotent and cheap (caches "usable index exists" per collection in memory after first observation), and:
+
+1. lists indexes on the collection,
+2. if a `trainingState: "ready"` vector index with matching `params` exists → caches and returns,
+3. if any `trainingState: "unusable"` vector indexes exist → deletes them,
+4. counts documents in the collection; if `count < nLists`, returns without error (try again on next insert),
+5. POSTs the vector index; on 1555 (race with concurrent writes), logs and returns (will retry on next call).
+
+`nLists` is configurable via `Memory:VectorNLists` (default 1 for dev/integration tests; production typically 100+). Smaller `nLists` accepts a smaller training set at the cost of search quality; this is the tradeoff that lets the dev loop work with handful-of-doc fixtures.
 
 ## 11. Migration / rollout
 
@@ -334,9 +355,11 @@ These are intentionally not decided here; surface in the implementation plan or 
 - Whether `Recall` returns truncated text (preview) or full text in `RecallResult`
 - LM Studio request batching for many small embeddings (keep 1-per-request first; revisit if hot)
 - Whether kid-safe `Recall` exposes `path` (entity citations) or hides it for simplicity in the kid UI
-- ArangoDB experimental-vector-index AQL flag (`OPTIONS { useExperimentalVectorIndex: true }`) on the version we target
 - Exact `AIContextProvider` override method name in SK 1.75 (`OnMessageAddedAsync` vs. `OnAIInvocationAsync` vs. `OnNewMessageAsync`); section 6.2 uses placeholder pending live-API check
-- DI lifetime for `ITenantContextAccessor` (`AddScoped` is the current default; SignalR hub-method scopes may favor a hybrid `IHubCallerContext`-keyed dictionary — confirm during Phase B)
+- DI lifetime for `ITenantContextAccessor` (`AddSingleton` is the current default with AsyncLocal; SignalR hub-method scopes may favor a hybrid `IHubCallerContext`-keyed dictionary — confirm during Phase B)
+- Production `Memory:VectorNLists` value (default 1 for dev/test; production should pick a value matched to expected document volume per content collection — 100 is a common starting point for IVF clustering with thousands of docs)
+
+**Resolved during smoke test 2026-05-12 (no longer open):** ArangoDB vector index body shape, AQL similarity function name, AQL OPTIONS clause requirement, startup flag name. See section 10.2.
 
 ## 13. Anti-patterns to avoid (incorporated from HANDOFF.md)
 

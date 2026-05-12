@@ -27,14 +27,10 @@ Expected: build succeeds; 11 tests pass.
 
 The official Docker image is `arangodb`. Use `arangodb:3.12` for major-version pinning or `arangodb:latest` (currently aliases to the 3.12.x stable line). v4 is in development and not published.
 
-```bash
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12
-```
-
-If A4 reveals the vector index requires an experimental startup option, restart with the flag — for example:
+**The `--vector-index` startup flag is required.** Without it, `POST /_api/index` with `type: "vector"` returns `400 / errorNum 10 "vector index feature is not enabled"`. `--experimental-vector-index` is a deprecated alias that logs a rename warning but still works.
 
 ```bash
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12 --experimental-vector-index
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12 --vector-index
 ```
 
 Wait ~10s, then:
@@ -421,23 +417,26 @@ git commit -m "feat(memory): implement LmStudioEmbeddingClient with batch + dim 
 
 ---
 
-### Task A4: MemoryStore — schema migration
+### Task A4: MemoryStore — schema migration + lazy vector index
 
 **Files:**
 - Create: `dais-bridge/Memory/MemoryStore.cs`
 - Create: `dais-bridge.tests/Memory/MemoryStoreSchemaTests.cs`
+- Create: `dais-bridge.tests/Memory/MemoryStoreVectorIndexTests.cs`
 
 ArangoDBNetStandard 2.0.0 typed API does not expose the vector index. The vector index is created via raw HTTP `POST /_api/index?collection=<name>` with a JSON body. `MemoryStore` will own a `HttpClient` for these escape-hatch calls in addition to the `ArangoDBClient` for typed operations.
 
-**Vector-index syntax — empirical verification posture:**
+**Vector-index constraints (empirically verified 2026-05-12 — see spec §10.2):**
 
-The Context7 corpus `/arangodb/arangodb` does not contain vector-index examples (confirmed during the 2026-05-10 session). The plan therefore uses the 3.x experimental form as the starting point: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`. Push this body to a running 3.12 instance — ArangoDB returns descriptive 400s naming any invalid field. Adjust `EnsureVectorIndexAsync` based on the live response.
+- Body shape: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`.
+- Cold start: vector index POST on an empty / under-trained collection returns `500 / errorNum 1555 "vector index not ready"`, **but persists an unusable index entry that AQL will prefer over later good ones** — must be cleaned up.
+- `nLists` must be ≤ document count. Configurable via `Memory:VectorNLists` (default 1 for dev/test).
+- AQL similarity: `APPROX_NEAR_COSINE`. Must be bound via `LET sim = APPROX_NEAR_COSINE(...)` and reused — two direct calls in one query → errorNum 1554.
+- Server requires `--vector-index` startup flag (see Pre-flight); without it POST returns errorNum 10.
 
-If the request returns an error indicating vector indexes are disabled, restart the container with `--experimental-vector-index` (see Pre-flight) and retry.
+**Design: lazy vector index.** `EnsureSchemaAsync` creates collections + non-vector indexes only. A new public `EnsureVectorIndexAsync(collection)` is called from write paths (Task A5) after each successful insert. It is idempotent and caches "usable index exists" per collection in memory after first observation, so the steady-state cost is one cache check.
 
-The AQL similarity function is `APPROX_NEAR_COSINE` — this is the only name available since v4 (which would stabilize naming) is not yet released. C3 uses this name as-is.
-
-- [ ] **Step 1: Write integration test for schema migration (idempotent, creates all collections + indexes).**
+- [ ] **Step 1: Write integration test for schema migration (collections + non-vector indexes only).**
 
 ```csharp
 using System.Net.Http;
@@ -478,21 +477,21 @@ public class MemoryStoreSchemaTests
     {
         var rootTransport = HttpApiTransport.UsingBasicAuth(new Uri(ArangoUrl), "_system", ArangoUser, ArangoPass);
         using var rootClient = new ArangoDBClient(rootTransport);
-        try { await rootClient.Database.DeleteDatabaseAsync(dbName); } catch { /* best-effort */ }
+        try { await rootClient.Database.DeleteDatabaseAsync(dbName); } catch { }
     }
 
     [Fact]
-    public async Task EnsureSchemaAsync_CreatesAllCollectionsAndIndexes_Idempotent()
+    public async Task EnsureSchemaAsync_CreatesAllCollectionsAndPersistentIndexes_Idempotent()
     {
         if (!ArangoEnabled) return;
         var dbName = await CreateUniqueDb();
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, embeddingDimension: 768, http);
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, embeddingDimension: 768, vectorNLists: 1, http);
 
             await store.EnsureSchemaAsync();
-            await store.EnsureSchemaAsync(); // second call is no-op
+            await store.EnsureSchemaAsync();
 
             var collections = await store.ListCollectionsAsync();
             Assert.Contains("memory_decisions", collections);
@@ -511,21 +510,139 @@ public class MemoryStoreSchemaTests
 }
 ```
 
-- [ ] **Step 2: Run test — expect failure (MemoryStore does not exist).**
-
-```bash
-dotnet test dais-bridge.tests/dais-bridge.tests.csproj --filter "FullyQualifiedName~MemoryStoreSchemaTests"
-```
-
-Expected: FAIL — `MemoryStore` not found.
-
-- [ ] **Step 3: Implement `MemoryStore` with schema migration.**
+- [ ] **Step 2: Write integration test for lazy vector index lifecycle.**
 
 ```csharp
 using System.Net.Http;
 using System.Net.Http.Json;
+using ArangoDBNetStandard;
+using ArangoDBNetStandard.Transport.Http;
+using Darbee.Gateway.Memory;
+
+namespace Darbee.Gateway.Tests.Memory;
+
+[Trait("Category", "Integration")]
+public class MemoryStoreVectorIndexTests
+{
+    private static readonly string TestDbBase = "darbees_memory_test";
+
+    private static string ArangoUrl =>
+        Environment.GetEnvironmentVariable("ARANGO_TEST_URL") ?? "http://localhost:8529";
+    private static string ArangoUser =>
+        Environment.GetEnvironmentVariable("ARANGO_TEST_USER") ?? "root";
+    private static string ArangoPass =>
+        Environment.GetEnvironmentVariable("ARANGO_TEST_PASS") ?? "password";
+    private static bool ArangoEnabled =>
+        Environment.GetEnvironmentVariable("ARANGO_TEST_URL") != null
+        || Environment.GetEnvironmentVariable("ARANGO_TEST_RUN") == "1";
+
+    private static async Task<string> CreateUniqueDb()
+    {
+        var dbName = $"{TestDbBase}_{Guid.NewGuid():N}";
+        var rootTransport = HttpApiTransport.UsingBasicAuth(new Uri(ArangoUrl), "_system", ArangoUser, ArangoPass);
+        using var rootClient = new ArangoDBClient(rootTransport);
+        await rootClient.Database.PostDatabaseAsync(new ArangoDBNetStandard.DatabaseApi.Models.PostDatabaseBody { Name = dbName });
+        return dbName;
+    }
+
+    private static async Task DropDb(string dbName)
+    {
+        var rootTransport = HttpApiTransport.UsingBasicAuth(new Uri(ArangoUrl), "_system", ArangoUser, ArangoPass);
+        using var rootClient = new ArangoDBClient(rootTransport);
+        try { await rootClient.Database.DeleteDatabaseAsync(dbName); } catch { }
+    }
+
+    private static async Task InsertDocAsync(HttpClient http, string baseUrl, string db, string collection, string user, string pass, int dim)
+    {
+        var url = $"{baseUrl}/_db/{db}/_api/document/{collection}";
+        var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Basic", Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{user}:{pass}")));
+        request.Content = JsonContent.Create(new { embedding = Enumerable.Repeat(0.1f, dim).ToArray() });
+        (await http.SendAsync(request)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task EnsureVectorIndexAsync_NoOps_WhenCollectionHasFewerDocsThanNLists()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, embeddingDimension: 768, vectorNLists: 5, http);
+            await store.EnsureSchemaAsync();
+
+            await store.EnsureVectorIndexAsync("memory_decisions");
+
+            var hasVectorIndex = await store.HasUsableVectorIndexAsync("memory_decisions");
+            Assert.False(hasVectorIndex);
+        }
+        finally { await DropDb(dbName); }
+    }
+
+    [Fact]
+    public async Task EnsureVectorIndexAsync_CreatesUsableIndex_WhenDocsMeetThreshold()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, embeddingDimension: 768, vectorNLists: 1, http);
+            await store.EnsureSchemaAsync();
+
+            await InsertDocAsync(http, ArangoUrl, dbName, "memory_decisions", ArangoUser, ArangoPass, 768);
+
+            await store.EnsureVectorIndexAsync("memory_decisions");
+
+            Assert.True(await store.HasUsableVectorIndexAsync("memory_decisions"));
+        }
+        finally { await DropDb(dbName); }
+    }
+
+    [Fact]
+    public async Task EnsureVectorIndexAsync_CleansUpUnusableIndexes_BeforeRetrying()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, embeddingDimension: 768, vectorNLists: 1, http);
+            await store.EnsureSchemaAsync();
+
+            // First attempt on empty collection — leaves an unusable index entry.
+            await store.EnsureVectorIndexAsync("memory_decisions");
+            Assert.False(await store.HasUsableVectorIndexAsync("memory_decisions"));
+
+            // Insert a doc, retry — must clean up unusable index and create a fresh usable one.
+            await InsertDocAsync(http, ArangoUrl, dbName, "memory_decisions", ArangoUser, ArangoPass, 768);
+            await store.EnsureVectorIndexAsync("memory_decisions");
+
+            Assert.True(await store.HasUsableVectorIndexAsync("memory_decisions"));
+            Assert.Equal(1, await store.CountVectorIndexesAsync("memory_decisions"));
+        }
+        finally { await DropDb(dbName); }
+    }
+}
+```
+
+- [ ] **Step 3: Run tests — expect failure (MemoryStore does not exist).**
+
+```bash
+dotnet test dais-bridge.tests/dais-bridge.tests.csproj --filter "FullyQualifiedName~MemoryStore"
+```
+
+Expected: FAIL — `MemoryStore` not found.
+
+- [ ] **Step 4: Implement `MemoryStore`.**
+
+```csharp
+using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using ArangoDBNetStandard;
 using ArangoDBNetStandard.CollectionApi.Models;
 using ArangoDBNetStandard.Transport.Http;
@@ -543,15 +660,18 @@ public sealed class MemoryStore : IDisposable
     private readonly string _user;
     private readonly string _pass;
     private readonly int _embeddingDimension;
+    private readonly int _vectorNLists;
     private readonly IEmbeddingClient? _embeddings;
+    private readonly ConcurrentDictionary<string, bool> _vectorIndexReady = new();
 
-    public MemoryStore(string url, string db, string user, string pass, int embeddingDimension, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
+    public MemoryStore(string url, string db, string user, string pass, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
     {
         _baseUrl = url.TrimEnd('/');
         _db = db;
         _user = user;
         _pass = pass;
         _embeddingDimension = embeddingDimension;
+        _vectorNLists = vectorNLists;
         _rawHttp = rawHttp;
         _embeddings = embeddings;
         _transport = HttpApiTransport.UsingBasicAuth(new Uri(url), db, user, pass);
@@ -560,7 +680,6 @@ public sealed class MemoryStore : IDisposable
 
     public async Task EnsureSchemaAsync(CancellationToken ct = default)
     {
-        // Document collections
         foreach (var name in new[]
         {
             MemoryCollections.Decisions,
@@ -576,7 +695,6 @@ public sealed class MemoryStore : IDisposable
 
         await EnsureCollectionAsync(MemoryCollections.Edges, isEdge: true);
 
-        // Persistent indexes
         foreach (var content in new[]
         {
             MemoryCollections.Decisions,
@@ -585,13 +703,64 @@ public sealed class MemoryStore : IDisposable
             MemoryCollections.Summaries
         })
         {
-            await EnsureVectorIndexAsync(content);
             await EnsurePersistentIndexAsync(content, new[] { "tenant_id", "status", "created_at" });
         }
 
         await EnsurePersistentIndexAsync(MemoryCollections.Entities, new[] { "tenant_id", "canonical_name" });
         await EnsurePersistentIndexAsync(MemoryCollections.Entities, new[] { "tenant_id", "aliases[*]" });
         await EnsurePersistentIndexAsync(MemoryCollections.Edges, new[] { "tenant_id", "kind" });
+    }
+
+    public async Task EnsureVectorIndexAsync(string collection, CancellationToken ct = default)
+    {
+        if (_vectorIndexReady.TryGetValue(collection, out var cached) && cached) return;
+
+        var indexes = await ListIndexesAsync(collection);
+
+        foreach (var idx in indexes.Where(i => i.Type == "vector" && i.TrainingState != "ready"))
+        {
+            await DeleteIndexAsync(idx.Id);
+        }
+
+        if (indexes.Any(i => i.Type == "vector"
+            && i.TrainingState == "ready"
+            && i.Params?.Dimension == _embeddingDimension
+            && i.Params?.NLists == _vectorNLists))
+        {
+            _vectorIndexReady[collection] = true;
+            return;
+        }
+
+        var docCount = await CountDocumentsAsync(collection);
+        if (docCount < _vectorNLists) return;
+
+        var url = $"{_baseUrl}/_db/{_db}/_api/index?collection={collection}";
+        var body = new
+        {
+            type = "vector",
+            fields = new[] { "embedding" },
+            @params = new { dimension = _embeddingDimension, metric = "cosine", nLists = _vectorNLists }
+        };
+        var (ok, errorNum, _) = await PostJsonRawAsync(url, body);
+        if (ok)
+        {
+            _vectorIndexReady[collection] = true;
+            return;
+        }
+        if (errorNum == 1555) return;
+        throw new InvalidOperationException($"Vector index creation failed (errorNum={errorNum}) on '{collection}'.");
+    }
+
+    public async Task<bool> HasUsableVectorIndexAsync(string collection)
+    {
+        var indexes = await ListIndexesAsync(collection);
+        return indexes.Any(i => i.Type == "vector" && i.TrainingState == "ready");
+    }
+
+    public async Task<int> CountVectorIndexesAsync(string collection)
+    {
+        var indexes = await ListIndexesAsync(collection);
+        return indexes.Count(i => i.Type == "vector");
     }
 
     public async Task<List<string>> ListCollectionsAsync()
@@ -607,51 +776,111 @@ public sealed class MemoryStore : IDisposable
             await _arango.Collection.PostCollectionAsync(new PostCollectionBody
             {
                 Name = name,
-                Type = isEdge ? 3 : 2 // 2=document, 3=edge
+                Type = isEdge ? 3 : 2
             });
         }
-        catch (ApiErrorException ex) when (ex.ApiError.ErrorNum == 1207) { /* duplicate */ }
+        catch (ApiErrorException ex) when (ex.ApiError.ErrorNum == 1207) { }
     }
 
     private async Task EnsurePersistentIndexAsync(string collection, string[] fields)
     {
         var url = $"{_baseUrl}/_db/{_db}/_api/index?collection={collection}";
         var body = new { type = "persistent", fields };
-        await PostJsonRawAsync(url, body);
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, body);
+        if (ok || errorNum == 1210 || errorNum == 1207) return;
+        throw new InvalidOperationException($"Persistent index creation failed (errorNum={errorNum}): {content}");
     }
 
-    private async Task EnsureVectorIndexAsync(string collection)
+    private async Task<long> CountDocumentsAsync(string collection)
+    {
+        var url = $"{_baseUrl}/_db/{_db}/_api/collection/{collection}/count";
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(content);
+        return doc.RootElement.GetProperty("count").GetInt64();
+    }
+
+    private sealed class IndexEntry
+    {
+        public string Id { get; init; } = "";
+        public string Type { get; init; } = "";
+        public string? TrainingState { get; init; }
+        public IndexParams? Params { get; init; }
+    }
+    private sealed class IndexParams
+    {
+        public int? Dimension { get; init; }
+        public int? NLists { get; init; }
+        public string? Metric { get; init; }
+    }
+
+    private async Task<List<IndexEntry>> ListIndexesAsync(string collection)
     {
         var url = $"{_baseUrl}/_db/{_db}/_api/index?collection={collection}";
-        var body = new
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(content);
+        var list = new List<IndexEntry>();
+        foreach (var el in doc.RootElement.GetProperty("indexes").EnumerateArray())
         {
-            type = "vector",
-            fields = new[] { "embedding" },
-            @params = new { dimension = _embeddingDimension, metric = "cosine", nLists = 100 }
-        };
-        await PostJsonRawAsync(url, body);
+            IndexParams? p = null;
+            if (el.TryGetProperty("params", out var pe) && pe.ValueKind == JsonValueKind.Object)
+            {
+                p = new IndexParams
+                {
+                    Dimension = pe.TryGetProperty("dimension", out var d) ? d.GetInt32() : null,
+                    NLists = pe.TryGetProperty("nLists", out var n) ? n.GetInt32() : null,
+                    Metric = pe.TryGetProperty("metric", out var m) ? m.GetString() : null
+                };
+            }
+            list.Add(new IndexEntry
+            {
+                Id = el.GetProperty("id").GetString() ?? "",
+                Type = el.GetProperty("type").GetString() ?? "",
+                TrainingState = el.TryGetProperty("trainingState", out var ts) ? ts.GetString() : null,
+                Params = p
+            });
+        }
+        return list;
     }
 
-    private async Task PostJsonRawAsync(string url, object body)
+    private async Task DeleteIndexAsync(string indexId)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        var url = $"{_baseUrl}/_db/{_db}/_api/index/{indexId}";
+        using var request = BuildAuthedRequest(HttpMethod.Delete, url);
+        using var response = await _rawHttp.SendAsync(request);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return;
+        response.EnsureSuccessStatusCode();
+    }
+
+    private HttpRequestMessage BuildAuthedRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
             "Basic",
             Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{_user}:{_pass}")));
+        return request;
+    }
+
+    private async Task<(bool ok, int errorNum, string content)> PostJsonRawAsync(string url, object body)
+    {
+        var request = BuildAuthedRequest(HttpMethod.Post, url);
         request.Content = JsonContent.Create(body);
-        using var response = await _rawHttp.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
+        var response = await _rawHttp.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        if (response.IsSuccessStatusCode) return (true, 0, content);
+        int errorNum = 0;
+        try
         {
-            var content = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(content);
-            // ArangoDB returns errorNum 1210 for duplicate index, 1207 for duplicate collection name
-            if (doc.RootElement.TryGetProperty("errorNum", out var n))
-            {
-                var num = n.GetInt32();
-                if (num == 1210 || num == 1207) return; // already exists
-            }
-            throw new InvalidOperationException($"Arango raw POST failed ({response.StatusCode}): {content}");
+            if (doc.RootElement.TryGetProperty("errorNum", out var n)) errorNum = n.GetInt32();
         }
+        catch { }
+        return (false, errorNum, content);
     }
 
     public void Dispose()
@@ -662,20 +891,20 @@ public sealed class MemoryStore : IDisposable
 }
 ```
 
-- [ ] **Step 4: Run schema test against running ArangoDB.**
+- [ ] **Step 5: Run tests against running ArangoDB.**
 
 ```bash
-$env:ARANGO_TEST_RUN="1"
-dotnet test dais-bridge.tests/dais-bridge.tests.csproj --filter "FullyQualifiedName~MemoryStoreSchemaTests"
+export ARANGO_TEST_RUN=1
+dotnet test dais-bridge.tests/dais-bridge.tests.csproj --filter "FullyQualifiedName~MemoryStore"
 ```
 
-Expected: PASS. If FAIL, capture error and verify ArangoDB ≥ 3.12 and that the experimental vector index is enabled (may require `--experimental-vector-index` startup option; see Pre-flight).
+Expected: 4 PASS (1 schema + 3 vector index). If FAIL, verify ArangoDB 3.12 is running with `--vector-index` (see Pre-flight) and `ARANGO_TEST_URL` points at it.
 
-- [ ] **Step 5: Commit.**
+- [ ] **Step 6: Commit.**
 
 ```bash
-git add dais-bridge/Memory/MemoryStore.cs dais-bridge.tests/Memory/MemoryStoreSchemaTests.cs
-git commit -m "feat(memory): MemoryStore schema migration with vector + persistent indexes"
+git add dais-bridge/Memory/MemoryStore.cs dais-bridge.tests/Memory/MemoryStoreSchemaTests.cs dais-bridge.tests/Memory/MemoryStoreVectorIndexTests.cs
+git commit -m "feat(memory): MemoryStore schema + lazy vector index lifecycle"
 ```
 
 ---
@@ -725,7 +954,7 @@ public class MemoryStoreWriteTests
             using var http = new HttpClient();
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                embeddingDimension: 4, http, new ConstantEmbeddingClient(4));
+                embeddingDimension: 4, vectorNLists: 1, http, new ConstantEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             var result = await store.UpsertDecisionAsync(
@@ -752,7 +981,7 @@ public class MemoryStoreWriteTests
             using var http = new HttpClient();
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                embeddingDimension: 4, http, new FailingEmbeddingClient(4));
+                embeddingDimension: 4, vectorNLists: 1, http, new FailingEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             var result = await store.UpsertDecisionAsync(
@@ -935,11 +1164,9 @@ Append to `MemoryStore.cs`:
 
     private async Task<WriteResult> UpsertContentAsync(string collection, string text, Dictionary<string, object?> doc, CancellationToken ct)
     {
-        // Phase 1: insert without embedding
         var insert = await _arango.Document.PostDocumentAsync(collection, doc);
         var key = insert._key;
 
-        // Phase 2: try to embed
         if (_embeddings is null) return WriteResult.Pending(key);
         try
         {
@@ -952,6 +1179,7 @@ Append to `MemoryStore.cs`:
             };
             await _arango.Document.PatchDocumentAsync<Dictionary<string, object?>, Dictionary<string, object?>>(
                 collection, key, update);
+            await EnsureVectorIndexAsync(collection, ct);
             return WriteResult.Ready(key);
         }
         catch
@@ -987,7 +1215,7 @@ $env:ARANGO_TEST_RUN="1"
 dotnet test dais-bridge.tests/dais-bridge.tests.csproj --filter "FullyQualifiedName~MemoryStore"
 ```
 
-Expected: 3 PASS (1 schema + 2 write).
+Expected: 6 PASS (1 schema + 3 vector index + 2 write).
 
 - [ ] **Step 6: Commit.**
 
@@ -1017,6 +1245,7 @@ Replace the `AI` block and append a `Memory` block:
     "LMStudioApiKey": ""
   },
   "Memory": {
+    "VectorNLists": 100,
     "RecallAlpha": 0.7,
     "RecallBeta": 0.3,
     "DefaultTopK": 8,
@@ -1035,6 +1264,7 @@ Insert after the existing config reads:
 ```csharp
         var embeddingModelId = builder.Configuration["AI:EmbeddingModelId"] ?? "nomic-embed-text-v1.5";
         var embeddingDimension = int.Parse(builder.Configuration["AI:EmbeddingDimension"] ?? "768");
+        var vectorNLists = int.Parse(builder.Configuration["Memory:VectorNLists"] ?? "100");
 
         builder.Services.AddHttpClient("memory");
         var lmStudioApiKey = Environment.GetEnvironmentVariable("LMSTUDIO_API_KEY")
@@ -1047,7 +1277,7 @@ Insert after the existing config reads:
         builder.Services.AddSingleton<MemoryStore>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingDimension, http, sp.GetRequiredService<IEmbeddingClient>());
+            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
         });
 ```
 
@@ -1251,7 +1481,7 @@ public class MemoryPluginTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
 
             var acc = new TenantContextAccessor { Current = TenantContext.Admin };
@@ -1267,7 +1497,7 @@ public class MemoryPluginTests
     public async Task RememberDecision_WhenTenantUnset_Throws()
     {
         using var http = new HttpClient();
-        var store = new MemoryStore("http://localhost:8529", "ignored", "root", "password", 4, http);
+        var store = new MemoryStore("http://localhost:8529", "ignored", "root", "password", 4, 1, http);
         var acc = new TenantContextAccessor();
         var plugin = new MemoryPlugin(store, acc);
 
@@ -1569,7 +1799,7 @@ public class CrossTenantIsolationTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
 
             await store.UpsertDecisionAsync("admin", "policy", "allow", "trusted", Array.Empty<string>());
@@ -1673,7 +1903,7 @@ public class MemoryRecallEngineTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
 
             var chickenId = await store.UpsertEntityAsync("admin", "chickens", new[] { "chooks" }, "concept");
@@ -1700,7 +1930,7 @@ public class MemoryRecallEngineTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
             var id = await store.UpsertEntityAsync("admin", "chickens", new[] { "chooks", "hens" }, "concept");
 
@@ -1813,7 +2043,7 @@ Append to `MemoryRecallEngineTests.cs`:
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
 
             var entityId = await store.UpsertEntityAsync("admin", "PostCard", Array.Empty<string>(), "file");
@@ -1943,7 +2173,7 @@ Append:
                 ("Decision: weather",   new float[] { 0f, 1f, 0f, 0f }));
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
 
             var ent = await store.UpsertEntityAsync("admin", "chickens", Array.Empty<string>(), "concept");
@@ -2200,7 +2430,7 @@ Add a third test:
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
             await store.UpsertDecisionAsync("admin", "policy", "x", "y", Array.Empty<string>());
             await store.UpsertDecisionAsync("kid:a", "snack", "x", "y", Array.Empty<string>());
@@ -2384,7 +2614,7 @@ public class DarbeesContextProviderTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
             var acc = new TenantContextAccessor { Current = TenantContext.ForKid("lila") };
             var provider = new DarbeesContextProvider(store, acc,
@@ -2410,7 +2640,7 @@ public class DarbeesContextProviderTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
             var acc = new TenantContextAccessor { Current = TenantContext.Admin };
             var provider = new DarbeesContextProvider(store, acc,
@@ -2763,7 +2993,7 @@ public class PendingEmbeddingsServiceTests
             var emb = new FlakyEmbeddings();
             var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrlStatic, dbName,
                 MemoryStoreSchemaTests.ArangoUserStatic, MemoryStoreSchemaTests.ArangoPassStatic,
-                4, http, emb);
+                4, 1, http, emb);
             await store.EnsureSchemaAsync();
 
             // First write fails to embed (queued)

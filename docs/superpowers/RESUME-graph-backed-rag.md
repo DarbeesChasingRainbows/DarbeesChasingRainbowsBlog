@@ -2,9 +2,9 @@
 
 > **Purpose:** Everything you (or a future agent session) need to pick this work back up cold without re-deriving context.
 
-**Last updated:** 2026-05-12
+**Last updated:** 2026-05-12 (later)
 **Branch:** `feature/graph-backed-rag` (off `master`)
-**Status:** Phases A1, A2, A3, B1 complete; Phases A4 → G2 remaining (except B1); A4 needs a local ArangoDB 3.12.x instance.
+**Status:** Phases A1, A2, A3, B1 complete; Phases A4 → G2 remaining (except B1); A4 has been redesigned (lazy vector index) based on the 2026-05-12 smoke test. Local ArangoDB 3.12.x must be started with `--vector-index`.
 
 ---
 
@@ -133,6 +133,40 @@ The 3.x experimental form (which the plan had originally used before commit `011
 
 This session ran on Linux (Fedora). `docker ps` was empty — no port collision. The Windows-specific 8530 workaround from 2026-05-10 doesn't apply here.
 
+### Smoke test — live ArangoDB 3.12 vector index verification
+
+Pulled `arangodb:3.12` (resolved to `3.12.9-1` enterprise), started on `0.0.0.0:8529`, and ran a manual curl smoke against `POST /_api/index` and `APPROX_NEAR_COSINE` AQL. Findings (now baked into spec §10.2 and plan A4):
+
+- **Vector index feature is gated behind a startup flag.** `POST /_api/index` with `type: "vector"` returns `400 / errorNum 10 "vector index feature is not enabled. Run ArangoDB with --vector-index flag turned on."` without it.
+- **Flag is now `--vector-index`.** `--experimental-vector-index` still works but logs: `WARNING please note that the specified option '--experimental-vector-index has been renamed to '--vector-index'`.
+- **Body shape confirmed:** the plan's existing 3.x form is accepted: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension: 768, metric: "cosine", nLists }`. Successful creation returns `trainingState: "ready"`, plus auto-defaulted `trainingIterations: 25` and `defaultNProbe: 1`.
+- **Cold-start gotcha (big one):** vector index POST on an empty / under-trained collection returns `500 / errorNum 1555 "vector index not ready"` — **but the index entry IS persisted in `trainingState: "unusable"` state.** ArangoDB's AQL optimizer then prefers the unusable index over any subsequently created good one, causing queries to fail with the same 1555 even after data is inserted. Cleanup is required.
+- **`nLists` must be ≤ document count** in the collection (with some training margin). `nLists=1` works with 1 doc; `nLists=100` fails on 1 doc with errorNum 1555.
+- **AQL syntax is strict.** Calling `APPROX_NEAR_COSINE` twice in the same query (once in `SORT`, once in `RETURN`) returns `errorNum 1554` "Vector search could not be applied. Please ensure ... your query uses the correct syntax for vector search." Required pattern: `LET sim = APPROX_NEAR_COSINE(doc.embedding, @q) ... SORT sim DESC ... RETURN { sim }`. The plan's C3 AQL already uses this pattern; the **spec's section 6.3 example had the bug** (now fixed in commit corresponding to this session).
+- **No `OPTIONS { useExperimentalVectorIndex: true }` clause is needed.** That was a pre-rename form; current AQL parses it as a syntax error if mis-placed and ignores it elsewhere.
+
+### A4 redesign — lazy vector index
+
+The smoke test showed the original A4 design (vector index creation inside `EnsureSchemaAsync`) cannot work: at app startup all collections are empty, so every vector index would be created in unusable state and pollute the index space.
+
+A4 was rewritten:
+
+- `EnsureSchemaAsync` now creates collections + non-vector indexes only.
+- New public `EnsureVectorIndexAsync(collection)` is called from write paths (Task A5, `UpsertContentAsync` after the embedding patch succeeds).
+- Idempotent: caches "usable index exists" per collection in a `ConcurrentDictionary<string, bool>` after first observation; steady-state cost is one cache check per write.
+- Cleans up `trainingState != "ready"` vector indexes before retrying.
+- Skips creation when `documentCount < nLists`; tries again on next write.
+- `nLists` is now a constructor parameter. Configured via `Memory:VectorNLists` (default 100 in production `appsettings.json`; default 1 in integration tests).
+- Three new integration tests in `MemoryStoreVectorIndexTests.cs` cover: no-op below threshold, creates usable index when threshold met, cleans up unusable indexes before retrying.
+
+### Docs commit history (this session)
+
+| Commit | Description |
+|---|---|
+| `4f600e3` | B1 (committed earlier this session) |
+| `8086a4b` | v4 reversal: spec/plan/resume retargeted to 3.12.x |
+| TBD | A4 redesign: lazy vector index, AQL LET fix in spec, `--vector-index` flag required in Pre-flight, `MemoryStore` constructor gains `vectorNLists`, all 18 constructor call-sites updated, `Memory:VectorNLists` config added |
+
 ---
 
 ## Environment state — verify before resuming
@@ -187,18 +221,10 @@ docker pull arangodb:3.12
 docker run -d --name arango-test \
   -e ARANGO_ROOT_PASSWORD=password \
   -p 8529:8529 \
-  arangodb:3.12
+  arangodb:3.12 --vector-index
 ```
 
-If A4 reveals vector indexes are disabled by default, restart with the experimental flag:
-
-```bash
-docker rm -f arango-test
-docker run -d --name arango-test \
-  -e ARANGO_ROOT_PASSWORD=password \
-  -p 8529:8529 \
-  arangodb:3.12 --experimental-vector-index
-```
+The `--vector-index` startup flag is required. Without it, `POST /_api/index` with `type: "vector"` returns errorNum 10 "vector index feature is not enabled." `--experimental-vector-index` is a deprecated alias (still works, logs a rename warning).
 
 3. Wait ~10s, then verify:
 
@@ -208,10 +234,10 @@ curl -u root:password http://localhost:8529/_api/version
 
 Expected: JSON with `"version": "3.12.x"`. Below 3.12 — upgrade.
 
-4. **Body shape and AQL function for vector index (3.12 experimental):**
-   - `POST /_api/index` body: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }` (plan's existing form — verify empirically; ArangoDB's 400 response names any invalid field)
-   - AQL similarity function: `APPROX_NEAR_COSINE`
-   - These are the only forms available since v4 (which might stabilize naming) isn't released yet
+4. **Body shape and AQL function for vector index (3.12 experimental, verified 2026-05-12):**
+   - `POST /_api/index` body: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`
+   - AQL similarity function: `APPROX_NEAR_COSINE`. Bind once via `LET sim = APPROX_NEAR_COSINE(d.embedding, @q)` and reuse — double-call is errorNum 1554.
+   - `nLists` must be ≤ document count or POST returns errorNum 1555 (and persists an unusable index that must be cleaned up before retrying).
 
 5. For integration tests, set the env var that gates them:
 
@@ -234,7 +260,7 @@ The plan's per-task TDD steps are authoritative. This table adds **dependencies,
 |---|---|---|---|---|
 | A2 | `IEmbeddingClient` interface + failing test | None (stub `HttpClient` handler) | — | Unit tests use `StubHandler : HttpMessageHandler`. Real LM Studio not required for this task. |
 | A3 | `LmStudioEmbeddingClient` impl | None for unit tests; LM Studio + token for manual smoke | — | The plan now includes Bearer auth in the constructor (`apiKey` param). Unit tests cover dimension mismatch and batch input shape. |
-| A4 | `MemoryStore` schema migration (creates collections + indexes) | **ArangoDB 3.12 required** | Empirical: push the plan's body shape and read the 400. If the response says vector index is disabled, restart container with `--experimental-vector-index`. | Vector index is created via raw `POST /_api/index?collection=X` because `ArangoDBNetStandard` 2.0.0 has no typed support. Schema migration is idempotent — safe to call repeatedly. |
+| A4 | `MemoryStore` schema (collections + persistent indexes) + lazy `EnsureVectorIndexAsync` | **ArangoDB 3.12 required, started with `--vector-index`** | — | Vector index creation is now LAZY: `EnsureSchemaAsync` does NOT create vector indexes. Write paths (A5) call `EnsureVectorIndexAsync(collection)` after embedding patch. The method is idempotent (caches per-collection), cleans up unusable indexes, skips when `documentCount < nLists`. `nLists` configurable via `Memory:VectorNLists` (default 100 prod / 1 test). All HTTP through raw `HttpClient` because `ArangoDBNetStandard` 2.0.0 has no typed vector support. |
 | A5 | Write paths (UpsertDecision/Observation/Fact/Summary/Entity/Edge + ListPending) | **ArangoDB + LM Studio + token** | — | Two-phase write: insert with `status='pending_embedding'`, try embed, on success patch `status='ready'`, on failure enqueue to `memory_pending_embeddings`. The `ConstantEmbeddingClient` and `FailingEmbeddingClient` test helpers are reused by later tests — keep them `internal` not `private`. |
 | A6 | Wire IEmbeddingClient + MemoryStore into Program.cs DI | None | — | `EnsureSchemaAsync` runs at startup. Adds `IHttpClientFactory` "memory" client. Reads `LMSTUDIO_API_KEY` env var first, then `AI:LMStudioApiKey` config. |
 
@@ -254,7 +280,7 @@ The plan's per-task TDD steps are authoritative. This table adds **dependencies,
 |---|---|---|---|---|
 | C1 | `MemoryRecallEngine.ExtractEntitiesAsync` (substring + alias match) | **ArangoDB** | — | NER fallback hook (`Func<string, Task<IReadOnlyList<string>>>?`) is defined but unused; Phase D wires the LM Studio NER backstop in. |
 | C2 | `MemoryRecallEngine.GraphExpandAsync` | **ArangoDB** | — | Walks `1..@hops ANY entity edges` filtered by tenant. Excludes entity vertices from results. `MaterializeItem` reconstructs `MemoryItem` from collection-id prefix discrimination. |
-| C3 | Vector top-K + `RecallAsync` composition | **ArangoDB + LM Studio + token** | AQL function is `APPROX_NEAR_COSINE` — the only name available since v4 (which might stabilize naming) isn't released yet. May require `OPTIONS { useExperimentalVectorIndex: true }` on the AQL query in 3.12 — verify empirically. | Embedding-failure path: returns graph-only candidates with `cosine=0`, so recall degrades but doesn't fail. Scoring weights `α=0.7, β=0.3` are configurable via `Memory:RecallAlpha`/`Memory:RecallBeta`. |
+| C3 | Vector top-K + `RecallAsync` composition | **ArangoDB + LM Studio + token** | AQL function is `APPROX_NEAR_COSINE`. The AQL **must** bind similarity via `LET sim = APPROX_NEAR_COSINE(...)` and reuse `sim` — two direct calls in one query gives errorNum 1554. No `OPTIONS` clause is needed (smoke test 2026-05-12). | Embedding-failure path: returns graph-only candidates with `cosine=0`, so recall degrades but doesn't fail. Scoring weights `α=0.7, β=0.3` are configurable via `Memory:RecallAlpha`/`Memory:RecallBeta`. |
 | C4 | `MemoryPlugin.Recall` + DI wiring of `MemoryRecallEngine` | **ArangoDB + LM Studio** | — | Constructor signature for `MemoryPlugin` becomes 3-arg. All B2 tests must be updated to pass `MemoryRecallEngine`. |
 
 ### Phase D — Auto layer (3 tasks)
@@ -293,13 +319,14 @@ These came up during brainstorming/planning and are deliberately not pinned in t
 
 | # | Question | Owning task | How to resolve |
 |---|---|---|---|
-| 1 | ArangoDB 3.12 experimental vector index body shape | A4 | Empirical: push the plan's body (`type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`) and read ArangoDB's 400 response. Context7 corpus `/arangodb/arangodb` confirmed empty of vector examples in the 2026-05-10 session. |
-| 2 | Whether 3.12 vector index needs a startup flag (`--experimental-vector-index`) | A4 | Empirical: if `POST /_api/index` returns an error indicating vector indexes are disabled, restart container with the flag and retry. AQL queries may also need `OPTIONS { useExperimentalVectorIndex: true }` per the spec's section 12. |
-| 3 | SK 1.75 `AIContextProvider` exact override methods | D1 | Query Context7 `/websites/learn_microsoft_en-us_semantic-kernel_frameworks_agent`; pin the override method name and any required Agents NuGet packages |
-| 4 | DI lifetime for `ITenantContextAccessor` under SignalR scopes | B4 | The plan defaults to `AddSingleton` with AsyncLocal. If hub-method invocations lose context, switch to `IHubCallerContext`-keyed dictionary or per-connection `Context.Items`. |
-| 5 | Entity-extraction prompt wording (LM Studio NER) | D3 | Iterate empirically. Plan ships a strict-JSON `response_format` request; tune temperature and prompt as needed once running. |
-| 6 | Truncated vs full text in `RecallResult` (kid-safe vs admin) | C3 | Default to full text; revisit if response sizes become unwieldy or kid UX requires summary previews. |
-| 7 | LM Studio request batching for many small embeddings | A3 | Currently 1-per-request. Revisit if Phase E retry queue gets long or auto-extraction generates many facts per turn. |
+| 1 | SK 1.75 `AIContextProvider` exact override methods | D1 | Query Context7 `/websites/learn_microsoft_en-us_semantic-kernel_frameworks_agent`; pin the override method name and any required Agents NuGet packages |
+| 2 | DI lifetime for `ITenantContextAccessor` under SignalR scopes | B4 | The plan defaults to `AddSingleton` with AsyncLocal. If hub-method invocations lose context, switch to `IHubCallerContext`-keyed dictionary or per-connection `Context.Items`. |
+| 3 | Entity-extraction prompt wording (LM Studio NER) | D3 | Iterate empirically. Plan ships a strict-JSON `response_format` request; tune temperature and prompt as needed once running. |
+| 4 | Truncated vs full text in `RecallResult` (kid-safe vs admin) | C3 | Default to full text; revisit if response sizes become unwieldy or kid UX requires summary previews. |
+| 5 | LM Studio request batching for many small embeddings | A3 | Currently 1-per-request. Revisit if Phase E retry queue gets long or auto-extraction generates many facts per turn. |
+| 6 | Production value for `Memory:VectorNLists` | A6 | Default `100` is a starting point for IVF clustering with thousands of docs. Tune once production traffic shape is known; smaller values accept smaller training sets at the cost of recall quality. |
+
+**Resolved during the 2026-05-12 smoke test:** vector index body shape (matches plan), startup flag (`--vector-index`, with `--experimental-vector-index` as deprecated alias), AQL function (`APPROX_NEAR_COSINE`), AQL OPTIONS clause not needed, AQL must bind similarity via LET. Lazy-creation pattern added to A4 to handle the cold-start constraint surfaced by the smoke test.
 
 ---
 
@@ -330,8 +357,8 @@ curl http://localhost:1234/v1/embeddings \
   -H "Authorization: Bearer $LMSTUDIO_API_KEY" \
   -d '{"model":"nomic-embed-text-v1.5","input":"hello"}'
 
-# ArangoDB 3.12 — use port 8529 unless another container is holding it (docker ps to check)
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12
+# ArangoDB 3.12 — --vector-index startup flag is required (smoke test 2026-05-12)
+docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12 --vector-index
 sleep 10
 curl -u root:password http://localhost:8529/_api/version
 
