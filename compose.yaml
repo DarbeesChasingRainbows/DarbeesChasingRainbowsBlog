@@ -50,8 +50,10 @@ services:
       ARANGO_URL: http://arango:8529
       ARANGO_USER: root
       ARANGO_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
-      LMSTUDIO_URL: http://host.containers.internal:1234
+      LMSTUDIO_URL: http://host.containers.internal:1234/v1
       LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
+      AI_MODEL_ID: ${AI_MODEL_ID:-local-model}
+      ARANGO_DATABASE: ${ARANGO_DATABASE:-darbees_knowledge}
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
     ports:
       - "5000:5000"
@@ -68,8 +70,10 @@ services:
       ARANGO_URL: http://arango:8529
       ARANGO_USER: root
       ARANGO_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
-      LMSTUDIO_URL: http://host.containers.internal:1234
+      LMSTUDIO_URL: http://host.containers.internal:1234/v1
       LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
+      AI_MODEL_ID: ${AI_MODEL_ID:-local-model}
+      ARANGO_DATABASE: ${ARANGO_DATABASE:-darbees_knowledge}
     ports:
       - "5000:5000"
     depends_on:
