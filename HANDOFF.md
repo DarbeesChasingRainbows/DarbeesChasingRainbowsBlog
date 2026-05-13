@@ -19,6 +19,7 @@ have everything needed to continue.
 - **.NET tests:** 11 passing on `master`; 29 passing on `feature/graph-backed-rag` (adds 18 unit + integration tests for the memory layer; integration tests gated on `ARANGO_TEST_RUN=1`).
 - **14 Playwright smoke tests** passing in ~10 s locally.
 - **CI workflow** runs typecheck → lint → format → build → broken-link check → Playwright tests → Lighthouse budgets on every PR and push to `main`.
+- **Podman Compose stack** (`make up`) orchestrates ArangoDB 3.12 (`--vector-index`), LM Studio probe sidecar, and DAIS Bridge (dev or prod profile) on a single network.
 - **Lighthouse budgets** asserted: ≥ 0.9 perf / a11y / best-practices, ≥ 0.95 SEO.
 
 ### Verified gates (last run, all green)
@@ -249,11 +250,10 @@ Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` names
 - ✅ A2 — `IEmbeddingClient` interface + failing test (`78c8b52`)
 - ✅ A3 — `LmStudioEmbeddingClient` impl (`e3c45bf`)
 - ✅ B1 — `TenantContext` + AsyncLocal `ITenantContextAccessor` (`4f600e3`)
-- ✅ docs — v4 reversal: realized ArangoDB v4 isn't released yet; retargeted to 3.12.x (`8086a4b`)
-- ✅ docs — A4 redesign based on live smoke-test findings (`666c2bb`)
+- ✅ docs — v4 reversal: retargeted to 3.12.x (`8086a4b`)
 - ✅ A4 — `MemoryStore` schema + lazy vector index lifecycle (`ad92b61`)
-- ✅ A5 — `MemoryStore` content/edge/entity write paths with two-phase embedding (`4c3ecf0`)
-- ⏳ A6 → G2 remaining. See [`TODO-phase11.md`](TODO-phase11.md) for the punchlist and [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md) for environment + per-task gotchas.
+- ✅ A5 — `MemoryStore` content/edge/entity write paths (`4c3ecf0`)
+- ⏳ A6 → G2 remaining. See [`TODO-phase11.md`](TODO-phase11.md) for punchlist and [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md) for environment + per-task gotchas.
 
 **Working state on this branch:** 29/29 tests pass (`ARANGO_TEST_RUN=1 dotnet test`). Local dev requires `arangodb:3.12` Docker container started with `--vector-index` flag on port 8529. LM Studio with `nomic-embed-text-v1.5` and a Bearer token becomes a hard requirement starting at A6 (DI wiring); A4/A5 only needed ArangoDB.
 
@@ -264,6 +264,21 @@ Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` names
 - ArangoDB rejects chunked Transfer-Encoding (errorNum 9). `JsonContent.Create()` triggers it — must use `StringContent` with serialized JSON for explicit `Content-Length`.
 
 **New anti-pattern (to be added to the list when Phase 11 lands):** Don't expose tenant ID as an LLM-bound kernel-function parameter; always read from `ITenantContextAccessor` set by the SignalR hub at connection time. Function parameters are inherently LLM-controllable; non-parameter inputs from DI are not.
+
+### Phase 12 — Podman Dev Environment Orchestration (2026-05-13, COMPLETE)
+
+Files: `compose.yaml`, `dais-bridge/Dockerfile`, `dais-bridge/.dockerignore`, `Makefile`, `.env.example`, `docs/dev-environment.md`.
+
+**Goal:** Replace manual "start ArangoDB, start LM Studio, run dotnet" with a single `make up` that brings up the entire DAIS Bridge memory-stack on a Podman Compose network.
+
+**Completed enhancements:**
+- **Env-var-first configuration** in `dais-bridge/Program.cs`: `Environment.GetEnvironmentVariable(...) ?? builder.Configuration[...] ?? "localhost default"`. This lets the same binary run inside the compose network (arango at `http://arango:8529`) or on the host (`http://localhost:8529`) without code changes.
+- **Multi-stage Dockerfile** (`dev` / `build` / `prod`): dev stage is SDK + `dotnet watch` with source-mounted `:Z` volume; prod stage is `aspnet:9.0` runtime image running as non-root `app` user.
+- **Compose orchestration** with four services: `arango` (3.12 with `--vector-index`, `arangosh` healthcheck, named volume), `lm-probe` (alpine sidecar polling LM Studio every 30s), `dais-bridge-dev` (profile `dev`, hot reload), `dais-bridge-prod` (profile `prod`, published binary).
+- **Self-documenting Makefile**: `make up` / `make up-prod` / `make down` / `make health` / `make clean` (destructive: removes arango-data volume).
+- **`docs/dev-environment.md`** — canonical bring-up guide with troubleshooting table.
+
+**Verification:** `make up` → arango Healthy → dais-bridge-dev responds → `dotnet test` 28/29 against the orchestrated arango (1 pre-existing Astro scaffolding failure). Prod profile: binary runs as `uid=1654(app)`. `dotnet watch` file detection confirmed via `podman logs`.
 
 ---
 
@@ -286,8 +301,13 @@ Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` names
 ├── lighthouserc.json                ← perf/a11y/SEO thresholds
 ├── lighthouserc.mobile.json         ← mobile Lighthouse thresholds (NEW)
 ├── docs/
-│   └── security-notes.md            ← yaml@2.x audit warning (won't-fix rationale)
+│   ├── security-notes.md            ← yaml@2.x audit warning (won't-fix rationale)
+│   └── dev-environment.md           ← Phase 12: Podman compose bring-up guide + troubleshooting
+├── compose.yaml                     ← Podman Compose orchestration (arango, lm-probe, dais-bridge dev/prod)
+├── Makefile                         ← Self-documenting targets: make up / down / health / clean
 ├── dais-bridge/                     ← .NET 9 Sovereign Gateway
+│   ├── Dockerfile                   ← Multi-stage: dev (SDK+watch) / build / prod (runtime, non-root)
+│   ├── .dockerignore                ← Keeps host build artifacts out of image context
 │   ├── Hubs/                        ← KidSafeHub, ParentHub (SignalR)
 │   ├── Middleware/                  ← SafetyMiddleware (Deterministic Filtering)
 │   ├── Models/                      ← SafetyPolicies, TenantContext
@@ -370,6 +390,10 @@ Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` names
 8. **Don't use `&&` as a command separator in PowerShell.** It will fail with a syntax error. Use `;` instead (e.g., `dotnet build; dotnet test`).
 9. **Ensure namespace alignment when refactoring C# projects.** If the root namespace changes (e.g., to `Darbee.Gateway`), all plugin and test files must be updated to prevent `CS0234` and `CS0246` resolution errors.
 10. **Enable buffering when reading request bodies in ASP.NET Core Middleware.** Use `context.Request.EnableBuffering()` and reset `Position = 0` if you need to read the body and then allow the rest of the pipeline to process it.
+11. **Don't bake secrets into images.** The prod Dockerfile never bakes `appsettings.json` secrets; they flow via compose `environment:` which sources from `.env` (gitignored). This is why Phase 12 Task A1 (env-var-first lookup) is a prerequisite.
+12. **Don't run as root in `prod` containers.** The `prod` stage in the Dockerfile sets `USER app` before `ENTRYPOINT`. The `app` user (`uid=1654`) has no shell and minimal filesystem access.
+13. **Don't change DAIS Bridge connection-string logic to be container-specific.** Instead, make the binary environment-agnostic via env-var-first lookup (`Environment.GetEnvironmentVariable(...) ?? builder.Configuration[...] ?? "localhost default"`). Same binary, same config, host or container.
+14. **Healthchecks must use tools guaranteed present in the image.** The `arangodb:3.12` image doesn't contain `curl` (BusyBox wget lacks auth flags). Using `arangosh` for the healthcheck works because it's guaranteed present and tests the actual DB auth path, not just TCP reachability.
 
 ---
 
@@ -392,10 +416,11 @@ In rough order of value:
 When you (a future LLM session, or a contributor) pick this up:
 
 1. **Run the gates first.** `npm install && npm run check && npm run lint && npm run format:check && npm run build && npm run check:links && npm test`. They should all pass (except for the known sitemap 404 in smoke tests).
-2. **For CMS work:** Run `deno task check` in the `cms/` directory to validate CMS-specific code.
-3. **Read [CLAUDE.md](CLAUDE.md).** It has the "where to add X" decision tree and is shorter than this file.
-4. **Read this doc's "Anti-patterns" section.** Seven of them are real bugs from this work history.
-5. **Pick from "Open items" or have the user prioritize.** #1 and #2 are the biggest "missing" features on the frontend.
+2. **For backend work:** `make up` in repo root to start the dev stack (arango + dais-bridge-dev with hot reload). Then `ARANGO_TEST_RUN=1 dotnet test` from host against the orchestrated arango.
+3. **For CMS work:** Run `deno task check` in the `cms/` directory to validate CMS-specific code.
+4. **Read [CLAUDE.md](CLAUDE.md).** It has the "where to add X" decision tree and is shorter than this file.
+5. **Read this doc's "Anti-patterns" section.** Fourteen of them are real bugs from this work history.
+6. **Pick from "Open items" or have the user prioritize.** #1 and #2 are the biggest "missing" features on the frontend.
 
 ---
 
@@ -412,11 +437,11 @@ The project has transitioned to a professional, scalable CMS architecture. The *
 2. **Media Library Integration** — Ensure the `rich_media` image/gallery blocks are tightly integrated with the Directus assets folder.
 
 ### Sovereign Gateway & AI Orchestration (C#)
-1. **Dynamic Policy Engine** — Move safety policies from `safety_policies.json` to ArangoDB, allowing parents to update blocked keywords via the `ParentHub` in real-time.
-2. **SignalR Frontend** — Implement a client for `KidSafeHub` (either as an Obsidian plugin or a lightweight web interface) to allow direct interaction with the "Librarian Supervisor."
-3. **Graph-Backed RAG** — Fully implement ArangoDB as a Semantic Kernel memory store, allowing the agent to "remember" previous architectural decisions across sessions.
+1. **Graph-Backed RAG** — Phase 11 in progress (A6→G2). Wire `MemoryStore` into DI (`AddMemoryStore`), register `DarbeesContextProvider` as the SK `TextMemoryPlugin`, implement hybrid recall (entity → graph → vector rerank), and build the `MemoryPlugin` kernel functions (Remember/Recall). LM Studio with Bearer token is required from A6 onward.
+2. **Dynamic Policy Engine** — Move safety policies from `safety_policies.json` to ArangoDB, allowing parents to update blocked keywords via the `ParentHub` in real-time.
+3. **SignalR Frontend** — Implement a client for `KidSafeHub` (either as an Obsidian plugin or a lightweight web interface) to allow direct interaction with the "Librarian Supervisor."
 4. **Autonomous Research Loops** — Enhance the `ResearchPlugin` to autonomously trigger documentation lookups when the LLM detects high uncertainty in a technical task.
 
 ---
 
-*Last updated: 2026-05-08. State at this snapshot: all gates green, 72 pages, 3534 internal links verified, 15/15 smoke tests passing, 11/11 .NET tests passing. DAIS Bridge and Sovereign Gateway operational with SignalR and MCP Research integration.*
+*Last updated: 2026-05-13. State at this snapshot: all gates green, 72 pages, 3534 internal links verified, 15/15 smoke tests passing, 29/29 .NET tests passing on `feature/graph-backed-rag`. Phase 12 Podman Dev Environment complete — `make up` starts ArangoDB 3.12 + LM probe + DAIS Bridge with hot reload. Prod profile verified running as non-root `app` user. Next: Phase 11 A6 (DI wiring for MemoryStore + embedding client).*
