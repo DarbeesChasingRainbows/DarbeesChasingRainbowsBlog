@@ -19,13 +19,25 @@ public class Program
 
         // Configuration
         var obsidianVault = builder.Configuration["Obsidian:VaultPath"] ?? throw new Exception("Missing Obsidian Vault Path");
-        var lmStudioUrl = builder.Configuration["AI:LMStudioUrl"] ?? "http://localhost:1234/v1";
-        var modelId = builder.Configuration["AI:ModelId"] ?? "local-model";
+        var lmStudioUrl = Environment.GetEnvironmentVariable("LMSTUDIO_URL")
+            ?? builder.Configuration["AI:LMStudioUrl"]
+            ?? "http://localhost:1234/v1";
+        var modelId = Environment.GetEnvironmentVariable("AI_MODEL_ID")
+            ?? builder.Configuration["AI:ModelId"]
+            ?? "local-model";
 
-        var arangoUrl = builder.Configuration["ArangoDB:Url"] ?? "http://localhost:8529";
-        var arangoDb = builder.Configuration["ArangoDB:Database"] ?? "darbees_knowledge";
-        var arangoUser = builder.Configuration["ArangoDB:User"] ?? "root";
-        var arangoPass = builder.Configuration["ArangoDB:Password"] ?? "password";
+        var arangoUrl = Environment.GetEnvironmentVariable("ARANGO_URL")
+            ?? builder.Configuration["ArangoDB:Url"]
+            ?? "http://localhost:8529";
+        var arangoDb = Environment.GetEnvironmentVariable("ARANGO_DATABASE")
+            ?? builder.Configuration["ArangoDB:Database"]
+            ?? "darbees_knowledge";
+        var arangoUser = Environment.GetEnvironmentVariable("ARANGO_USER")
+            ?? builder.Configuration["ArangoDB:User"]
+            ?? "root";
+        var arangoPass = Environment.GetEnvironmentVariable("ARANGO_PASSWORD")
+            ?? builder.Configuration["ArangoDB:Password"]
+            ?? "password";
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
