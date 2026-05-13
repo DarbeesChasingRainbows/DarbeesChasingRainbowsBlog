@@ -51,6 +51,20 @@ npm run preview      # Preview the production build
 
 Requires **Node 22.12+** (matches Astro 6 engine requirement).
 
+## Run the local services (DAIS Bridge / Phase 11)
+
+The DAIS Bridge gateway and its ArangoDB memory store run locally via `podman compose`, wrapped behind a Makefile:
+
+```bash
+make up           # starts ArangoDB, LM Studio probe, DAIS Bridge gateway
+make health       # confirms each service is reachable
+make down         # tears everything down
+```
+
+Full guide: [docs/dev-environment.md](docs/dev-environment.md).
+
+Content authoring (Obsidian → `.mdx` → Astro build) doesn't require any of this — see [OBSIDIAN-CONTENT-WORKFLOW.md](OBSIDIAN-CONTENT-WORKFLOW.md).
+
 ## Adding content
 
 ### Add a blog post

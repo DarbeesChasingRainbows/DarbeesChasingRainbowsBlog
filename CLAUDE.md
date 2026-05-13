@@ -27,6 +27,19 @@ homeschool / Kingdom Farm. **Astro 6**, **Tailwind CSS v4**, **DaisyUI v5**,
 
 CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml). 
 
+## Commands (DAIS Bridge / Phase 11 services)
+
+| Task                     | Command                | When             |
+| ------------------------ | ---------------------- | ---------------- |
+| Bring up dev stack       | `make up`              | Start of session |
+| Bring up prod-mode stack | `make up-prod`         | Pre-merge smoke  |
+| Tear down                | `make down`            | End of session   |
+| Health check             | `make health`          | After `make up`  |
+| Tail bridge logs         | `make logs-bridge`     | Debugging        |
+| Run host-side tests      | `ARANGO_TEST_RUN=1 dotnet test dais-bridge.tests/dais-bridge.tests.csproj` | CI runs this |
+
+Full guide: [docs/dev-environment.md](docs/dev-environment.md).
+
 ## Directory map
 
 ```
@@ -94,7 +107,7 @@ Source of truth: [src/content.config.ts](src/content.config.ts).
 
 ## Things to be careful about
 
-- **LM Studio**: Used by the Phase 11 memory layer (`dais-bridge/Memory/`) for embeddings at `http://localhost:1234/v1`. Requires a Bearer token (`LMSTUDIO_API_KEY`).
+- **LM Studio**: Used by the Phase 11 memory layer (`dais-bridge/Memory/`) for embeddings at `http://localhost:1234/v1`. Requires a Bearer token in `.env` as `LMSTUDIO_API_KEY`. The `lm-probe` sidecar in `compose.yaml` polls it every 30s and logs UP/DOWN — `make logs-lm` to watch. Inside containers, LM Studio is reached at `http://host.containers.internal:1234`.
 - **Prettier Parse Errors**: HTML comments in JSX fragments break build.
 - **Tailwind v4 JIT**: Avoid commas in arbitrary values in HTML; use CSS classes.
 - **Typescript 6**: No narrowing across destructuring — cast `data` or use `entry.data.field`.
