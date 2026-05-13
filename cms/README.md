@@ -1,6 +1,9 @@
 # Darbees CMS — Directus + SQLite
 
-Local-only content management for the Darbees Chasing Rainbows blog.  
+> **STATUS: HISTORICAL / NOT IN ACTIVE USE.**
+> Content authoring for darbeeschasingrainbows.com happens in **Obsidian** — see [`../OBSIDIAN-CONTENT-WORKFLOW.md`](../OBSIDIAN-CONTENT-WORKFLOW.md) at the repo root. This `cms/` directory holds historical work from earlier exploration of a Directus-based CMS (HANDOFF Phase 5) and a Deno Fresh admin (Phase 6+); neither is wired into the current authoring loop. The code remains so the prior work is recoverable but it should not be extended.
+
+Local-only content management for the Darbees Chasing Rainbows blog.
 Directus provides structured editors, GEO optimization (via LM Studio), and MDX export to the Astro content directory.
 
 ## Quick Start

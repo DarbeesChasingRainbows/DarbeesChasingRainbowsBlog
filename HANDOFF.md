@@ -141,6 +141,8 @@ Files: `src/content.config.ts`, `src/pages/bookshelf/[id].astro`, new `src/conte
 - Documented the `yaml@2.x` audit warning in `docs/security-notes.md` — it's a transitive dev-dep through `@astrojs/check`. Re-evaluation criteria spelled out.
 - Visual sanity check on the homeschool badge color: kept `bg-secondary/90` (warm amber). It's on-brand with the rest of the palette; the prior `bg-darbees-pink` was an orphan from a previous design system.
 
+> **Historical note (2026-05-13):** Phases 5, 6, and 9 below describe a CMS infrastructure (Directus + Deno Fresh under `cms/`) that **is no longer in active use.** Content authoring happens in Obsidian — see [OBSIDIAN-CONTENT-WORKFLOW.md](OBSIDIAN-CONTENT-WORKFLOW.md). The `cms/` code remains in the tree for archival reasons; don't extend it. Phases 5/6/9 are kept here for history of the work but the live authoring path is Obsidian → Astro.
+
 ### Phase 5 — CMS Enhancements (May 2026)
 
 Files: `cms/lib/content.ts`, `cms/routes/drafts.tsx` (NEW), `cms/routes/history/[collection]/[slug].tsx` (NEW), `cms/routes/index.tsx`, `cms/routes/edit/[collection]/[slug].tsx`, `cms/components/ContentForm.tsx`, `cms/components/MetadataDrawer.tsx` (NEW), `cms/lib/schemas.ts`.

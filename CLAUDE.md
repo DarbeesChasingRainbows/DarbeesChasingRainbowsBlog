@@ -9,7 +9,8 @@ homeschool / Kingdom Farm. **Astro 6**, **Tailwind CSS v4**, **DaisyUI v5**,
 **Cloudflare Pages**. 
 
 - **Frontend**: Plain HTML output, no client JS framework.
-- **CMS**: Local-only Deno Fresh CMS (Preact) under `cms/` for content management.
+- **Authoring**: **Obsidian** — open the repo folder as a vault, Templater scaffolds `.mdx` posts directly into `src/content/{blog,books,projects,field-notes}/`. See [OBSIDIAN-CONTENT-WORKFLOW.md](OBSIDIAN-CONTENT-WORKFLOW.md).
+- **`cms/` directory**: historical only — earlier exploration of a Directus / Deno Fresh admin. **Not wired into the current authoring loop.** Don't add features there.
 
 ## Commands (Astro)
 
@@ -24,21 +25,12 @@ homeschool / Kingdom Farm. **Astro 6**, **Tailwind CSS v4**, **DaisyUI v5**,
 | Broken link check        | `npm run check:links`  | CI runs this     |
 | Playwright tests         | `npm test`             | CI runs this     |
 
-## Commands (CMS)
-
-| Task                     | Command                | When             |
-| ------------------------ | ---------------------- | ---------------- |
-| CMS Local dev            | `deno task dev`        | Inside `cms/`    |
-| CMS Type check           | `deno task check`      | Inside `cms/`    |
-
 CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml). 
 
 ## Directory map
 
 ```
-cms/                 Deno Fresh CMS (Local-only content editor)
-  islands/           Interactive Preact components (GeoOptimizer, etc.)
-  routes/            CMS pages and API endpoints (api/geo.ts)
+cms/                 HISTORICAL — Directus + Deno Fresh exploration; not used. Don't extend.
 src/
   components/        23 .astro components (centralized Card/Layout model)
   content/
@@ -64,8 +56,6 @@ public/              static assets (favicon, llms.txt, og images, logo.svg)
 | A project (DIY/build)                  | `src/content/projects/<slug>.mdx`                                                                                                                                                                       |
 | A field note                           | `src/content/field-notes/<slug>.mdx`                                                                                                                                                                    |
 | Reusable Astro UI element              | `src/components/<Name>.astro`                                                                                                                                                                           |
-| CMS Interactive feature                | `cms/islands/<Name>.tsx`                                                                                                                                                                                |
-| CMS API Endpoint                       | `cms/routes/api/<name>.ts`                                                                                                                                                                              |
 | Site-wide constant                     | `src/consts.ts`                                                                                                                                                                                         |
 
 ## Content collection schemas (summary)
@@ -97,14 +87,14 @@ Source of truth: [src/content.config.ts](src/content.config.ts).
 
 ## Tech debt (prioritized)
 
-1. **CMS validation** — add client-side inline error messages.
-2. **Cross-collection tag archives** — current archives only index blog posts.
-3. **Project Category archives** — no landing pages for project-specific categories.
-4. **Zod migration** — `z.string().url()` to `z.url()` (Astro 6.2 deprecation).
+1. **Cross-collection tag archives** — current archives only index blog posts. (Note: HANDOFF Phase 7 claimed this was fixed; verify.)
+2. **Project Category archives** — no landing pages for project-specific categories.
+3. **Lint cleanup** — ~55 errors remaining post-2026-05-13 cleanup (unused vars, legacy `require()` calls in scripts/, `this` aliases). Pre-existing, not session-introduced.
+4. **Format check** — ~123 files flagged by `prettier --check` (mix of CRLF leftovers and real drift). Mostly cosmetic.
 
 ## Things to be careful about
 
-- **LM Studio**: CMS optimization requires LM Studio at `http://localhost:1234/v1`.
+- **LM Studio**: Used by the Phase 11 memory layer (`dais-bridge/Memory/`) for embeddings at `http://localhost:1234/v1`. Requires a Bearer token (`LMSTUDIO_API_KEY`).
 - **Prettier Parse Errors**: HTML comments in JSX fragments break build.
 - **Tailwind v4 JIT**: Avoid commas in arbitrary values in HTML; use CSS classes.
 - **Typescript 6**: No narrowing across destructuring — cast `data` or use `entry.data.field`.
