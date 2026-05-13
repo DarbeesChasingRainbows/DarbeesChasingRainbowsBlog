@@ -209,37 +209,14 @@ Expected: JSON with a 768-element `data[0].embedding` array. If embeddings have 
 
 **Required action before resuming:**
 
-1. Pull the image:
+ArangoDB is now part of the Phase 12 podman compose stack — bring it up with `make up`, which starts the configured `arangodb:3.12 --vector-index` container along with the LM Studio probe and the gateway. See [`docs/dev-environment.md`](../dev-environment.md).
 
 ```bash
-docker pull arangodb:3.12
+make up
+make health   # confirms ArangoDB UP at localhost:8529
 ```
 
-2. Start on port 8529 (use a different port only if 8529 is held by another project on your machine — `docker ps` to check; the prior Windows session had to use 8530 because of a collision with `mustang-arangodb`):
-
-```bash
-docker run -d --name arango-test \
-  -e ARANGO_ROOT_PASSWORD=password \
-  -p 8529:8529 \
-  arangodb:3.12 --vector-index
-```
-
-The `--vector-index` startup flag is required. Without it, `POST /_api/index` with `type: "vector"` returns errorNum 10 "vector index feature is not enabled." `--experimental-vector-index` is a deprecated alias (still works, logs a rename warning).
-
-3. Wait ~10s, then verify:
-
-```bash
-curl -u root:password http://localhost:8529/_api/version
-```
-
-Expected: JSON with `"version": "3.12.x"`. Below 3.12 — upgrade.
-
-4. **Body shape and AQL function for vector index (3.12 experimental, verified 2026-05-12):**
-   - `POST /_api/index` body: `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`
-   - AQL similarity function: `APPROX_NEAR_COSINE`. Bind once via `LET sim = APPROX_NEAR_COSINE(d.embedding, @q)` and reuse — double-call is errorNum 1554.
-   - `nLists` must be ≤ document count or POST returns errorNum 1555 (and persists an unusable index that must be cleaned up before retrying).
-
-5. For integration tests, set the env var that gates them:
+Then set the integration-test env vars on your host shell:
 
 ```bash
 export ARANGO_TEST_RUN=1
@@ -248,13 +225,21 @@ export ARANGO_TEST_USER=root
 export ARANGO_TEST_PASS=password
 ```
 
+**ArangoDB-specific facts (still relevant when debugging):**
+- The `--vector-index` startup flag is required. Without it, `POST /_api/index` with `type: "vector"` returns errorNum 10 "vector index feature is not enabled." `--experimental-vector-index` is a deprecated alias (still works, logs a rename warning). The compose file already passes this flag.
+- Vector index body shape (3.12 experimental, verified 2026-05-12): `POST /_api/index` with `type: "vector"`, `fields: ["embedding"]`, `params: { dimension, metric, nLists }`.
+- AQL similarity function: `APPROX_NEAR_COSINE`. Bind once via `LET sim = APPROX_NEAR_COSINE(d.embedding, @q)` and reuse — double-call is errorNum 1554.
+- `nLists` must be ≤ document count or POST returns errorNum 1555 (and persists an unusable index that must be cleaned up before retrying).
+
+If you need to run ArangoDB standalone (without compose, e.g. for debugging in isolation): `podman run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12 --vector-index`. Just make sure `make up` isn't running first or port 8529 will collide.
+
 ---
 
 ## Remaining work — annotated by phase
 
 The plan's per-task TDD steps are authoritative. This table adds **dependencies, verification, and per-task gotchas not visible inside the plan**.
 
-### Phase A — Substrate (4 tasks remaining of 6)
+### Phase A — Substrate (DONE — all 6 tasks complete as of 2026-05-13)
 
 | Task | Title | Service deps | Plan-deferred verification | Notes |
 |---|---|---|---|---|

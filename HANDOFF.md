@@ -253,9 +253,10 @@ Replaces the stubbed `ArangoPlugin` with a real `MemoryPlugin` + `Memory/` names
 - ✅ docs — v4 reversal: retargeted to 3.12.x (`8086a4b`)
 - ✅ A4 — `MemoryStore` schema + lazy vector index lifecycle (`ad92b61`)
 - ✅ A5 — `MemoryStore` content/edge/entity write paths (`4c3ecf0`)
-- ⏳ A6 → G2 remaining. See [`TODO-phase11.md`](TODO-phase11.md) for punchlist and [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md) for environment + per-task gotchas.
+- ✅ A6 — `IEmbeddingClient` + `MemoryStore` DI wiring, `EnsureSchemaAsync` at startup (`cb8bd1c`)
+- ⏳ B2 → G2 remaining. See [`TODO-phase11.md`](TODO-phase11.md) for punchlist and [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md) for environment + per-task gotchas.
 
-**Working state on this branch:** 29/29 tests pass (`ARANGO_TEST_RUN=1 dotnet test`). Local dev requires `arangodb:3.12` Docker container started with `--vector-index` flag on port 8529. LM Studio with `nomic-embed-text-v1.5` and a Bearer token becomes a hard requirement starting at A6 (DI wiring); A4/A5 only needed ArangoDB.
+**Working state on this branch:** 29/29 tests pass (`ARANGO_TEST_RUN=1 dotnet test`). Local dev runs via `make up` (Phase 12 podman compose stack — see [`docs/dev-environment.md`](docs/dev-environment.md)), which starts ArangoDB 3.12 with `--vector-index`, the LM Studio probe sidecar, and the DAIS Bridge gateway. LM Studio with `nomic-embed-text-v1.5` and a Bearer token (`LMSTUDIO_API_KEY` in `.env`) is required from A6 onward.
 
 **Smoke-test surprises captured during this work (already baked into spec/plan):**
 - ArangoDB 3.12 vector index requires `--vector-index` startup flag (errorNum 10 without it). `--experimental-vector-index` is a deprecated alias.
@@ -278,7 +279,7 @@ Files: `compose.yaml`, `dais-bridge/Dockerfile`, `dais-bridge/.dockerignore`, `M
 - **Self-documenting Makefile**: `make up` / `make up-prod` / `make down` / `make health` / `make clean` (destructive: removes arango-data volume).
 - **`docs/dev-environment.md`** — canonical bring-up guide with troubleshooting table.
 
-**Verification:** `make up` → arango Healthy → dais-bridge-dev responds → `dotnet test` 28/29 against the orchestrated arango (1 pre-existing Astro scaffolding failure). Prod profile: binary runs as `uid=1654(app)`. `dotnet watch` file detection confirmed via `podman logs`.
+**Verification:** `make up` → arango Healthy → dais-bridge-dev responds → `dotnet test` 29/29 against the orchestrated arango (the prior Astro scaffolding failure was a stale assertion against the removed cloudflare adapter; updated in `1c94ffd`). Prod profile: binary runs as `uid=1654(app)`. `dotnet watch` file detection confirmed via `podman logs`.
 
 ---
 
@@ -444,4 +445,4 @@ The project has transitioned to a professional, scalable CMS architecture. The *
 
 ---
 
-*Last updated: 2026-05-13. State at this snapshot: all gates green, 72 pages, 3534 internal links verified, 15/15 smoke tests passing, 29/29 .NET tests passing on `feature/graph-backed-rag`. Phase 12 Podman Dev Environment complete — `make up` starts ArangoDB 3.12 + LM probe + DAIS Bridge with hot reload. Prod profile verified running as non-root `app` user. Next: Phase 11 A6 (DI wiring for MemoryStore + embedding client).*
+*Last updated: 2026-05-13. State at this snapshot: all gates green, 72 pages, 3534 internal links verified, 15/15 smoke tests passing, 29/29 .NET tests passing on `feature/graph-backed-rag`. Phase 12 Podman Dev Environment complete — `make up` starts ArangoDB 3.12 + LM probe + DAIS Bridge with hot reload. Prod profile verified running as non-root `app` user. Phase 11 A6 (DI wiring for MemoryStore + embedding client) also complete (`cb8bd1c`). Next: Phase 11 B2 (MemoryPlugin kernel functions).*

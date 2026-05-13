@@ -3,8 +3,8 @@
 > **Where am I?** This is the active punchlist for Phase 11. The full design is in [`docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md`](docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md), the implementation plan with TDD steps + code blocks is in [`docs/superpowers/plans/2026-05-09-graph-backed-rag.md`](docs/superpowers/plans/2026-05-09-graph-backed-rag.md), and the session-history + environment-setup + per-task gotchas live in [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md).
 
 **Branch:** `feature/graph-backed-rag`
-**Last commit:** `4c3ecf0` (A5 — write paths)
-**Last verified:** 29/29 tests pass with `ARANGO_TEST_RUN=1 dotnet test` (2026-05-12)
+**Last commit:** `cb8bd1c` (A6 — DI wiring + EnsureSchemaAsync at startup)
+**Last verified:** 29/29 tests pass with `ARANGO_TEST_RUN=1 dotnet test` against the Phase 12 `make up` stack (2026-05-13)
 
 ---
 
@@ -45,15 +45,11 @@ If anything fails, **read the resume guide** — it documents every environment 
 | docs — A4 redesign | `666c2bb` | Lazy vector index (smoke test showed `EnsureSchemaAsync` can't create vector indexes at startup — empty collections trigger 1555) |
 | A4 — `MemoryStore` schema + lazy vector index | `ad92b61` | `EnsureSchemaAsync` (collections + persistent indexes), `EnsureVectorIndexAsync` (idempotent, cached, cleans up unusable). 4 integration tests |
 | A5 — Write paths | `4c3ecf0` | Two-phase write (insert → embed → patch + EnsureVectorIndexAsync, fallback to pending queue). 2 integration tests |
+| A6 — DI wiring + `EnsureSchemaAsync` at startup | `cb8bd1c` | `IEmbeddingClient` and `MemoryStore` registered as singletons; `EnsureSchemaAsync` runs in a startup scope before `app.Run()`. `appsettings.json` config keys (Memory:VectorNLists, AI:* etc.) overrideable via env vars per A1. |
 
 ---
 
 ## Remaining
-
-### Phase A — Substrate
-
-- [ ] **A6** — Wire `IEmbeddingClient` + `MemoryStore` into `Program.cs` DI; call `EnsureSchemaAsync` at startup. Requires LM Studio + `LMSTUDIO_API_KEY`. *No new tests; verified by app boot.*
-  Plan: [§ Task A6](docs/superpowers/plans/2026-05-09-graph-backed-rag.md#task-a6-wire-into-programcs-di-no-consumer-yet)
 
 ### Phase B — Explicit memory layer
 
