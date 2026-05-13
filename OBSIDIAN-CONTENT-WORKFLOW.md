@@ -10,6 +10,10 @@ Obsidian is the local editor for Darbees Chasing Rainbows content. Astro remains
 - Cloudflare Pages receives only committed files.
 - `.obsidian/` is gitignored and never deployed.
 
+## You only need this for content authoring
+
+The DAIS Bridge memory-stack (Phase 11) has its own local services (ArangoDB, LM Studio probe, gateway container) orchestrated by `podman compose`. You don't need any of that to write blog posts. If you're only here to write content, follow this guide and ignore [`docs/dev-environment.md`](docs/dev-environment.md).
+
 ## Setup
 
 1. Open Obsidian.
