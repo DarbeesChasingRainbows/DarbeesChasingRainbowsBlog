@@ -11,10 +11,9 @@ services:
     volumes:
       - arango-data:/var/lib/arangodb3
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "-u", "root:${ARANGO_ROOT_PASSWORD:-password}",
-             "http://localhost:8529/_api/version"]
+      test: ["CMD-SHELL", "arangosh --server.endpoint http+tcp://localhost:8529 --server.username root --server.password ${ARANGO_ROOT_PASSWORD:-password} --javascript.execute-string 'print(db._version())' --quiet"]
       interval: 5s
-      timeout: 2s
+      timeout: 5s
       retries: 12
     restart: unless-stopped
 
