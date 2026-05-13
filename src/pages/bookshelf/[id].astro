@@ -52,8 +52,10 @@ const heroUrl =
 		? new URL(hero.src, Astro.site).toString()
 		: undefined;
 
-// Build multi-block JSON-LD graph
-const graph = [
+// Build multi-block JSON-LD graph. Typed as Record<string, unknown>[] because
+// each builder returns a distinct schema.org shape with no useful common type;
+// the array is only rendered via JSON.stringify into a <script> tag.
+const graph: Record<string, unknown>[] = [
 	buildOrganizationJsonLd(),
 	buildPersonJsonLd(),
 	buildWebSiteJsonLd(),

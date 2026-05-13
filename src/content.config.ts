@@ -11,7 +11,7 @@ const llmFields = {
 		.array(
 			z.object({
 				title: z.string(),
-				url: z.string().url(),
+				url: z.url(),
 				type: z.enum(['primary', 'secondary']).optional(),
 			}),
 		)
@@ -36,7 +36,7 @@ const llmFields = {
 	imageAttribution: z
 		.object({
 			name: z.string(),
-			url: z.string().url().optional(),
+			url: z.url().optional(),
 		})
 		.optional(),
 	// Preview/excerpt text shown in post listings
@@ -82,13 +82,13 @@ const projects = defineCollection({
 			difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
 			estimatedCost: z.string().optional(),
 			estimatedTime: z.string().optional(),
-			githubUrl: z.string().url().optional(),
+			githubUrl: z.url().optional(),
 			partsList: z
 				.array(
 					z.object({
 						name: z.string(),
 						quantity: z.number().optional(),
-						url: z.string().url().optional(),
+						url: z.url().optional(),
 						notes: z.string().optional(),
 					}),
 				)
