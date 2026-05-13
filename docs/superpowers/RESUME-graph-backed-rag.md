@@ -352,15 +352,14 @@ Confirm HEAD is `4f600e3` (B1) or your subsequent commits.
 ```bash
 # LM Studio with token
 export LMSTUDIO_API_KEY="<your-token>"
-curl http://localhost:1234/v1/embeddings \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $LMSTUDIO_API_KEY" \
-  -d '{"model":"nomic-embed-text-v1.5","input":"hello"}'
+# Make sure .env contains the same value
+test -f .env || cp .env.example .env
 
-# ArangoDB 3.12 — --vector-index startup flag is required (smoke test 2026-05-12)
-docker run -d --name arango-test -e ARANGO_ROOT_PASSWORD=password -p 8529:8529 arangodb:3.12 --vector-index
-sleep 10
-curl -u root:password http://localhost:8529/_api/version
+# Bring up the compose-managed stack
+make up
+sleep 12        # wait for arango healthcheck + dotnet watch boot
+make health
+# Expected: ArangoDB UP, LM Studio UP (if running), DAIS Bridge UP
 
 # Test gates
 export ARANGO_TEST_RUN=1

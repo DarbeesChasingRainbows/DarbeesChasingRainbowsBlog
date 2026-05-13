@@ -15,17 +15,13 @@
 git checkout feature/graph-backed-rag
 git pull --ff-only
 
-# 2. ArangoDB 3.12 with --vector-index flag (required for memory tests)
-docker run -d --name arango-test \
-  -e ARANGO_ROOT_PASSWORD=password \
-  -p 8529:8529 \
-  arangodb:3.12 --vector-index
-sleep 10
-curl -u root:password http://localhost:8529/_api/version
+# 2. Local services via podman compose (see docs/dev-environment.md)
+make up
+make health
 
 # 3. LM Studio (required from A6 onward — A4/A5 use stub clients)
-export LMSTUDIO_API_KEY="<your-token>"
-# Load nomic-embed-text-v1.5 (768 dim) in LM Studio's server panel
+#    Load nomic-embed-text-v1.5 (768 dim) in LM Studio's server panel.
+#    Put LMSTUDIO_API_KEY=<your token> in .env (make init creates a template).
 
 # 4. Run all tests
 export ARANGO_TEST_RUN=1
