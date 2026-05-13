@@ -36,23 +36,24 @@ public class ScaffoldingTests
     }
 
     [Fact]
-    public void AstroConfig_ShouldUseCloudflareAdapter()
+    public void AstroConfig_ShouldBeStaticOutput_WithoutUnusedAdapter()
     {
-        // Arrange
+        // The site is static-output (Astro's default when `output:` is unset).
+        // Cloudflare Pages serves `dist/` directly without an SSR adapter, so
+        // we must NOT import `@astrojs/cloudflare` (it wasn't in package.json
+        // and its import broke `astro check`).
         var currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (currentDir != null && !File.Exists(Path.Combine(currentDir.FullName, "astro.config.mjs")))
         {
             currentDir = currentDir.Parent;
         }
-        
+
         Assert.NotNull(currentDir);
         var astroConfigPath = Path.Combine(currentDir.FullName, "astro.config.mjs");
 
-        // Act
         var content = File.ReadAllText(astroConfigPath);
 
-        // Assert
-        Assert.Contains("cloudflare()", content);
-        Assert.Contains("@astrojs/cloudflare", content);
+        Assert.DoesNotContain("@astrojs/cloudflare", content);
+        Assert.DoesNotContain("adapter:", content);
     }
 }
