@@ -5,12 +5,13 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Darbee.Gateway.Plugins;
 using Darbee.Gateway.Middleware;
 using Darbee.Gateway.Hubs;
+using Darbee.Gateway.Memory;
 
 namespace Darbee.Gateway;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,25 @@ public class Program
         var arangoPass = Environment.GetEnvironmentVariable("ARANGO_PASSWORD")
             ?? builder.Configuration["ArangoDB:Password"]
             ?? "password";
+
+        var embeddingModelId = builder.Configuration["AI:EmbeddingModelId"] ?? "nomic-embed-text-v1.5";
+        var embeddingDimension = int.Parse(builder.Configuration["AI:EmbeddingDimension"] ?? "768");
+        var vectorNLists = int.Parse(builder.Configuration["Memory:VectorNLists"] ?? "100");
+
+        var lmStudioApiKey = Environment.GetEnvironmentVariable("LMSTUDIO_API_KEY")
+            ?? builder.Configuration["AI:LMStudioApiKey"];
+
+        builder.Services.AddHttpClient("memory");
+        builder.Services.AddSingleton<IEmbeddingClient>(sp =>
+        {
+            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
+            return new LmStudioEmbeddingClient(http, lmStudioUrl, embeddingModelId, embeddingDimension, lmStudioApiKey);
+        });
+        builder.Services.AddSingleton<MemoryStore>(sp =>
+        {
+            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
+            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
+        });
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
@@ -91,6 +111,12 @@ public class Program
         });
 
         var app = builder.Build();
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var store = scope.ServiceProvider.GetRequiredService<MemoryStore>();
+            await store.EnsureSchemaAsync();
+        }
 
         // 4. Configure Middleware & Endpoints
         app.UseMiddleware<SafetyMiddleware>();
