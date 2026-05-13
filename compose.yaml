@@ -1,0 +1,81 @@
+name: darbees-dev
+
+services:
+  arango:
+    image: arangodb:3.12
+    command: ["--vector-index"]
+    environment:
+      ARANGO_ROOT_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
+    ports:
+      - "8529:8529"
+    volumes:
+      - arango-data:/var/lib/arangodb3
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-u", "root:${ARANGO_ROOT_PASSWORD:-password}",
+             "http://localhost:8529/_api/version"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+    restart: unless-stopped
+
+  lm-probe:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        apk add --no-cache curl >/dev/null
+        while true; do
+          if curl -fsS -m 3 -H "Authorization: Bearer ${LMSTUDIO_API_KEY:-}" \
+              http://host.containers.internal:1234/v1/models >/dev/null 2>&1; then
+            echo "[$(date -Iseconds)] lm-studio UP"
+          else
+            echo "[$(date -Iseconds)] lm-studio DOWN"
+          fi
+          sleep 30
+        done
+    environment:
+      LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
+    restart: unless-stopped
+
+  dais-bridge-dev:
+    profiles: ["dev"]
+    build:
+      context: ./dais-bridge
+      target: dev
+    command: ["dotnet", "watch", "run", "--no-launch-profile", "--project", "dais-bridge.csproj"]
+    volumes:
+      - ./dais-bridge:/src:Z
+    working_dir: /src
+    environment:
+      ARANGO_URL: http://arango:8529
+      ARANGO_USER: root
+      ARANGO_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
+      LMSTUDIO_URL: http://host.containers.internal:1234
+      LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    ports:
+      - "5000:5000"
+    depends_on:
+      arango: { condition: service_healthy }
+    restart: unless-stopped
+
+  dais-bridge-prod:
+    profiles: ["prod"]
+    build:
+      context: ./dais-bridge
+      target: prod
+    environment:
+      ARANGO_URL: http://arango:8529
+      ARANGO_USER: root
+      ARANGO_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
+      LMSTUDIO_URL: http://host.containers.internal:1234
+      LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
+    ports:
+      - "5000:5000"
+    depends_on:
+      arango: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  arango-data:
