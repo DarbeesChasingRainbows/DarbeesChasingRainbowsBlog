@@ -20,7 +20,12 @@
 		"test": "playwright test",
 		"test:ui": "playwright test --ui",
 		"test:report": "playwright show-report",
-		"check:links": "node scripts/check-internal-links.mjs"
+		"check:links": "node scripts/check-internal-links.mjs",
+		"geo:fill": "node --env-file-if-exists=.env scripts/geo-fill.mjs",
+		"geo:fill:all": "node --env-file-if-exists=.env scripts/geo-fill.mjs --all",
+		"related:rebuild": "node --env-file-if-exists=.env scripts/related-rebuild.mjs",
+		"image:watch": "node --env-file-if-exists=.env scripts/image-watcher.mjs",
+		"test:scripts": "node --test 'scripts/**/*.test.mjs'"
 	},
 	"dependencies": {
 		"@astrojs/check": "^0.9.9",
@@ -31,7 +36,9 @@
 		"@tailwindcss/vite": "^4.2.4",
 		"astro": "^6.2.1",
 		"astro-icon": "^1.1.5",
+		"chokidar": "^4.0.3",
 		"daisyui": "^5.5.19",
+		"gray-matter": "^4.0.3",
 		"sharp": "^0.34.3",
 		"tailwindcss": "^4.2.4",
 		"tinacms": "^3.7.5",

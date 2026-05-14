@@ -44,6 +44,11 @@ jobs:
       - name: Prettier (check only)
         run: npm run format:check
 
+      - name: Script unit tests
+        # node:test suite for the authoring scripts (scripts/). No LM Studio
+        # needed — only the pure-logic units run in CI.
+        run: npm run test:scripts
+
       - name: Build
         # Build last so we know type/lint/format issues surface first — they're
         # cheaper to fix than a build failure caused by something earlier.
