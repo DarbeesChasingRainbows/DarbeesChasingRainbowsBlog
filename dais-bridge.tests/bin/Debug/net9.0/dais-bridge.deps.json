@@ -25,8 +25,7 @@
         "runtime": {
           "lib/netstandard2.0/ArangoDBNetStandard.dll": {
             "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.0.0.0",
-            "localPath": "ArangoDBNetStandard.dll"
+            "fileVersion": "2.0.0.0"
           }
         }
       },
@@ -38,8 +37,7 @@
         "runtime": {
           "lib/net8.0/Azure.AI.OpenAI.dll": {
             "assemblyVersion": "2.9.0.0",
-            "fileVersion": "2.900.26.16301",
-            "localPath": "Azure.AI.OpenAI.dll"
+            "fileVersion": "2.900.26.16301"
           }
         }
       },
@@ -52,8 +50,7 @@
         "runtime": {
           "lib/net8.0/Azure.Core.dll": {
             "assemblyVersion": "1.51.1.0",
-            "fileVersion": "1.5100.126.10405",
-            "localPath": "Azure.Core.dll"
+            "fileVersion": "1.5100.126.10405"
           }
         }
       },
@@ -61,8 +58,7 @@
         "runtime": {
           "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
             "assemblyVersion": "10.0.0.2",
-            "fileVersion": "10.0.225.61305",
-            "localPath": "Microsoft.Bcl.AsyncInterfaces.dll"
+            "fileVersion": "10.0.225.61305"
           }
         }
       },
@@ -70,8 +66,7 @@
         "runtime": {
           "lib/netcoreapp2.1/Microsoft.Bcl.HashCode.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "4.700.20.56604",
-            "localPath": "Microsoft.Bcl.HashCode.dll"
+            "fileVersion": "4.700.20.56604"
           }
         }
       },
@@ -89,8 +84,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.AI.dll": {
             "assemblyVersion": "10.5.0.0",
-            "fileVersion": "10.500.26.21304",
-            "localPath": "Microsoft.Extensions.AI.dll"
+            "fileVersion": "10.500.26.21304"
           }
         }
       },
@@ -101,8 +95,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.AI.Abstractions.dll": {
             "assemblyVersion": "10.5.0.0",
-            "fileVersion": "10.500.226.25501",
-            "localPath": "Microsoft.Extensions.AI.Abstractions.dll"
+            "fileVersion": "10.500.226.25501"
           }
         }
       },
@@ -115,8 +108,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.AI.OpenAI.dll": {
             "assemblyVersion": "10.5.0.0",
-            "fileVersion": "10.500.26.21304",
-            "localPath": "Microsoft.Extensions.AI.OpenAI.dll"
+            "fileVersion": "10.500.26.21304"
           }
         }
       },
@@ -127,8 +119,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Caching.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Caching.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -139,8 +130,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Configuration.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -151,8 +141,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.DependencyInjection.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.225.61305",
-            "localPath": "Microsoft.Extensions.DependencyInjection.dll"
+            "fileVersion": "10.0.225.61305"
           }
         }
       },
@@ -160,8 +149,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -174,8 +162,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Diagnostics.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Diagnostics.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -186,8 +173,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.FileProviders.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -202,8 +188,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Hosting.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Hosting.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -215,8 +200,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Logging.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Logging.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -228,8 +212,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Options.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Options.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -237,8 +220,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Primitives.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Primitives.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -249,8 +231,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.Extensions.VectorData.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.0.0",
-            "localPath": "Microsoft.Extensions.VectorData.Abstractions.dll"
+            "fileVersion": "10.0.0.0"
           }
         }
       },
@@ -262,8 +243,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -278,8 +258,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Abstractions.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Abstractions.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -292,8 +271,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Connectors.AzureOpenAI.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Connectors.AzureOpenAI.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -306,8 +284,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Connectors.OpenAI.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Connectors.OpenAI.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -320,8 +297,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Core.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Core.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -334,8 +310,7 @@
         "runtime": {
           "lib/net9.0/ModelContextProtocol.dll": {
             "assemblyVersion": "1.3.0.0",
-            "fileVersion": "1.3.0.0",
-            "localPath": "ModelContextProtocol.dll"
+            "fileVersion": "1.3.0.0"
           }
         }
       },
@@ -348,8 +323,7 @@
         "runtime": {
           "lib/net9.0/ModelContextProtocol.Core.dll": {
             "assemblyVersion": "1.3.0.0",
-            "fileVersion": "1.3.0.0",
-            "localPath": "ModelContextProtocol.Core.dll"
+            "fileVersion": "1.3.0.0"
           }
         }
       },
@@ -357,8 +331,7 @@
         "runtime": {
           "lib/net6.0/Newtonsoft.Json.dll": {
             "assemblyVersion": "13.0.0.0",
-            "fileVersion": "13.0.2.27524",
-            "localPath": "Newtonsoft.Json.dll"
+            "fileVersion": "13.0.2.27524"
           }
         }
       },
@@ -370,8 +343,7 @@
         "runtime": {
           "lib/net8.0/OpenAI.dll": {
             "assemblyVersion": "2.10.0.0",
-            "fileVersion": "2.10.0.0",
-            "localPath": "OpenAI.dll"
+            "fileVersion": "2.10.0.0"
           }
         }
       },
@@ -387,8 +359,7 @@
         "runtime": {
           "lib/net9.0/System.ClientModel.dll": {
             "assemblyVersion": "1.10.0.0",
-            "fileVersion": "1.1000.26.16607",
-            "localPath": "System.ClientModel.dll"
+            "fileVersion": "1.1000.26.16607"
           }
         }
       },
@@ -396,8 +367,7 @@
         "runtime": {
           "lib/net9.0/System.Diagnostics.DiagnosticSource.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Diagnostics.DiagnosticSource.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -405,8 +375,7 @@
         "runtime": {
           "lib/net9.0/System.IO.Pipelines.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.IO.Pipelines.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -414,8 +383,7 @@
         "runtime": {
           "lib/net9.0/System.Linq.AsyncEnumerable.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.426.12010",
-            "localPath": "System.Linq.AsyncEnumerable.dll"
+            "fileVersion": "10.0.426.12010"
           }
         }
       },
@@ -426,8 +394,7 @@
         "runtime": {
           "lib/net9.0/System.Memory.Data.dll": {
             "assemblyVersion": "10.0.0.3",
-            "fileVersion": "10.0.326.7603",
-            "localPath": "System.Memory.Data.dll"
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -435,8 +402,7 @@
         "runtime": {
           "lib/net9.0/System.Net.ServerSentEvents.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Net.ServerSentEvents.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -444,8 +410,7 @@
         "runtime": {
           "lib/net9.0/System.Numerics.Tensors.dll": {
             "assemblyVersion": "10.0.0.6",
-            "fileVersion": "10.0.626.17701",
-            "localPath": "System.Numerics.Tensors.dll"
+            "fileVersion": "10.0.626.17701"
           }
         }
       },
@@ -453,8 +418,7 @@
         "runtime": {
           "lib/net9.0/System.Text.Encodings.Web.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Text.Encodings.Web.dll"
+            "fileVersion": "10.0.726.21808"
           }
         },
         "runtimeTargets": {
@@ -462,15 +426,13 @@
             "rid": "browser",
             "assetType": "runtime",
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll"
+            "fileVersion": "10.0.726.21808"
           },
           "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll": {
             "rid": "win",
             "assetType": "runtime",
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -482,8 +444,7 @@
         "runtime": {
           "lib/net9.0/System.Text.Json.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Text.Json.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -491,8 +452,7 @@
         "runtime": {
           "lib/net9.0/System.Threading.Channels.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.626.17701",
-            "localPath": "System.Threading.Channels.dll"
+            "fileVersion": "10.0.626.17701"
           }
         }
       },
@@ -500,8 +460,7 @@
         "runtime": {
           "lib/net8.0/YamlDotNet.dll": {
             "assemblyVersion": "16.0.0.0",
-            "fileVersion": "16.0.0.0",
-            "localPath": "YamlDotNet.dll"
+            "fileVersion": "16.0.0.0"
           }
         }
       }

@@ -25,8 +25,7 @@
         "runtime": {
           "lib/netstandard2.0/ArangoDBNetStandard.dll": {
             "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.0.0.0",
-            "localPath": "ArangoDBNetStandard.dll"
+            "fileVersion": "2.0.0.0"
           }
         }
       },
@@ -38,8 +37,7 @@
         "runtime": {
           "lib/net8.0/Azure.AI.OpenAI.dll": {
             "assemblyVersion": "2.9.0.0",
-            "fileVersion": "2.900.26.16301",
-            "localPath": "Azure.AI.OpenAI.dll"
+            "fileVersion": "2.900.26.16301"
           }
         }
       },
@@ -52,8 +50,7 @@
         "runtime": {
           "lib/net8.0/Azure.Core.dll": {
             "assemblyVersion": "1.51.1.0",
-            "fileVersion": "1.5100.126.10405",
-            "localPath": "Azure.Core.dll"
+            "fileVersion": "1.5100.126.10405"
           }
         }
       },
@@ -61,8 +58,7 @@
         "runtime": {
           "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
             "assemblyVersion": "10.0.0.2",
-            "fileVersion": "10.0.225.61305",
-            "localPath": "Microsoft.Bcl.AsyncInterfaces.dll"
+            "fileVersion": "10.0.225.61305"
           }
         }
       },
@@ -70,8 +66,7 @@
         "runtime": {
           "lib/netcoreapp2.1/Microsoft.Bcl.HashCode.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "4.700.20.56604",
-            "localPath": "Microsoft.Bcl.HashCode.dll"
+            "fileVersion": "4.700.20.56604"
           }
         }
       },
@@ -79,8 +74,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.VisualStudio.CodeCoverage.Shim.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.225.12603",
-            "localPath": "Microsoft.VisualStudio.CodeCoverage.Shim.dll"
+            "fileVersion": "17.1400.225.12603"
           }
         }
       },
@@ -98,8 +92,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.AI.dll": {
             "assemblyVersion": "10.5.0.0",
-            "fileVersion": "10.500.26.21304",
-            "localPath": "Microsoft.Extensions.AI.dll"
+            "fileVersion": "10.500.26.21304"
           }
         }
       },
@@ -110,8 +103,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.AI.Abstractions.dll": {
             "assemblyVersion": "10.5.0.0",
-            "fileVersion": "10.500.226.25501",
-            "localPath": "Microsoft.Extensions.AI.Abstractions.dll"
+            "fileVersion": "10.500.226.25501"
           }
         }
       },
@@ -124,8 +116,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.AI.OpenAI.dll": {
             "assemblyVersion": "10.5.0.0",
-            "fileVersion": "10.500.26.21304",
-            "localPath": "Microsoft.Extensions.AI.OpenAI.dll"
+            "fileVersion": "10.500.26.21304"
           }
         }
       },
@@ -136,8 +127,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Caching.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Caching.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -148,8 +138,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Configuration.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -160,8 +149,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.DependencyInjection.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.225.61305",
-            "localPath": "Microsoft.Extensions.DependencyInjection.dll"
+            "fileVersion": "10.0.225.61305"
           }
         }
       },
@@ -169,8 +157,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -183,8 +170,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Diagnostics.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Diagnostics.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -195,8 +181,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.FileProviders.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -211,8 +196,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Hosting.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Hosting.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -224,8 +208,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Logging.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Logging.Abstractions.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -237,8 +220,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Options.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Options.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -246,8 +228,7 @@
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Primitives.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "Microsoft.Extensions.Primitives.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -258,8 +239,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.Extensions.VectorData.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.0.0",
-            "localPath": "Microsoft.Extensions.VectorData.Abstractions.dll"
+            "fileVersion": "10.0.0.0"
           }
         }
       },
@@ -277,8 +257,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -293,8 +272,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Abstractions.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Abstractions.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -307,8 +285,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Connectors.AzureOpenAI.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Connectors.AzureOpenAI.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -321,8 +298,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Connectors.OpenAI.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Connectors.OpenAI.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -335,8 +311,7 @@
         "runtime": {
           "lib/net8.0/Microsoft.SemanticKernel.Core.dll": {
             "assemblyVersion": "1.75.0.0",
-            "fileVersion": "1.75.0.0",
-            "localPath": "Microsoft.SemanticKernel.Core.dll"
+            "fileVersion": "1.75.0.0"
           }
         }
       },
@@ -344,124 +319,95 @@
         "runtime": {
           "lib/net8.0/Microsoft.TestPlatform.CoreUtilities.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.TestPlatform.CoreUtilities.dll"
+            "fileVersion": "17.1400.125.30202"
           },
           "lib/net8.0/Microsoft.TestPlatform.PlatformAbstractions.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.TestPlatform.PlatformAbstractions.dll"
+            "fileVersion": "17.1400.125.30202"
           },
           "lib/net8.0/Microsoft.VisualStudio.TestPlatform.ObjectModel.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.VisualStudio.TestPlatform.ObjectModel.dll"
+            "fileVersion": "17.1400.125.30202"
           }
         },
         "resources": {
           "lib/net8.0/cs/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "cs",
-            "localPath": "cs/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "cs"
           },
           "lib/net8.0/cs/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "cs",
-            "localPath": "cs/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "cs"
           },
           "lib/net8.0/de/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "de",
-            "localPath": "de/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "de"
           },
           "lib/net8.0/de/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "de",
-            "localPath": "de/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "de"
           },
           "lib/net8.0/es/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "es",
-            "localPath": "es/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "es"
           },
           "lib/net8.0/es/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "es",
-            "localPath": "es/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "es"
           },
           "lib/net8.0/fr/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "fr",
-            "localPath": "fr/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "fr"
           },
           "lib/net8.0/fr/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "fr",
-            "localPath": "fr/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "fr"
           },
           "lib/net8.0/it/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "it",
-            "localPath": "it/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "it"
           },
           "lib/net8.0/it/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "it",
-            "localPath": "it/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "it"
           },
           "lib/net8.0/ja/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "ja",
-            "localPath": "ja/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "ja"
           },
           "lib/net8.0/ja/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "ja",
-            "localPath": "ja/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "ja"
           },
           "lib/net8.0/ko/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "ko",
-            "localPath": "ko/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "ko"
           },
           "lib/net8.0/ko/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "ko",
-            "localPath": "ko/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "ko"
           },
           "lib/net8.0/pl/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "pl",
-            "localPath": "pl/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "pl"
           },
           "lib/net8.0/pl/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "pl",
-            "localPath": "pl/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "pl"
           },
           "lib/net8.0/pt-BR/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "pt-BR",
-            "localPath": "pt-BR/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "pt-BR"
           },
           "lib/net8.0/pt-BR/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "pt-BR",
-            "localPath": "pt-BR/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "pt-BR"
           },
           "lib/net8.0/ru/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "ru",
-            "localPath": "ru/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "ru"
           },
           "lib/net8.0/ru/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "ru",
-            "localPath": "ru/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "ru"
           },
           "lib/net8.0/tr/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "tr",
-            "localPath": "tr/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "tr"
           },
           "lib/net8.0/tr/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "tr",
-            "localPath": "tr/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "tr"
           },
           "lib/net8.0/zh-Hans/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "zh-Hans",
-            "localPath": "zh-Hans/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "zh-Hans"
           },
           "lib/net8.0/zh-Hans/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "zh-Hans",
-            "localPath": "zh-Hans/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "zh-Hans"
           },
           "lib/net8.0/zh-Hant/Microsoft.TestPlatform.CoreUtilities.resources.dll": {
-            "locale": "zh-Hant",
-            "localPath": "zh-Hant/Microsoft.TestPlatform.CoreUtilities.resources.dll"
+            "locale": "zh-Hant"
           },
           "lib/net8.0/zh-Hant/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": {
-            "locale": "zh-Hant",
-            "localPath": "zh-Hant/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll"
+            "locale": "zh-Hant"
           }
         }
       },
@@ -473,186 +419,142 @@
         "runtime": {
           "lib/net8.0/Microsoft.TestPlatform.CommunicationUtilities.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.TestPlatform.CommunicationUtilities.dll"
+            "fileVersion": "17.1400.125.30202"
           },
           "lib/net8.0/Microsoft.TestPlatform.CrossPlatEngine.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.TestPlatform.CrossPlatEngine.dll"
+            "fileVersion": "17.1400.125.30202"
           },
           "lib/net8.0/Microsoft.TestPlatform.Utilities.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.TestPlatform.Utilities.dll"
+            "fileVersion": "17.1400.125.30202"
           },
           "lib/net8.0/Microsoft.VisualStudio.TestPlatform.Common.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "Microsoft.VisualStudio.TestPlatform.Common.dll"
+            "fileVersion": "17.1400.125.30202"
           },
           "lib/net8.0/testhost.dll": {
             "assemblyVersion": "15.0.0.0",
-            "fileVersion": "17.1400.125.30202",
-            "localPath": "testhost.dll"
+            "fileVersion": "17.1400.125.30202"
           }
         },
         "resources": {
           "lib/net8.0/cs/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "cs",
-            "localPath": "cs/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "cs"
           },
           "lib/net8.0/cs/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "cs",
-            "localPath": "cs/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "cs"
           },
           "lib/net8.0/cs/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "cs",
-            "localPath": "cs/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "cs"
           },
           "lib/net8.0/de/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "de",
-            "localPath": "de/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "de"
           },
           "lib/net8.0/de/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "de",
-            "localPath": "de/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "de"
           },
           "lib/net8.0/de/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "de",
-            "localPath": "de/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "de"
           },
           "lib/net8.0/es/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "es",
-            "localPath": "es/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "es"
           },
           "lib/net8.0/es/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "es",
-            "localPath": "es/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "es"
           },
           "lib/net8.0/es/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "es",
-            "localPath": "es/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "es"
           },
           "lib/net8.0/fr/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "fr",
-            "localPath": "fr/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "fr"
           },
           "lib/net8.0/fr/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "fr",
-            "localPath": "fr/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "fr"
           },
           "lib/net8.0/fr/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "fr",
-            "localPath": "fr/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "fr"
           },
           "lib/net8.0/it/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "it",
-            "localPath": "it/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "it"
           },
           "lib/net8.0/it/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "it",
-            "localPath": "it/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "it"
           },
           "lib/net8.0/it/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "it",
-            "localPath": "it/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "it"
           },
           "lib/net8.0/ja/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "ja",
-            "localPath": "ja/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "ja"
           },
           "lib/net8.0/ja/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "ja",
-            "localPath": "ja/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "ja"
           },
           "lib/net8.0/ja/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "ja",
-            "localPath": "ja/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "ja"
           },
           "lib/net8.0/ko/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "ko",
-            "localPath": "ko/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "ko"
           },
           "lib/net8.0/ko/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "ko",
-            "localPath": "ko/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "ko"
           },
           "lib/net8.0/ko/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "ko",
-            "localPath": "ko/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "ko"
           },
           "lib/net8.0/pl/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "pl",
-            "localPath": "pl/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "pl"
           },
           "lib/net8.0/pl/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "pl",
-            "localPath": "pl/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "pl"
           },
           "lib/net8.0/pl/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "pl",
-            "localPath": "pl/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "pl"
           },
           "lib/net8.0/pt-BR/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "pt-BR",
-            "localPath": "pt-BR/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "pt-BR"
           },
           "lib/net8.0/pt-BR/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "pt-BR",
-            "localPath": "pt-BR/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "pt-BR"
           },
           "lib/net8.0/pt-BR/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "pt-BR",
-            "localPath": "pt-BR/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "pt-BR"
           },
           "lib/net8.0/ru/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "ru",
-            "localPath": "ru/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "ru"
           },
           "lib/net8.0/ru/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "ru",
-            "localPath": "ru/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "ru"
           },
           "lib/net8.0/ru/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "ru",
-            "localPath": "ru/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "ru"
           },
           "lib/net8.0/tr/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "tr",
-            "localPath": "tr/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "tr"
           },
           "lib/net8.0/tr/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "tr",
-            "localPath": "tr/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "tr"
           },
           "lib/net8.0/tr/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "tr",
-            "localPath": "tr/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "tr"
           },
           "lib/net8.0/zh-Hans/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "zh-Hans",
-            "localPath": "zh-Hans/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "zh-Hans"
           },
           "lib/net8.0/zh-Hans/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "zh-Hans",
-            "localPath": "zh-Hans/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "zh-Hans"
           },
           "lib/net8.0/zh-Hans/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "zh-Hans",
-            "localPath": "zh-Hans/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "zh-Hans"
           },
           "lib/net8.0/zh-Hant/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": {
-            "locale": "zh-Hant",
-            "localPath": "zh-Hant/Microsoft.TestPlatform.CommunicationUtilities.resources.dll"
+            "locale": "zh-Hant"
           },
           "lib/net8.0/zh-Hant/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": {
-            "locale": "zh-Hant",
-            "localPath": "zh-Hant/Microsoft.TestPlatform.CrossPlatEngine.resources.dll"
+            "locale": "zh-Hant"
           },
           "lib/net8.0/zh-Hant/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": {
-            "locale": "zh-Hant",
-            "localPath": "zh-Hant/Microsoft.VisualStudio.TestPlatform.Common.resources.dll"
+            "locale": "zh-Hant"
           }
         }
       },
@@ -665,8 +567,7 @@
         "runtime": {
           "lib/net9.0/ModelContextProtocol.dll": {
             "assemblyVersion": "1.3.0.0",
-            "fileVersion": "1.3.0.0",
-            "localPath": "ModelContextProtocol.dll"
+            "fileVersion": "1.3.0.0"
           }
         }
       },
@@ -679,8 +580,7 @@
         "runtime": {
           "lib/net9.0/ModelContextProtocol.Core.dll": {
             "assemblyVersion": "1.3.0.0",
-            "fileVersion": "1.3.0.0",
-            "localPath": "ModelContextProtocol.Core.dll"
+            "fileVersion": "1.3.0.0"
           }
         }
       },
@@ -688,8 +588,7 @@
         "runtime": {
           "lib/net6.0/Newtonsoft.Json.dll": {
             "assemblyVersion": "13.0.0.0",
-            "fileVersion": "13.0.3.27908",
-            "localPath": "Newtonsoft.Json.dll"
+            "fileVersion": "13.0.3.27908"
           }
         }
       },
@@ -701,8 +600,7 @@
         "runtime": {
           "lib/net8.0/OpenAI.dll": {
             "assemblyVersion": "2.10.0.0",
-            "fileVersion": "2.10.0.0",
-            "localPath": "OpenAI.dll"
+            "fileVersion": "2.10.0.0"
           }
         }
       },
@@ -718,8 +616,7 @@
         "runtime": {
           "lib/net9.0/System.ClientModel.dll": {
             "assemblyVersion": "1.10.0.0",
-            "fileVersion": "1.1000.26.16607",
-            "localPath": "System.ClientModel.dll"
+            "fileVersion": "1.1000.26.16607"
           }
         }
       },
@@ -727,8 +624,7 @@
         "runtime": {
           "lib/net9.0/System.Diagnostics.DiagnosticSource.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Diagnostics.DiagnosticSource.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -736,8 +632,7 @@
         "runtime": {
           "lib/net9.0/System.IO.Pipelines.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.IO.Pipelines.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -745,8 +640,7 @@
         "runtime": {
           "lib/net9.0/System.Linq.AsyncEnumerable.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.426.12010",
-            "localPath": "System.Linq.AsyncEnumerable.dll"
+            "fileVersion": "10.0.426.12010"
           }
         }
       },
@@ -757,8 +651,7 @@
         "runtime": {
           "lib/net9.0/System.Memory.Data.dll": {
             "assemblyVersion": "10.0.0.3",
-            "fileVersion": "10.0.326.7603",
-            "localPath": "System.Memory.Data.dll"
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -766,8 +659,7 @@
         "runtime": {
           "lib/net9.0/System.Net.ServerSentEvents.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Net.ServerSentEvents.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -775,8 +667,7 @@
         "runtime": {
           "lib/net9.0/System.Numerics.Tensors.dll": {
             "assemblyVersion": "10.0.0.6",
-            "fileVersion": "10.0.626.17701",
-            "localPath": "System.Numerics.Tensors.dll"
+            "fileVersion": "10.0.626.17701"
           }
         }
       },
@@ -784,8 +675,7 @@
         "runtime": {
           "lib/net9.0/System.Text.Encodings.Web.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Text.Encodings.Web.dll"
+            "fileVersion": "10.0.726.21808"
           }
         },
         "runtimeTargets": {
@@ -793,15 +683,13 @@
             "rid": "browser",
             "assetType": "runtime",
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll"
+            "fileVersion": "10.0.726.21808"
           },
           "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll": {
             "rid": "win",
             "assetType": "runtime",
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -813,8 +701,7 @@
         "runtime": {
           "lib/net9.0/System.Text.Json.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.726.21808",
-            "localPath": "System.Text.Json.dll"
+            "fileVersion": "10.0.726.21808"
           }
         }
       },
@@ -822,8 +709,7 @@
         "runtime": {
           "lib/net9.0/System.Threading.Channels.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.626.17701",
-            "localPath": "System.Threading.Channels.dll"
+            "fileVersion": "10.0.626.17701"
           }
         }
       },
@@ -837,8 +723,7 @@
         "runtime": {
           "lib/netstandard2.0/xunit.abstractions.dll": {
             "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.0.0.0",
-            "localPath": "xunit.abstractions.dll"
+            "fileVersion": "0.0.0.0"
           }
         }
       },
@@ -846,8 +731,7 @@
         "runtime": {
           "lib/net6.0/xunit.assert.dll": {
             "assemblyVersion": "2.9.3.0",
-            "fileVersion": "2.9.3.0",
-            "localPath": "xunit.assert.dll"
+            "fileVersion": "2.9.3.0"
           }
         }
       },
@@ -864,8 +748,7 @@
         "runtime": {
           "lib/netstandard1.1/xunit.core.dll": {
             "assemblyVersion": "2.9.3.0",
-            "fileVersion": "2.9.3.0",
-            "localPath": "xunit.core.dll"
+            "fileVersion": "2.9.3.0"
           }
         }
       },
@@ -876,8 +759,7 @@
         "runtime": {
           "lib/netstandard1.1/xunit.execution.dotnet.dll": {
             "assemblyVersion": "2.9.3.0",
-            "fileVersion": "2.9.3.0",
-            "localPath": "xunit.execution.dotnet.dll"
+            "fileVersion": "2.9.3.0"
           }
         }
       },
@@ -885,8 +767,7 @@
         "runtime": {
           "lib/net8.0/YamlDotNet.dll": {
             "assemblyVersion": "16.0.0.0",
-            "fileVersion": "16.0.0.0",
-            "localPath": "YamlDotNet.dll"
+            "fileVersion": "16.0.0.0"
           }
         }
       },
