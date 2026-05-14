@@ -50,3 +50,65 @@ export function buildRelatedMap(posts, opts) {
 	}
 	return map;
 }
+
+// ---------------------------------------------------------------------------
+// Orchestration — runs only when this file is invoked directly.
+// ---------------------------------------------------------------------------
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { createClient } from './lib/lmstudio.mjs';
+import { listPosts, embedText, contentHash, PRIMARY_COLLECTIONS } from './lib/posts.mjs';
+
+const DATA_DIR = 'src/data';
+const OUT_PATH = `${DATA_DIR}/related-posts.json`;
+const CACHE_PATH = `${DATA_DIR}/related-posts.cache.json`;
+
+async function readJson(path, fallback) {
+	try {
+		return JSON.parse(await readFile(path, 'utf8'));
+	} catch {
+		return fallback;
+	}
+}
+
+async function main() {
+	const embeddingModel = process.env.AI_EMBEDDING_MODEL_ID || '';
+	if (!embeddingModel) {
+		console.error('AI_EMBEDDING_MODEL_ID is not set — cannot rebuild related posts.');
+		process.exit(1);
+	}
+
+	const client = createClient();
+	const posts = await listPosts({ collections: PRIMARY_COLLECTIONS, includeDrafts: false });
+	const cache = await readJson(CACHE_PATH, {});
+	const nextCache = {};
+	let embedded = 0, fromCache = 0;
+
+	const withVectors = [];
+	for (const post of posts) {
+		const key = cacheKey(contentHash(post), embeddingModel);
+		let vector = cache[key];
+		if (vector) {
+			fromCache++;
+		} else {
+			vector = await client.embed(embedText(post));
+			embedded++;
+		}
+		nextCache[key] = vector;
+		withVectors.push({ collection: post.collection, id: post.id, vector });
+	}
+
+	const map = buildRelatedMap(withVectors, { limit: 3, floor: 0.6 });
+	const orphans = Object.values(map).filter((r) => r.length === 0).length;
+
+	await mkdir(DATA_DIR, { recursive: true });
+	await writeFile(OUT_PATH, `${JSON.stringify(map, null, '\t')}\n`, 'utf8');
+	await writeFile(CACHE_PATH, `${JSON.stringify(nextCache, null, '\t')}\n`, 'utf8');
+
+	console.log(`${embedded} embedded, ${fromCache} from cache, ${orphans} posts with 0 relations`);
+	console.log(`Wrote ${OUT_PATH}`);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+	main();
+}
