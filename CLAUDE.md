@@ -27,6 +27,18 @@ homeschool / Kingdom Farm. **Astro 6**, **Tailwind CSS v4**, **DaisyUI v5**,
 
 CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml). 
 
+## Commands (Authoring scripts — Phase 13)
+
+| Task                      | Command                          | When                  |
+| ------------------------- | -------------------------------- | --------------------- |
+| Fill GEO frontmatter      | `npm run geo:fill -- <post.mdx>` | Before publishing     |
+| Fill GEO across the site  | `npm run geo:fill:all`           | Bulk backfill         |
+| Rebuild related posts     | `npm run related:rebuild`        | After adding/editing posts |
+| Watch image inbox         | `npm run image:watch`            | While adding photos   |
+| Script unit tests         | `npm run test:scripts`           | CI runs this          |
+
+Full guide: [scripts/README.md](scripts/README.md). All three call local LM Studio.
+
 ## Commands (DAIS Bridge / Phase 11 services)
 
 | Task                     | Command                | When             |

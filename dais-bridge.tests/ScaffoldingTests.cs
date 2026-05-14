@@ -56,4 +56,35 @@ public class ScaffoldingTests
         Assert.DoesNotContain("@astrojs/cloudflare", content);
         Assert.DoesNotContain("adapter:", content);
     }
+
+    [Fact]
+    public void PackageJson_ShouldDeclareAuthoringScriptsAndDeps()
+    {
+        // Phase 13 authoring scripts must stay wired into package.json so the
+        // npm-run entry points and their two deps don't silently disappear.
+        var currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (currentDir != null && !File.Exists(Path.Combine(currentDir.FullName, "astro.config.mjs")))
+        {
+            currentDir = currentDir.Parent;
+        }
+
+        Assert.NotNull(currentDir);
+        var packageJsonPath = Path.Combine(currentDir.FullName, "package.json");
+        Assert.True(File.Exists(packageJsonPath), $"package.json should exist at {packageJsonPath}");
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(packageJsonPath));
+        var root = doc.RootElement;
+
+        var scripts = root.GetProperty("scripts");
+        foreach (var name in new[] { "geo:fill", "geo:fill:all", "related:rebuild", "image:watch", "test:scripts" })
+        {
+            Assert.True(scripts.TryGetProperty(name, out _), $"package.json scripts missing '{name}'");
+        }
+
+        var deps = root.GetProperty("dependencies");
+        foreach (var dep in new[] { "gray-matter", "chokidar" })
+        {
+            Assert.True(deps.TryGetProperty(dep, out _), $"package.json dependencies missing '{dep}'");
+        }
+    }
 }
