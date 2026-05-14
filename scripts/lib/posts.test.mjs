@@ -11,7 +11,8 @@ test('deriveId returns the posix path under the collection root without .mdx', (
 });
 
 test('stripMdx removes imports, JSX tags, and markdown punctuation', () => {
-	const body = "import X from 'x';\n\n# Heading\n\n<Callout>hey</Callout>\n\nA [link](http://e.com).";
+	const body =
+		"import X from 'x';\n\n# Heading\n\n<Callout>hey</Callout>\n\nA [link](http://e.com).";
 	const out = stripMdx(body);
 	assert.equal(out.includes('import'), false);
 	assert.equal(out.includes('<Callout>'), false);
@@ -50,7 +51,10 @@ test('listPosts walks collections, skips drafts and _templates', async () => {
 		await writeFile(join(root, '_templates', 't.mdx'), '---\ntitle: T\n---\ntemplate');
 
 		const published = await listPosts({ contentRoot: root, collections: ['blog'] });
-		assert.deepEqual(published.map((p) => p.id), ['a']);
+		assert.deepEqual(
+			published.map((p) => p.id),
+			['a'],
+		);
 
 		const all = await listPosts({ contentRoot: root, collections: ['blog'], includeDrafts: true });
 		assert.deepEqual(all.map((p) => p.id).sort(), ['a', 'b']);

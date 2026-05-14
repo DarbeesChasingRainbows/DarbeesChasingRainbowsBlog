@@ -38,7 +38,11 @@ test('mergeFrontmatter preserves existing key order and appends new keys', () =>
 	const generated = { aiSummary: 'S', keyTakeaways: ['a'] };
 	const { merged } = mergeFrontmatter(existing, generated);
 	assert.deepEqual(Object.keys(merged), [
-		'title', 'description', 'draft', 'aiSummary', 'keyTakeaways',
+		'title',
+		'description',
+		'draft',
+		'aiSummary',
+		'keyTakeaways',
 	]);
 });
 

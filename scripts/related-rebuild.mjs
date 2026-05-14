@@ -9,7 +9,9 @@
 
 /** Cosine similarity of two equal-length numeric vectors. Returns 0 for a zero vector. */
 export function cosineSimilarity(a, b) {
-	let dot = 0, na = 0, nb = 0;
+	let dot = 0,
+		na = 0,
+		nb = 0;
 	for (let i = 0; i < a.length; i++) {
 		dot += a[i] * b[i];
 		na += a[i] * a[i];
@@ -43,9 +45,7 @@ export function topRelated(vector, others, { limit = 3, floor = 0.6 } = {}) {
 export function buildRelatedMap(posts, opts) {
 	const map = {};
 	for (const post of posts) {
-		const others = posts.filter(
-			(p) => !(p.collection === post.collection && p.id === post.id),
-		);
+		const others = posts.filter((p) => !(p.collection === post.collection && p.id === post.id));
 		map[`${post.collection}/${post.id}`] = topRelated(post.vector, others, opts);
 	}
 	return map;
@@ -82,7 +82,8 @@ async function main() {
 	const posts = await listPosts({ collections: PRIMARY_COLLECTIONS, includeDrafts: false });
 	const cache = await readJson(CACHE_PATH, {});
 	const nextCache = {};
-	let embedded = 0, fromCache = 0;
+	let embedded = 0,
+		fromCache = 0;
 
 	const withVectors = [];
 	for (const post of posts) {

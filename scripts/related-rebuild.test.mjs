@@ -16,12 +16,15 @@ test('cacheKey combines content hash and embedding model id', () => {
 
 test('topRelated applies the floor, sorts desc, and caps at the limit', () => {
 	const others = [
-		{ collection: 'blog', id: 'same', vector: [1, 0] },       // score 1
-		{ collection: 'projects', id: 'half', vector: [1, 1] },   // score ~0.707
-		{ collection: 'blog', id: 'ortho', vector: [0, 1] },      // score 0 — below floor
+		{ collection: 'blog', id: 'same', vector: [1, 0] }, // score 1
+		{ collection: 'projects', id: 'half', vector: [1, 1] }, // score ~0.707
+		{ collection: 'blog', id: 'ortho', vector: [0, 1] }, // score 0 — below floor
 	];
 	const result = topRelated([1, 0], others, { limit: 3, floor: 0.6 });
-	assert.deepEqual(result.map((r) => r.id), ['same', 'half']);
+	assert.deepEqual(
+		result.map((r) => r.id),
+		['same', 'half'],
+	);
 	assert.ok(result[0].score >= result[1].score);
 });
 
@@ -41,5 +44,8 @@ test('buildRelatedMap uses composite collection/id keys and excludes self', () =
 	];
 	const map = buildRelatedMap(posts, { limit: 3, floor: 0.6 });
 	assert.deepEqual(Object.keys(map).sort(), ['blog/a', 'projects/a']);
-	assert.deepEqual(map['blog/a'].map((r) => `${r.collection}/${r.id}`), ['projects/a']);
+	assert.deepEqual(
+		map['blog/a'].map((r) => `${r.collection}/${r.id}`),
+		['projects/a'],
+	);
 });

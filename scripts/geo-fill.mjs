@@ -105,7 +105,9 @@ async function main() {
 		posts = [{ collection: '', id: path, path, frontmatter, body }];
 	}
 
-	let filled = 0, skipped = 0, failed = 0;
+	let filled = 0,
+		skipped = 0,
+		failed = 0;
 	for (const post of posts) {
 		try {
 			const result = await fillOne(client, post, force);

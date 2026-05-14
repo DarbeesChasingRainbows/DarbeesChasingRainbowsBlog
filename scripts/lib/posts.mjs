@@ -14,16 +14,19 @@ export const ALL_COLLECTIONS = ['blog', 'projects', 'field-notes', 'books'];
 
 /** Astro-style id: path under the collection root, posix separators, no .mdx. */
 export function deriveId(collectionRoot, filePath) {
-	return relative(collectionRoot, filePath).split(sep).join('/').replace(/\.mdx$/, '');
+	return relative(collectionRoot, filePath)
+		.split(sep)
+		.join('/')
+		.replace(/\.mdx$/, '');
 }
 
 /** Reduce MDX to a plain-text approximation for embedding. Naive on purpose. */
 export function stripMdx(body) {
 	return body
-		.replace(/^import\s.+$/gm, '')            // import lines
-		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')  // links -> link text
-		.replace(/<[^>]+>/g, '')                  // JSX / HTML tags
-		.replace(/[#*_`>|~-]/g, ' ')              // markdown punctuation
+		.replace(/^import\s.+$/gm, '') // import lines
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links -> link text
+		.replace(/<[^>]+>/g, '') // JSX / HTML tags
+		.replace(/[#*_`>|~-]/g, ' ') // markdown punctuation
 		.replace(/\s+/g, ' ')
 		.trim();
 }

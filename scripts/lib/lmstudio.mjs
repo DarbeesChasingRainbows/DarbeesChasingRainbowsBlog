@@ -48,7 +48,10 @@ export function createClient({
 
 		async chatJson(messages, schema, { model = chatModel, temperature = 0.4 } = {}) {
 			const data = await post('/chat/completions', {
-				model, messages, temperature, stream: false,
+				model,
+				messages,
+				temperature,
+				stream: false,
 				response_format: jsonResponseFormat(schema),
 			});
 			const parsed = JSON.parse(data.choices[0].message.content);
@@ -67,14 +70,17 @@ export function createClient({
 			if (!model) throw new Error('AI_VISION_MODEL_ID is not set');
 			const dataUrl = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
 			const data = await post('/chat/completions', {
-				model, stream: false,
-				messages: [{
-					role: 'user',
-					content: [
-						{ type: 'text', text: prompt },
-						{ type: 'image_url', image_url: { url: dataUrl } },
-					],
-				}],
+				model,
+				stream: false,
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', text: prompt },
+							{ type: 'image_url', image_url: { url: dataUrl } },
+						],
+					},
+				],
 				response_format: jsonResponseFormat(schema),
 			});
 			const parsed = JSON.parse(data.choices[0].message.content);
