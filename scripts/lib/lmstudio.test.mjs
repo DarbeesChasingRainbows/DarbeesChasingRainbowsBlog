@@ -72,3 +72,35 @@ test('a non-ok response throws', async () => {
 	const client = createClient({ fetch, baseUrl: 'http://lm/v1', chatModel: 'm1' });
 	await assert.rejects(() => client.chat([{ role: 'user', content: 'q' }]), /500/);
 });
+
+test('per-task base URLs route chat / embedding / vision to different servers', async () => {
+	const fetch = fakeFetch({
+		choices: [{ message: { content: '{"value":"hi"}' } }],
+		data: [{ embedding: [0] }],
+	});
+	const client = createClient({
+		fetch,
+		baseUrl: 'http://default/v1',
+		chatBaseUrl: 'http://chat/v1',
+		embeddingBaseUrl: 'http://embed/v1',
+		visionBaseUrl: 'http://vision/v1',
+		chatModel: 'c',
+		embeddingModel: 'e',
+		visionModel: 'v',
+	});
+
+	await client.chat([{ role: 'user', content: 'q' }]);
+	await client.embed('hi');
+	await client.vision(Buffer.from('img'), 'p', SCHEMA);
+
+	assert.equal(fetch.calls[0].url, 'http://chat/v1/chat/completions');
+	assert.equal(fetch.calls[1].url, 'http://embed/v1/embeddings');
+	assert.equal(fetch.calls[2].url, 'http://vision/v1/chat/completions');
+});
+
+test('Authorization header is omitted when apiKey is empty (llama.cpp)', async () => {
+	const fetch = fakeFetch({ choices: [{ message: { content: 'ok' } }] });
+	const client = createClient({ fetch, baseUrl: 'http://lm/v1', apiKey: '', chatModel: 'm' });
+	await client.chat([{ role: 'user', content: 'q' }]);
+	assert.equal(fetch.calls[0].init.headers.Authorization, undefined);
+});
