@@ -51,7 +51,7 @@ public class Program
         builder.Services.AddSingleton<IEmbeddingClient>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new LmStudioEmbeddingClient(http, lmStudioUrl, embeddingModelId, embeddingDimension, lmStudioApiKey);
+            return new OpenAiCompatibleEmbeddingClient(http, lmStudioUrl, embeddingModelId, embeddingDimension, lmStudioApiKey);
         });
         builder.Services.AddSingleton<MemoryStore>(sp =>
         {

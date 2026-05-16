@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Darbee.Gateway.Memory;
 
-public sealed class LmStudioEmbeddingClient : IEmbeddingClient
+public sealed class OpenAiCompatibleEmbeddingClient : IEmbeddingClient
 {
     private readonly HttpClient _http;
     private readonly string _baseUrl;
@@ -13,7 +13,7 @@ public sealed class LmStudioEmbeddingClient : IEmbeddingClient
 
     public int Dimension { get; }
 
-    public LmStudioEmbeddingClient(HttpClient http, string baseUrl, string modelId, int expectedDimension, string? apiKey = null)
+    public OpenAiCompatibleEmbeddingClient(HttpClient http, string baseUrl, string modelId, int expectedDimension, string? apiKey = null)
     {
         _http = http;
         _baseUrl = baseUrl.TrimEnd('/');
