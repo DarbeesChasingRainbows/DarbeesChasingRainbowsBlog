@@ -41,16 +41,30 @@ const GEO_SCHEMA = {
 	},
 };
 
+// Brand grounding — kept in sync with src/consts.ts (BRAND_ENTITY / BRAND_FAMILY).
+// Inlined here because consts.ts is TypeScript and scripts/ is plain .mjs.
+const BRAND_ENTITY = 'Darbees Chasing Rainbows';
+const BRAND_FAMILY = 'The Darbees';
+const BRAND_LOCATION = 'Rome, Georgia';
+
 export function buildGeoMessages(post) {
 	const { title = '', description = '' } = post.frontmatter;
 	return [
 		{
 			role: 'system',
 			content:
-				'You write GEO (Generative Engine Optimization) metadata for a family blog. ' +
-				'Write in third person. aiSummary: 1-2 citation-ready sentences naming the entity. ' +
-				'keyTakeaways: 3-6 short scannable bullets. faq: 0-4 genuine reader questions with ' +
-				'concrete answers. Return JSON only.',
+				`You write GEO (Generative Engine Optimization) metadata for "${BRAND_ENTITY}", a family blog by ${BRAND_FAMILY} in ${BRAND_LOCATION}. ` +
+				`Write in third person. When the post uses first person ("we", "our", "us"), interpret that as ${BRAND_FAMILY}. ` +
+				`aiSummary: 1-2 citation-ready sentences naming the entity (${BRAND_ENTITY} or ${BRAND_FAMILY}). ` +
+				'keyTakeaways: 3-6 short scannable bullets. faq: 0-4 genuine reader questions with concrete answers. ' +
+				'\n\nGROUNDING RULES — strictly follow:\n' +
+				`- The family is ${BRAND_FAMILY}. Never invent a different family name (e.g. "Smith family", "Jones family"). ` +
+				`Never call the blog anything other than "${BRAND_ENTITY}" or refer to it by a shortened name unless that exact form appears in the post. ` +
+				'- Do not invent specific numbers, durations, dates, place names, or quantities. ' +
+				'If the post does not state how long they have done something, say so qualitatively (e.g. "for years") instead of fabricating ("for three years"). ' +
+				'- Every fact in aiSummary, keyTakeaways, and faq answers must be directly supported by the post body. ' +
+				'If the body is short and you cannot honestly produce 3+ takeaways or any FAQ, return shorter arrays — empty faq is acceptable. ' +
+				'- Return JSON only.',
 		},
 		{
 			role: 'user',
