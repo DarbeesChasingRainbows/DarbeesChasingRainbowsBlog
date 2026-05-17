@@ -204,6 +204,94 @@ public sealed class MemoryStore : IDisposable
         return result.Result.Select(c => c.Name).ToList();
     }
 
+    public async Task<JsonDocument?> ReadPostDocumentAsync(string key, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Posts}/{key}";
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync(ct);
+        return JsonDocument.Parse(content);
+    }
+
+    public async Task<UpsertPostResult> UpsertPostAsync(
+        PostDocument post,
+        bool force,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        if (_embeddings is null)
+            throw new InvalidOperationException("Embedding client is required for post upserts.");
+
+        var summaryText = PostTextComposer.ComposeSummary(post);
+        var bodyText = PostTextComposer.ComposeBody(post);
+
+        var summaryOutcome = await UpsertOnePostVectorAsync(post, "summary", summaryText, force, ct);
+        var bodyOutcome = await UpsertOnePostVectorAsync(post, "body", bodyText, force, ct);
+
+        return new UpsertPostResult(post.Slug, post.Collection, summaryOutcome, bodyOutcome);
+    }
+
+    private async Task<VectorWriteOutcome> UpsertOnePostVectorAsync(
+        PostDocument post, string vectorKind, string text, bool force, CancellationToken ct)
+    {
+        var key = $"{post.Collection}__{post.Slug}__{vectorKind}";
+        var hash = ComputeHash(text, _embeddingModelId);
+
+        if (!force)
+        {
+            var existing = await ReadPostDocumentAsync(key, ct);
+            if (existing is not null
+                && existing.RootElement.TryGetProperty("hash", out var hashProp)
+                && hashProp.GetString() == hash)
+            {
+                existing.Dispose();
+                return VectorWriteOutcome.Cached;
+            }
+            existing?.Dispose();
+        }
+
+        var embedding = await _embeddings!.EmbedAsync(text, ct);
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["_key"] = key,
+            ["slug"] = post.Slug,
+            ["collection"] = post.Collection,
+            ["vector_kind"] = vectorKind,
+            ["tenant_id"] = "public",
+            ["text"] = text,
+            ["embedding"] = embedding,
+            ["hash"] = hash,
+            ["title"] = post.Title,
+            ["description"] = post.Description,
+            ["pub_date"] = post.PubDate,
+            ["category"] = post.Category,
+            ["tags"] = post.Tags,
+            ["entity_mentions"] = post.EntityMentions,
+            ["ai_summary"] = post.AiSummary,
+            ["status"] = "ready",
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Posts}?overwrite=true";
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc);
+        if (!ok)
+            throw new InvalidOperationException($"Post upsert failed (errorNum={errorNum}): {content}");
+
+        return VectorWriteOutcome.Embedded;
+    }
+
+    private static string ComputeHash(string text, string modelId)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{modelId}:{text}"));
+        return "sha256:" + Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
     private async Task EnsureCollectionAsync(string name, bool isEdge)
     {
         try
