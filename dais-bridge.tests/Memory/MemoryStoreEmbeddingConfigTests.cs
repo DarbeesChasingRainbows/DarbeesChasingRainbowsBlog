@@ -112,4 +112,41 @@ public class MemoryStoreEmbeddingConfigTests
             await MemoryStoreSchemaTests.DropDb(dbName);
         }
     }
+
+    [Fact]
+    public async Task EnsureSchemaIfNeededAsync_AfterMismatch_CachesException_DoesNotRecheckArango()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+
+            // Seed at old config
+            var oldStore = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "nomic-embed-text-v1.5", embeddingDimension: 768, vectorNLists: 1, http);
+            await oldStore.EnsureSchemaAsync();
+
+            // Open new store at mismatched config
+            var newStore = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 1, http);
+
+            // First call: throws mismatch
+            var ex1 = await Assert.ThrowsAsync<EmbeddingConfigMismatchException>(
+                () => newStore.EnsureSchemaIfNeededAsync());
+            // Second call: throws the SAME exception instance (cached)
+            var ex2 = await Assert.ThrowsAsync<EmbeddingConfigMismatchException>(
+                () => newStore.EnsureSchemaIfNeededAsync());
+            // Third call: still cached
+            var ex3 = await Assert.ThrowsAsync<EmbeddingConfigMismatchException>(
+                () => newStore.EnsureSchemaIfNeededAsync());
+
+            Assert.Same(ex1, ex2);
+            Assert.Same(ex2, ex3);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }

@@ -25,6 +25,7 @@ public sealed class MemoryStore : IDisposable
     private readonly ConcurrentDictionary<string, bool> _vectorIndexReady = new();
     private volatile bool _schemaReady;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
+    private Exception? _schemaError;
 
     public MemoryStore(string url, string db, string user, string pass, string embeddingModelId, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
     {
@@ -94,12 +95,25 @@ public sealed class MemoryStore : IDisposable
     public async Task EnsureSchemaIfNeededAsync(CancellationToken ct = default)
     {
         if (_schemaReady) return;
+        if (_schemaError is not null)
+            throw _schemaError;
+
         await _schemaLock.WaitAsync(ct);
         try
         {
             if (_schemaReady) return;
-            await EnsureSchemaAsync(ct);
-            _schemaReady = true;
+            if (_schemaError is not null)
+                throw _schemaError;
+            try
+            {
+                await EnsureSchemaAsync(ct);
+                _schemaReady = true;
+            }
+            catch (Exception ex)
+            {
+                _schemaError = ex;
+                throw;
+            }
         }
         finally
         {
@@ -107,7 +121,11 @@ public sealed class MemoryStore : IDisposable
         }
     }
 
-    internal void InvalidateSchemaReady() => _schemaReady = false;
+    internal void InvalidateSchemaReady()
+    {
+        _schemaReady = false;
+        _schemaError = null;
+    }
 
     internal async Task InsertRawPostAsync(Dictionary<string, object?> doc, CancellationToken ct = default)
     {
