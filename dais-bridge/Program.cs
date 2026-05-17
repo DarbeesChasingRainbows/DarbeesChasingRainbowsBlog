@@ -6,6 +6,8 @@ using Darbee.Gateway.Plugins;
 using Darbee.Gateway.Middleware;
 using Darbee.Gateway.Hubs;
 using Darbee.Gateway.Memory;
+using Darbee.Gateway.Models;
+using Darbee.Gateway.Endpoints;
 
 namespace Darbee.Gateway;
 
@@ -75,6 +77,7 @@ public class Program
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
             return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingModelId, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
         });
+        builder.Services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
@@ -104,7 +107,7 @@ public class Program
             kernelBuilder.AddOpenAIChatCompletion(modelId, lmChatUrl);
 
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
-            kernelBuilder.Plugins.AddFromObject(new ArangoPlugin(arangoUrl, arangoDb, arangoUser, arangoPass), "ArangoDB");
+            kernelBuilder.Plugins.AddFromObject(new MemoryPlugin(sp.GetRequiredService<MemoryStore>(), sp.GetRequiredService<ITenantContextAccessor>()), "Memory");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
             // Intentionally NOT registered on kernel-kidsafe: AssetPlugin, ResearchPlugin.
@@ -118,7 +121,7 @@ public class Program
             kernelBuilder.AddOpenAIChatCompletion(modelId, lmChatUrl);
 
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
-            kernelBuilder.Plugins.AddFromObject(new ArangoPlugin(arangoUrl, arangoDb, arangoUser, arangoPass), "ArangoDB");
+            kernelBuilder.Plugins.AddFromObject(new MemoryPlugin(sp.GetRequiredService<MemoryStore>(), sp.GetRequiredService<ITenantContextAccessor>()), "Memory");
             kernelBuilder.Plugins.AddFromObject(new AssetPlugin(cfAccountId, cfToken), "Assets");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
@@ -136,6 +139,33 @@ public class Program
 
         app.MapHub<KidSafeHub>("/hubs/kidsafe");
         app.MapHub<ParentHub>("/hubs/parent");
+
+        app.MapPost("/api/admin/reindex-posts", async (
+            ReindexRequest request,
+            MemoryStore store,
+            IEmbeddingClient embeddings,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var response = await ContentRagEndpoints.HandleReindexAsync(request, store, embeddings, ct);
+                return Results.Ok(response);
+            }
+            catch (EmbeddingConfigMismatchException ex)
+            {
+                return Results.Json(new
+                {
+                    error = "embedding_config_mismatch",
+                    message = ex.Message,
+                    previous = ex.Previous,
+                    current = ex.Current,
+                }, statusCode: 503);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = "invalid_request", details = ex.Message });
+            }
+        });
 
         Console.WriteLine("🚀 Darbee Sovereign Gateway Initializing...");
         app.Run();
