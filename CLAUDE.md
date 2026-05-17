@@ -35,9 +35,10 @@ CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 | Fill GEO across the site  | `npm run geo:fill:all`           | Bulk backfill         |
 | Rebuild related posts     | `npm run related:rebuild`        | After adding/editing posts |
 | Watch image inbox         | `npm run image:watch`            | While adding photos   |
+| Reindex content RAG       | `npm run rag:reindex`            | After adding/editing posts; requires bridge stack up (`make up`) + llama.cpp on :8080/:8081 |
 | Script unit tests         | `npm run test:scripts`           | CI runs this          |
 
-Full guide: [scripts/README.md](scripts/README.md). All three call local LM Studio.
+Full guide: [scripts/README.md](scripts/README.md). `geo:fill`, `related:rebuild`, and `rag:reindex` call local embedding services.
 
 ## Commands (DAIS Bridge / Phase 11 services)
 

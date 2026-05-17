@@ -281,6 +281,18 @@ Files: `compose.yaml`, `dais-bridge/Dockerfile`, `dais-bridge/.dockerignore`, `M
 
 **Verification:** `make up` → arango Healthy → dais-bridge-dev responds → `dotnet test` 29/29 against the orchestrated arango (the prior Astro scaffolding failure was a stale assertion against the removed cloudflare adapter; updated in `1c94ffd`). Prod profile: binary runs as `uid=1654(app)`. `dotnet watch` file detection confirmed via `podman logs`.
 
+### Phase 13 — Content RAG (2026-05-17, complete on `feature/content-rag`)
+
+Branch: `feature/content-rag` (off `master`). Spec: [`docs/superpowers/specs/2026-05-16-content-rag-design.md`](docs/superpowers/specs/2026-05-16-content-rag-design.md). Plan: [`docs/superpowers/plans/2026-05-16-content-rag.md`](docs/superpowers/plans/2026-05-16-content-rag.md). Resume guide: [`docs/superpowers/RESUME-content-rag.md`](docs/superpowers/RESUME-content-rag.md).
+
+Adds `MemoryKind.Post` and a `memory_posts` collection alongside the existing chat-memory collections. Each post becomes two embedded vectors (summary + body), keyed by `{collection}__{slug}__{vector_kind}`. New HTTP endpoints on the bridge: `POST /api/admin/reindex-posts` (called by `npm run rag:reindex`), `POST /api/memory/search`, `POST /api/admin/migrate-embeddings`. A new `memory_meta/embedding_config` sentinel doc gates schema-version safety; mismatches throw `EmbeddingConfigMismatchException` and the migrate endpoint is the documented remediation path.
+
+**Stack drift resolved in the same branch:** LM Studio → llama.cpp on host (`:8080` chat, `:8081` embed); `nomic-embed-text-v1.5` (768-dim) → `qwen3-embedding-8b` (4096-dim); `LMSTUDIO_URL` → split `LLM_CHAT_URL` / `LLM_EMBEDDING_URL` (back-compat warning). `LmStudioEmbeddingClient` renamed to `OpenAiCompatibleEmbeddingClient`. `EnsureSchemaAsync` shifted from startup-eager to lazy first-use.
+
+**Working state:** 68 tests pass (`ARANGO_TEST_RUN=1 dotnet test`); `npm run rag:reindex` populates Arango with 24 vectors (12 posts × 2) in ~9s; `curl -X POST :5000/api/memory/search` returns ranked posts.
+
+**Known gap:** The bridge doesn't auto-create the ArangoDB database (`darbees_knowledge`). On a fresh Arango instance, the operator must create it manually. See [`docs/superpowers/RESUME-content-rag.md`](docs/superpowers/RESUME-content-rag.md) for the curl command.
+
 ---
 
 ## Project file map (where things live)
