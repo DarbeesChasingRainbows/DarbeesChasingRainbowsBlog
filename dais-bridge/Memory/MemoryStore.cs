@@ -109,6 +109,14 @@ public sealed class MemoryStore : IDisposable
 
     internal void InvalidateSchemaReady() => _schemaReady = false;
 
+    internal async Task InsertRawPostAsync(Dictionary<string, object?> doc, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Posts}?overwrite=true";
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc);
+        if (!ok) throw new InvalidOperationException($"InsertRawPostAsync failed: {content}");
+    }
+
     // Not gated: called from EnsureSchemaAsync during bootstrap — gating would deadlock.
     public async Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
     {

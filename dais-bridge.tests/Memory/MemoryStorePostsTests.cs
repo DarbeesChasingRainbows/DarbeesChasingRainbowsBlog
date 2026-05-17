@@ -196,4 +196,48 @@ public class MemoryStorePostsTests
             await MemoryStoreSchemaTests.DropDb(dbName);
         }
     }
+
+    [Fact]
+    public async Task SearchAsync_FiltersOutPendingEmbeddingStatus()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            await store.UpsertPostAsync(MakePost(slug: "ready"), force: false);
+
+            // Manually insert a pending doc directly
+            await store.InsertRawPostAsync(new Dictionary<string, object?>
+            {
+                ["_key"] = "blog__pending__summary",
+                ["slug"] = "pending",
+                ["collection"] = "blog",
+                ["vector_kind"] = "summary",
+                ["tenant_id"] = "public",
+                ["status"] = "pending_embedding",
+                ["embedding"] = new float[] { 0.1f, 0.2f, 0.3f, 0.4f },
+                ["text"] = "x",
+                ["title"] = "Pending Post",
+                ["description"] = "",
+            });
+
+            var results = await store.SearchAsync(
+                queryVec: new[] { 0.1f, 0.2f, 0.3f, 0.4f },
+                kinds: new[] { MemoryKind.Post },
+                tenants: new[] { "public" },
+                rawK: 10);
+
+            Assert.All(results, r => Assert.NotEqual("pending", r.Slug));
+            Assert.Contains(results, r => r.Slug == "ready");
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }
