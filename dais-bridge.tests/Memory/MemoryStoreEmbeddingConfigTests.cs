@@ -87,4 +87,29 @@ public class MemoryStoreEmbeddingConfigTests
             await MemoryStoreSchemaTests.DropDb(dbName);
         }
     }
+
+    [Fact]
+    public async Task UpsertFactAsync_OnFreshStore_TriggersSchemaBootstrap()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+
+            // Do NOT call EnsureSchemaAsync explicitly — UpsertFactAsync should trigger it.
+            await store.UpsertFactAsync("tenant-a", "the sky is blue", sourceThread: null);
+
+            // Verify the schema was actually bootstrapped: read the config sentinel.
+            var config = await store.ReadEmbeddingConfigAsync();
+            Assert.NotNull(config);
+            Assert.Equal("qwen3-embedding-8b", config!.Model);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }

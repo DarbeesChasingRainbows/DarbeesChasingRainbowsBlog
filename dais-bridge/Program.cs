@@ -129,12 +129,6 @@ public class Program
 
         var app = builder.Build();
 
-        using (var scope = app.Services.CreateScope())
-        {
-            var store = scope.ServiceProvider.GetRequiredService<MemoryStore>();
-            await store.EnsureSchemaAsync();
-        }
-
         // 4. Configure Middleware & Endpoints
         app.UseMiddleware<SafetyMiddleware>();
 

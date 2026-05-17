@@ -23,6 +23,8 @@ public sealed class MemoryStore : IDisposable
     private readonly int _vectorNLists;
     private readonly IEmbeddingClient? _embeddings;
     private readonly ConcurrentDictionary<string, bool> _vectorIndexReady = new();
+    private volatile bool _schemaReady;
+    private readonly SemaphoreSlim _schemaLock = new(1, 1);
 
     public MemoryStore(string url, string db, string user, string pass, string embeddingModelId, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
     {
@@ -89,6 +91,25 @@ public sealed class MemoryStore : IDisposable
         }
     }
 
+    public async Task EnsureSchemaIfNeededAsync(CancellationToken ct = default)
+    {
+        if (_schemaReady) return;
+        await _schemaLock.WaitAsync(ct);
+        try
+        {
+            if (_schemaReady) return;
+            await EnsureSchemaAsync(ct);
+            _schemaReady = true;
+        }
+        finally
+        {
+            _schemaLock.Release();
+        }
+    }
+
+    internal void InvalidateSchemaReady() => _schemaReady = false;
+
+    // Not gated: called from EnsureSchemaAsync during bootstrap — gating would deadlock.
     public async Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
     {
         var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}/embedding_config";
@@ -176,8 +197,9 @@ public sealed class MemoryStore : IDisposable
         return indexes.Count(i => i.Type == "vector");
     }
 
-    public async Task<List<string>> ListCollectionsAsync()
+    public async Task<List<string>> ListCollectionsAsync(CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         var result = await _arango.Collection.GetCollectionsAsync();
         return result.Result.Select(c => c.Name).ToList();
     }
@@ -303,6 +325,7 @@ public sealed class MemoryStore : IDisposable
         string tenantId, string subject, string chose, string because,
         IReadOnlyList<string> alternatives, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var text = $"Decision: {subject}. Chose {chose} because {because}. Alternatives considered: {string.Join(", ", alternatives)}";
         var doc = new Dictionary<string, object?>
@@ -322,6 +345,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<WriteResult> UpsertObservationAsync(
         string tenantId, string source, string text, object payload, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -339,6 +363,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<WriteResult> UpsertFactAsync(
         string tenantId, string text, string? sourceThread, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -355,6 +380,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<WriteResult> UpsertSummaryAsync(
         string tenantId, string text, string threadId, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -371,6 +397,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<string> UpsertEntityAsync(
         string tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -387,6 +414,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<string> UpsertEdgeAsync(
         string tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -401,8 +429,9 @@ public sealed class MemoryStore : IDisposable
         return insert._key;
     }
 
-    public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100)
+    public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         var aql = "FOR p IN @@col SORT p.queued_at ASC LIMIT @limit RETURN { id: p._key, targetCollection: p.target_collection, targetKey: p.target_key }";
         var bindVars = new Dictionary<string, object> { ["@col"] = MemoryCollections.PendingEmbeddings, ["limit"] = limit };
         var cursor = await _arango.Cursor.PostCursorAsync<PendingEmbeddingRow>(
