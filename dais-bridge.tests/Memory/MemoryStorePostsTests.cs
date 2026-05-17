@@ -65,8 +65,8 @@ public class MemoryStorePostsTests
             Assert.Equal(VectorWriteOutcome.Embedded, result.Body);
             Assert.Equal(2, emb.EmbedCalls);
 
-            var summaryDoc = await store.ReadPostDocumentAsync("blog__welcome__summary");
-            var bodyDoc = await store.ReadPostDocumentAsync("blog__welcome__body");
+            using var summaryDoc = await store.ReadPostDocumentAsync("blog__welcome__summary");
+            using var bodyDoc = await store.ReadPostDocumentAsync("blog__welcome__body");
             Assert.NotNull(summaryDoc);
             Assert.NotNull(bodyDoc);
             Assert.Equal("summary", summaryDoc!.RootElement.GetProperty("vector_kind").GetString());
@@ -158,10 +158,14 @@ public class MemoryStorePostsTests
             var deleted = await store.DeleteStalePostsAsync(current);
 
             Assert.Equal(2, deleted);  // summary + body for "two"
-            Assert.Null(await store.ReadPostDocumentAsync("blog__two__summary"));
-            Assert.Null(await store.ReadPostDocumentAsync("blog__two__body"));
-            Assert.NotNull(await store.ReadPostDocumentAsync("blog__one__summary"));
-            Assert.NotNull(await store.ReadPostDocumentAsync("blog__three__summary"));
+            using var twoSummary = await store.ReadPostDocumentAsync("blog__two__summary");
+            using var twoBody = await store.ReadPostDocumentAsync("blog__two__body");
+            using var oneDoc = await store.ReadPostDocumentAsync("blog__one__summary");
+            using var threeDoc = await store.ReadPostDocumentAsync("blog__three__summary");
+            Assert.Null(twoSummary);
+            Assert.Null(twoBody);
+            Assert.NotNull(oneDoc);
+            Assert.NotNull(threeDoc);
         }
         finally
         {

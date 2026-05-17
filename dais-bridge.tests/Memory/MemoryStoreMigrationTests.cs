@@ -75,7 +75,7 @@ public class MemoryStoreMigrationTests
             await oldStore.UpsertPostAsync(MemoryStorePostsTests.MakePost("one"), force: false);
 
             // Pre-migration: doc is ready with embedding
-            var pre = await oldStore.ReadPostDocumentAsync("blog__one__summary");
+            using var pre = await oldStore.ReadPostDocumentAsync("blog__one__summary");
             Assert.NotNull(pre);
             Assert.Equal("ready", pre!.RootElement.GetProperty("status").GetString());
 
@@ -93,7 +93,7 @@ public class MemoryStoreMigrationTests
             Assert.True(result.QueueSizeAfter >= 2);
 
             // Post-migration: doc has null embedding, pending status, text intact
-            var post = await newStore.ReadPostDocumentAsync("blog__one__summary");
+            using var post = await newStore.ReadPostDocumentAsync("blog__one__summary");
             Assert.NotNull(post);
             Assert.Equal("pending_embedding", post!.RootElement.GetProperty("status").GetString());
             Assert.Equal(System.Text.Json.JsonValueKind.Null, post.RootElement.GetProperty("embedding").ValueKind);

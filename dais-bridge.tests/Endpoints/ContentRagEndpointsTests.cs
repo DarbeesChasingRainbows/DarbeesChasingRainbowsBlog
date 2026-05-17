@@ -109,8 +109,10 @@ public class ContentRagEndpointsTests
             var result = await ContentRagEndpoints.HandleReindexAsync(second, store, emb);
 
             Assert.Equal(2, result.DeletedStale);  // summary + body of delete-this
-            Assert.Null(await store.ReadPostDocumentAsync("blog__delete-this__summary"));
-            Assert.NotNull(await store.ReadPostDocumentAsync("blog__keep-this__summary"));
+            using var deletedSummary = await store.ReadPostDocumentAsync("blog__delete-this__summary");
+            using var keptSummary = await store.ReadPostDocumentAsync("blog__keep-this__summary");
+            Assert.Null(deletedSummary);
+            Assert.NotNull(keptSummary);
         }
         finally
         {
@@ -255,8 +257,10 @@ public class ContentRagEndpointsTests
                 ContentRagEndpoints.HandleReindexAsync(emptyRequest, store, emb));
 
             // Verify seeded docs are still present
-            Assert.NotNull(await store.ReadPostDocumentAsync("blog__a__summary"));
-            Assert.NotNull(await store.ReadPostDocumentAsync("blog__b__summary"));
+            using var aDoc = await store.ReadPostDocumentAsync("blog__a__summary");
+            using var bDoc = await store.ReadPostDocumentAsync("blog__b__summary");
+            Assert.NotNull(aDoc);
+            Assert.NotNull(bDoc);
         }
         finally
         {

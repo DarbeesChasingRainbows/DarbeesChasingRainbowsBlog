@@ -326,6 +326,11 @@ public sealed class MemoryStore : IDisposable
         return result.Result.Select(c => c.Name).ToList();
     }
 
+    /// <summary>
+    /// Returns the raw post document as a JsonDocument. <b>Caller must dispose.</b>
+    /// Test-oriented API — production code should use ReadPostHashAsync or add a
+    /// purpose-built reader rather than work with the raw JSON.
+    /// </summary>
     public async Task<JsonDocument?> ReadPostDocumentAsync(string key, CancellationToken ct = default)
     {
         await EnsureSchemaIfNeededAsync(ct);
@@ -336,6 +341,14 @@ public sealed class MemoryStore : IDisposable
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync(ct);
         return JsonDocument.Parse(content);
+    }
+
+    public async Task<string?> ReadPostHashAsync(string key, CancellationToken ct = default)
+    {
+        using var doc = await ReadPostDocumentAsync(key, ct);
+        if (doc is null) return null;
+        if (!doc.RootElement.TryGetProperty("hash", out var hashProp)) return null;
+        return hashProp.GetString();
     }
 
     public async Task<UpsertPostResult> UpsertPostAsync(
@@ -364,15 +377,9 @@ public sealed class MemoryStore : IDisposable
 
         if (!force)
         {
-            var existing = await ReadPostDocumentAsync(key, ct);
-            if (existing is not null
-                && existing.RootElement.TryGetProperty("hash", out var hashProp)
-                && hashProp.GetString() == hash)
-            {
-                existing.Dispose();
+            var existingHash = await ReadPostHashAsync(key, ct);
+            if (existingHash == hash)
                 return VectorWriteOutcome.Cached;
-            }
-            existing?.Dispose();
         }
 
         var embedding = await _embeddings!.EmbedAsync(text, ct);
