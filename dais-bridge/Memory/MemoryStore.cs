@@ -416,24 +416,37 @@ public sealed class MemoryStore : IDisposable
 
     public async Task<int> DeleteStalePostsAsync(
         IReadOnlyCollection<(string Collection, string Slug)> currentPosts,
+        IReadOnlyCollection<string>? scopedCollections = null,
         CancellationToken ct = default)
     {
         await EnsureSchemaIfNeededAsync(ct);
 
         var pairs = currentPosts.Select(p => $"{p.Collection}__{p.Slug}").ToArray();
+        var scope = scopedCollections?.ToArray() ?? Array.Empty<string>();
+        var useScope = scope.Length > 0;
 
-        var aql = """
+        var aql = useScope ? """
+            FOR doc IN @@col
+              FILTER doc.tenant_id == "public"
+              FILTER doc.collection IN @scope
+              FILTER CONCAT(doc.collection, "__", doc.slug) NOT IN @pairs
+              REMOVE doc IN @@col
+              RETURN OLD._key
+            """ : """
             FOR doc IN @@col
               FILTER doc.tenant_id == "public"
               FILTER CONCAT(doc.collection, "__", doc.slug) NOT IN @pairs
               REMOVE doc IN @@col
               RETURN OLD._key
             """;
+
         var bindVars = new Dictionary<string, object>
         {
             ["@col"] = MemoryCollections.Posts,
             ["pairs"] = pairs,
         };
+        if (useScope) bindVars["scope"] = scope;
+
         var cursor = await _arango.Cursor.PostCursorAsync<string>(
             new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
             {

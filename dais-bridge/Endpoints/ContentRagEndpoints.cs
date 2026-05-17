@@ -57,7 +57,11 @@ public static class ContentRagEndpoints
         var currentSet = request.Posts
             .Select(p => (p.Collection, p.Slug))
             .ToList();
-        var deletedStale = await store.DeleteStalePostsAsync(currentSet, ct);
+        var scopedCollections = request.Posts
+            .Select(p => p.Collection)
+            .Distinct()
+            .ToList();
+        var deletedStale = await store.DeleteStalePostsAsync(currentSet, scopedCollections, ct);
 
         sw.Stop();
         return new ReindexResponse(

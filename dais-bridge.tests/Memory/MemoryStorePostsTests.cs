@@ -155,7 +155,7 @@ public class MemoryStorePostsTests
                 ("blog", "three"),
             };
 
-            var deleted = await store.DeleteStalePostsAsync(current);
+            var deleted = await store.DeleteStalePostsAsync(current, scopedCollections: null);
 
             Assert.Equal(2, deleted);  // summary + body for "two"
             using var twoSummary = await store.ReadPostDocumentAsync("blog__two__summary");
@@ -166,6 +166,39 @@ public class MemoryStorePostsTests
             Assert.Null(twoBody);
             Assert.NotNull(oneDoc);
             Assert.NotNull(threeDoc);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task DeleteStalePostsAsync_ScopedToCollections_LeavesOtherCollectionsAlone()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            // Seed: one blog, one project
+            await store.UpsertPostAsync(MakePost(slug: "blog-one", collection: "blog"), force: false);
+            await store.UpsertPostAsync(MakePost(slug: "proj-one", collection: "projects"), force: false);
+
+            // Stale-delete scoped to blog only, with NO blog posts in current set
+            var deleted = await store.DeleteStalePostsAsync(
+                currentPosts: Array.Empty<(string, string)>(),
+                scopedCollections: new[] { "blog" });
+
+            Assert.Equal(2, deleted);  // blog-one summary + body
+            using var blogDoc = await store.ReadPostDocumentAsync("blog__blog-one__summary");
+            using var projDoc = await store.ReadPostDocumentAsync("projects__proj-one__summary");
+            Assert.Null(blogDoc);
+            Assert.NotNull(projDoc);  // Projects unaffected
         }
         finally
         {
