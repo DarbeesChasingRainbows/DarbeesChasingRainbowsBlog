@@ -18,17 +18,22 @@ public sealed class MemoryStore : IDisposable
     private readonly string _db;
     private readonly string _user;
     private readonly string _pass;
+    private readonly string _embeddingModelId;
     private readonly int _embeddingDimension;
     private readonly int _vectorNLists;
     private readonly IEmbeddingClient? _embeddings;
     private readonly ConcurrentDictionary<string, bool> _vectorIndexReady = new();
+    private volatile bool _schemaReady;
+    private readonly SemaphoreSlim _schemaLock = new(1, 1);
+    private Exception? _schemaError;
 
-    public MemoryStore(string url, string db, string user, string pass, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
+    public MemoryStore(string url, string db, string user, string pass, string embeddingModelId, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
     {
         _baseUrl = url.TrimEnd('/');
         _db = db;
         _user = user;
         _pass = pass;
+        _embeddingModelId = embeddingModelId;
         _embeddingDimension = embeddingDimension;
         _vectorNLists = vectorNLists;
         _rawHttp = rawHttp;
@@ -46,7 +51,9 @@ public sealed class MemoryStore : IDisposable
             MemoryCollections.Facts,
             MemoryCollections.Summaries,
             MemoryCollections.Entities,
-            MemoryCollections.PendingEmbeddings
+            MemoryCollections.PendingEmbeddings,
+            MemoryCollections.Posts,    // NEW
+            MemoryCollections.Meta,     // NEW
         })
         {
             await EnsureCollectionAsync(name, isEdge: false);
@@ -68,6 +75,214 @@ public sealed class MemoryStore : IDisposable
         await EnsurePersistentIndexAsync(MemoryCollections.Entities, new[] { "tenant_id", "canonical_name" });
         await EnsurePersistentIndexAsync(MemoryCollections.Entities, new[] { "tenant_id", "aliases[*]" });
         await EnsurePersistentIndexAsync(MemoryCollections.Edges, new[] { "tenant_id", "kind" });
+
+        // NEW: persistent indexes on memory_posts
+        await EnsurePersistentIndexAsync(MemoryCollections.Posts, new[] { "tenant_id", "status", "vector_kind" });
+        await EnsurePersistentIndexAsync(MemoryCollections.Posts, new[] { "collection", "slug" });
+
+        var current = new EmbeddingConfig(_embeddingModelId, _embeddingDimension);
+        var stored = await ReadEmbeddingConfigAsync(ct);
+        if (stored is null)
+        {
+            await WriteEmbeddingConfigAsync(current, isFirstTime: true, ct);
+        }
+        else if (!stored.Equals(current))
+        {
+            throw new EmbeddingConfigMismatchException(stored, current);
+        }
+    }
+
+    public async Task EnsureSchemaIfNeededAsync(CancellationToken ct = default)
+    {
+        if (_schemaReady) return;
+        if (_schemaError is not null)
+            throw _schemaError;
+
+        await _schemaLock.WaitAsync(ct);
+        try
+        {
+            if (_schemaReady) return;
+            if (_schemaError is not null)
+                throw _schemaError;
+            try
+            {
+                await EnsureSchemaAsync(ct);
+                _schemaReady = true;
+            }
+            catch (Exception ex)
+            {
+                _schemaError = ex;
+                throw;
+            }
+        }
+        finally
+        {
+            _schemaLock.Release();
+        }
+    }
+
+    internal void InvalidateSchemaReady()
+    {
+        _schemaReady = false;
+        _schemaError = null;
+    }
+
+    internal async Task InsertRawPostAsync(Dictionary<string, object?> doc, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Posts}?overwrite=true";
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc);
+        if (!ok) throw new InvalidOperationException($"InsertRawPostAsync failed: {content}");
+    }
+
+    // Not gated: called from EnsureSchemaAsync during bootstrap — gating would deadlock.
+    public async Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
+    {
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}/embedding_config";
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(content);
+        var model = doc.RootElement.GetProperty("model").GetString() ?? "";
+        var dim = doc.RootElement.GetProperty("dimension").GetInt32();
+        return new EmbeddingConfig(model, dim);
+    }
+
+    private async Task WriteEmbeddingConfigAsync(EmbeddingConfig config, bool isFirstTime, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["_key"] = "embedding_config",
+            ["model"] = config.Model,
+            ["dimension"] = config.Dimension,
+            ["last_set_at"] = now,
+        };
+        if (isFirstTime) doc["first_set_at"] = now;
+
+        var url = isFirstTime
+            ? $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}"
+            : $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}/embedding_config";
+        var method = isFirstTime ? HttpMethod.Post : HttpMethod.Patch;
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc, method);
+        if (ok || errorNum == 1210 /* duplicate */) return;
+        throw new InvalidOperationException($"Failed to write embedding_config (errorNum={errorNum}): {content}");
+    }
+
+    public async Task<MigrationResult> MigrateEmbeddingsAsync(
+        string confirmToken,
+        CancellationToken ct = default)
+    {
+        if (confirmToken != "preserve-and-reembed" && confirmToken != "wipe-and-reset")
+            throw new ArgumentException(
+                $"Invalid confirm token '{confirmToken}'. Accepted: 'preserve-and-reembed' or 'wipe-and-reset'.",
+                nameof(confirmToken));
+
+        // Minimal bootstrap: ensure memory_meta exists; do NOT call EnsureSchemaIfNeededAsync
+        // (this endpoint must work even when the full schema is in mismatch state).
+        await EnsureCollectionAsync(MemoryCollections.Meta, isEdge: false);
+
+        var current = new EmbeddingConfig(_embeddingModelId, _embeddingDimension);
+        var previous = await ReadEmbeddingConfigAsync(ct);
+
+        var indexesDropped = new List<string>();
+        var docsMarked = new Dictionary<string, int>();
+
+        if (previous is not null && !previous.Equals(current))
+        {
+            foreach (var collection in new[]
+            {
+                MemoryCollections.Decisions,
+                MemoryCollections.Observations,
+                MemoryCollections.Facts,
+                MemoryCollections.Summaries,
+                MemoryCollections.Posts,
+            })
+            {
+                // Ensure the collection exists before working on it.
+                await EnsureCollectionAsync(collection, isEdge: false);
+
+                // Drop vector indexes
+                var indexes = await ListIndexesAsync(collection);
+                foreach (var idx in indexes.Where(i => i.Type == "vector"))
+                {
+                    await DeleteIndexAsync(idx.Id);
+                    indexesDropped.Add($"{collection}/{idx.Id.Split('/').Last()}");
+                }
+
+                int affected = 0;
+                if (confirmToken == "preserve-and-reembed")
+                {
+                    var aql = """
+                        FOR doc IN @@col
+                          FILTER doc.embedding != null
+                          UPDATE doc WITH {
+                            embedding: null,
+                            status: "pending_embedding",
+                            updated_at: DATE_ISO8601(DATE_NOW())
+                          } IN @@col
+                          RETURN OLD._key
+                        """;
+                    var cursor = await _arango.Cursor.PostCursorAsync<string>(
+                        new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                        {
+                            Query = aql,
+                            BindVars = new Dictionary<string, object> { ["@col"] = collection },
+                        });
+                    var keys = cursor.Result.ToList();
+                    affected = keys.Count;
+
+                    foreach (var key in keys)
+                        await EnqueuePendingEmbeddingAsync(collection, key);
+                }
+                else  // wipe-and-reset
+                {
+                    var aql = """
+                        FOR doc IN @@col
+                          FILTER doc.embedding != null
+                          REMOVE doc IN @@col
+                          RETURN OLD._key
+                        """;
+                    var cursor = await _arango.Cursor.PostCursorAsync<string>(
+                        new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                        {
+                            Query = aql,
+                            BindVars = new Dictionary<string, object> { ["@col"] = collection },
+                        });
+                    affected = cursor.Result.Count();
+                }
+
+                docsMarked[collection] = affected;
+            }
+
+            _vectorIndexReady.Clear();
+        }
+
+        // Always write/refresh the config doc with current values
+        await WriteEmbeddingConfigAsync(current, isFirstTime: previous is null, ct);
+
+        // Reset schema-ready so the next request re-runs EnsureSchemaAsync against fresh state
+        InvalidateSchemaReady();
+
+        // Count queue size after
+        await EnsureCollectionAsync(MemoryCollections.PendingEmbeddings, isEdge: false);
+        var queueAql = "FOR p IN @@col COLLECT WITH COUNT INTO n RETURN n";
+        var queueCursor = await _arango.Cursor.PostCursorAsync<int>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            {
+                Query = queueAql,
+                BindVars = new Dictionary<string, object> { ["@col"] = MemoryCollections.PendingEmbeddings },
+            });
+        var queueSizeAfter = queueCursor.Result.FirstOrDefault();
+
+        return new MigrationResult(
+            previous,
+            current,
+            indexesDropped,
+            docsMarked,
+            queueSizeAfter);
     }
 
     public async Task EnsureVectorIndexAsync(string collection, CancellationToken ct = default)
@@ -122,10 +337,223 @@ public sealed class MemoryStore : IDisposable
         return indexes.Count(i => i.Type == "vector");
     }
 
-    public async Task<List<string>> ListCollectionsAsync()
+    public async Task<List<string>> ListCollectionsAsync(CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         var result = await _arango.Collection.GetCollectionsAsync();
         return result.Result.Select(c => c.Name).ToList();
+    }
+
+    /// <summary>
+    /// Returns the raw post document as a JsonDocument. <b>Caller must dispose.</b>
+    /// Test-oriented API — production code should use ReadPostHashAsync or add a
+    /// purpose-built reader rather than work with the raw JSON.
+    /// </summary>
+    public async Task<JsonDocument?> ReadPostDocumentAsync(string key, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Posts}/{key}";
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync(ct);
+        return JsonDocument.Parse(content);
+    }
+
+    public async Task<string?> ReadPostHashAsync(string key, CancellationToken ct = default)
+    {
+        using var doc = await ReadPostDocumentAsync(key, ct);
+        if (doc is null) return null;
+        if (!doc.RootElement.TryGetProperty("hash", out var hashProp)) return null;
+        return hashProp.GetString();
+    }
+
+    public async Task<UpsertPostResult> UpsertPostAsync(
+        PostDocument post,
+        bool force,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        if (_embeddings is null)
+            throw new InvalidOperationException("Embedding client is required for post upserts.");
+
+        var summaryText = PostTextComposer.ComposeSummary(post);
+        var bodyText = PostTextComposer.ComposeBody(post);
+
+        var summaryOutcome = await UpsertOnePostVectorAsync(post, "summary", summaryText, force, ct);
+        var bodyOutcome = await UpsertOnePostVectorAsync(post, "body", bodyText, force, ct);
+
+        return new UpsertPostResult(post.Slug, post.Collection, summaryOutcome, bodyOutcome);
+    }
+
+    private async Task<VectorWriteOutcome> UpsertOnePostVectorAsync(
+        PostDocument post, string vectorKind, string text, bool force, CancellationToken ct)
+    {
+        var key = $"{post.Collection}__{post.Slug}__{vectorKind}";
+        var hash = ComputeHash(text, _embeddingModelId);
+
+        if (!force)
+        {
+            var existingHash = await ReadPostHashAsync(key, ct);
+            if (existingHash == hash)
+                return VectorWriteOutcome.Cached;
+        }
+
+        var embedding = await _embeddings!.EmbedAsync(text, ct);
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["_key"] = key,
+            ["slug"] = post.Slug,
+            ["collection"] = post.Collection,
+            ["vector_kind"] = vectorKind,
+            ["tenant_id"] = "public",
+            ["text"] = text,
+            ["embedding"] = embedding,
+            ["hash"] = hash,
+            ["title"] = post.Title,
+            ["description"] = post.Description,
+            ["pub_date"] = post.PubDate,
+            ["category"] = post.Category,
+            ["tags"] = post.Tags,
+            ["entity_mentions"] = post.EntityMentions,
+            ["ai_summary"] = post.AiSummary,
+            ["status"] = "ready",
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Posts}?overwrite=true";
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc);
+        if (!ok)
+            throw new InvalidOperationException($"Post upsert failed (errorNum={errorNum}): {content}");
+
+        return VectorWriteOutcome.Embedded;
+    }
+
+    public async Task<int> DeleteStalePostsAsync(
+        IReadOnlyCollection<(string Collection, string Slug)> currentPosts,
+        IReadOnlyCollection<string>? scopedCollections = null,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        var pairs = currentPosts.Select(p => $"{p.Collection}__{p.Slug}").ToArray();
+        var scope = scopedCollections?.ToArray() ?? Array.Empty<string>();
+        var useScope = scope.Length > 0;
+
+        var aql = useScope ? """
+            FOR doc IN @@col
+              FILTER doc.tenant_id == "public"
+              FILTER doc.collection IN @scope
+              FILTER CONCAT(doc.collection, "__", doc.slug) NOT IN @pairs
+              REMOVE doc IN @@col
+              RETURN OLD._key
+            """ : """
+            FOR doc IN @@col
+              FILTER doc.tenant_id == "public"
+              FILTER CONCAT(doc.collection, "__", doc.slug) NOT IN @pairs
+              REMOVE doc IN @@col
+              RETURN OLD._key
+            """;
+
+        var bindVars = new Dictionary<string, object>
+        {
+            ["@col"] = MemoryCollections.Posts,
+            ["pairs"] = pairs,
+        };
+        if (useScope) bindVars["scope"] = scope;
+
+        var cursor = await _arango.Cursor.PostCursorAsync<string>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            {
+                Query = aql,
+                BindVars = bindVars,
+            });
+        return cursor.Result.Count();
+    }
+
+    public async Task<List<PostSearchHit>> SearchAsync(
+        float[] queryVec,
+        IReadOnlyList<MemoryKind> kinds,
+        IReadOnlyList<string> tenants,
+        int rawK,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        if (rawK < 1) throw new ArgumentOutOfRangeException(nameof(rawK), "must be >= 1");
+
+        // Only MemoryKind.Post is supported in this phase; future work adds other kinds.
+        if (!kinds.Contains(MemoryKind.Post))
+            return new List<PostSearchHit>();
+
+        var aql = """
+            LET q = @query_vec
+            FOR doc IN @@col
+              FILTER doc.tenant_id IN @tenants
+              FILTER doc.status == "ready"
+              FILTER doc.vector_kind IN ["summary", "body"]
+              LET sim = COSINE_SIMILARITY(doc.embedding, q)
+              SORT sim DESC
+              LIMIT @raw_k
+              RETURN {
+                key:         doc._key,
+                slug:        doc.slug,
+                collection:  doc.collection,
+                vector_kind: doc.vector_kind,
+                title:       doc.title,
+                text:        doc.text,
+                description: doc.description,
+                ai_summary:  doc.ai_summary,
+                pub_date:    doc.pub_date,
+                category:    doc.category,
+                tags:        doc.tags,
+                sim:         sim
+              }
+            """;
+        var bindVars = new Dictionary<string, object>
+        {
+            ["@col"] = MemoryCollections.Posts,
+            ["query_vec"] = queryVec,
+            ["tenants"] = tenants.ToArray(),
+            ["raw_k"] = rawK,
+        };
+
+        var cursor = await _arango.Cursor.PostCursorAsync<SearchRow>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            {
+                Query = aql,
+                BindVars = bindVars,
+            });
+
+        return cursor.Result.Select(r => new PostSearchHit
+        {
+            Key = r.key,
+            Slug = r.slug,
+            Collection = r.collection,
+            VectorKind = r.vector_kind,
+            Title = r.title,
+            Text = r.text,
+            Description = r.description,
+            AiSummary = r.ai_summary,
+            PubDate = r.pub_date,
+            Category = r.category,
+            Tags = r.tags ?? Array.Empty<string>(),
+            Sim = r.sim,
+        }).ToList();
+    }
+
+    private sealed record SearchRow(
+        string key, string slug, string collection, string vector_kind,
+        string title, string text, string description, string? ai_summary,
+        string? pub_date, string? category, IReadOnlyList<string>? tags, double sim);
+
+    private static string ComputeHash(string text, string modelId)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{modelId}:{text}"));
+        return "sha256:" + Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     private async Task EnsureCollectionAsync(string name, bool isEdge)
@@ -226,9 +654,10 @@ public sealed class MemoryStore : IDisposable
         return request;
     }
 
-    private async Task<(bool ok, int errorNum, string content)> PostJsonRawAsync(string url, object body)
+    private async Task<(bool ok, int errorNum, string content)> PostJsonRawAsync(string url, object body, HttpMethod? method = null)
     {
-        var request = BuildAuthedRequest(HttpMethod.Post, url);
+        method ??= HttpMethod.Post;
+        var request = BuildAuthedRequest(method, url);
         var json = JsonSerializer.Serialize(body);
         request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         var response = await _rawHttp.SendAsync(request);
@@ -248,6 +677,7 @@ public sealed class MemoryStore : IDisposable
         string tenantId, string subject, string chose, string because,
         IReadOnlyList<string> alternatives, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var text = $"Decision: {subject}. Chose {chose} because {because}. Alternatives considered: {string.Join(", ", alternatives)}";
         var doc = new Dictionary<string, object?>
@@ -267,6 +697,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<WriteResult> UpsertObservationAsync(
         string tenantId, string source, string text, object payload, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -284,6 +715,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<WriteResult> UpsertFactAsync(
         string tenantId, string text, string? sourceThread, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -300,6 +732,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<WriteResult> UpsertSummaryAsync(
         string tenantId, string text, string threadId, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -316,6 +749,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<string> UpsertEntityAsync(
         string tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -332,6 +766,7 @@ public sealed class MemoryStore : IDisposable
     public async Task<string> UpsertEdgeAsync(
         string tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         ValidateTenantId(tenantId);
         var doc = new Dictionary<string, object?>
         {
@@ -346,8 +781,9 @@ public sealed class MemoryStore : IDisposable
         return insert._key;
     }
 
-    public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100)
+    public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100, CancellationToken ct = default)
     {
+        await EnsureSchemaIfNeededAsync(ct);
         var aql = "FOR p IN @@col SORT p.queued_at ASC LIMIT @limit RETURN { id: p._key, targetCollection: p.target_collection, targetKey: p.target_key }";
         var bindVars = new Dictionary<string, object> { ["@col"] = MemoryCollections.PendingEmbeddings, ["limit"] = limit };
         var cursor = await _arango.Cursor.PostCursorAsync<PendingEmbeddingRow>(

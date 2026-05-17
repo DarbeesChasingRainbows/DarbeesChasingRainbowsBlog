@@ -6,7 +6,7 @@ using Darbee.Gateway.Memory;
 
 namespace Darbee.Gateway.Tests.Memory;
 
-public class LmStudioEmbeddingClientTests
+public class OpenAiCompatibleEmbeddingClientTests
 {
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
@@ -27,7 +27,7 @@ public class LmStudioEmbeddingClientTests
             Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
         });
         using var http = new HttpClient(handler);
-        var client = new LmStudioEmbeddingClient(http, "http://localhost:1234/v1", "nomic-embed-text-v1.5", expectedDimension: 4);
+        var client = new OpenAiCompatibleEmbeddingClient(http, "http://localhost:1234/v1", "nomic-embed-text-v1.5", expectedDimension: 4);
 
         var result = await client.EmbedAsync("hello world");
 
@@ -51,7 +51,7 @@ public class LmStudioEmbeddingClientTests
             Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
         });
         using var http = new HttpClient(handler);
-        var client = new LmStudioEmbeddingClient(http, "http://localhost:1234/v1", "nomic-embed-text-v1.5", expectedDimension: 4);
+        var client = new OpenAiCompatibleEmbeddingClient(http, "http://localhost:1234/v1", "nomic-embed-text-v1.5", expectedDimension: 4);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.EmbedAsync("x"));
     }
@@ -65,7 +65,7 @@ public class LmStudioEmbeddingClientTests
             Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
         });
         using var http = new HttpClient(handler);
-        var client = new LmStudioEmbeddingClient(http, "http://localhost:1234/v1", "test-model", expectedDimension: 2);
+        var client = new OpenAiCompatibleEmbeddingClient(http, "http://localhost:1234/v1", "test-model", expectedDimension: 2);
 
         var result = await client.EmbedBatchAsync(new[] { "a", "b" });
 

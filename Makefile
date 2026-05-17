@@ -11,7 +11,7 @@ help:                              ## List available targets
 
 init:                              ## First-time setup: ensure .env exists
 	@test -f .env || (cp .env.example .env && \
-		echo "Created .env from .env.example — fill in LMSTUDIO_API_KEY")
+		echo "Created .env from .env.example — fill in AI_API_KEY and verify LLM_CHAT_URL / LLM_EMBEDDING_URL")
 
 up: up-dev                         ## Alias for up-dev
 

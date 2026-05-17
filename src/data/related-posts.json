@@ -1,1 +1,59 @@
-{}
+{
+	"blog/homeschooling-under-constraints": [
+		{
+			"id": "welcome-to-darbees-chasing-rainbows",
+			"collection": "blog",
+			"score": 0.5610838219859379
+		},
+		{
+			"id": "read-aloud-rhythms-on-the-road",
+			"collection": "blog",
+			"score": 0.5060656174797457
+		}
+	],
+	"blog/read-aloud-rhythms-on-the-road": [
+		{
+			"id": "homeschooling-under-constraints",
+			"collection": "blog",
+			"score": 0.5060656174797457
+		}
+	],
+	"blog/rv-systems-checklist-before-every-launch": [
+		{
+			"id": "what-we-pack-first-in-the-rv",
+			"collection": "blog",
+			"score": 0.5940099315708562
+		}
+	],
+	"blog/the-water-source-well-and-irrigation": [],
+	"blog/welcome-to-darbees-chasing-rainbows": [
+		{
+			"id": "homeschooling-under-constraints",
+			"collection": "blog",
+			"score": 0.5610838219859379
+		},
+		{
+			"id": "why-we-call-it-kingdom-farm",
+			"collection": "blog",
+			"score": 0.5576727232228204
+		}
+	],
+	"blog/what-are-we-choosing-on-behalf-of-our-children.wip": [],
+	"blog/what-we-pack-first-in-the-rv": [
+		{
+			"id": "rv-systems-checklist-before-every-launch",
+			"collection": "blog",
+			"score": 0.5940099315708562
+		}
+	],
+	"blog/why-we-call-it-kingdom-farm": [
+		{
+			"id": "welcome-to-darbees-chasing-rainbows",
+			"collection": "blog",
+			"score": 0.5576727232228204
+		}
+	],
+	"projects/off-grid-power-solar-setup": [],
+	"projects/rv-water-tank-alert-system": [],
+	"field-notes/bulow-plantation-ruins": []
+}

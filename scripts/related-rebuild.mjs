@@ -30,7 +30,7 @@ export function cacheKey(contentHashValue, embeddingModelId) {
  * For one post's vector, the top `limit` of `others` with score >= floor, highest first.
  * `others` is [{ collection, id, vector }] — caller has already excluded self.
  */
-export function topRelated(vector, others, { limit = 3, floor = 0.6 } = {}) {
+export function topRelated(vector, others, { limit = 3, floor = 0.5 } = {}) {
 	return others
 		.map((o) => ({ id: o.id, collection: o.collection, score: cosineSimilarity(vector, o.vector) }))
 		.filter((o) => o.score >= floor)
@@ -99,7 +99,8 @@ async function main() {
 		withVectors.push({ collection: post.collection, id: post.id, vector });
 	}
 
-	const map = buildRelatedMap(withVectors, { limit: 3, floor: 0.6 });
+	const floor = Number(process.env.RELATED_FLOOR ?? 0.5);
+	const map = buildRelatedMap(withVectors, { limit: 3, floor });
 	const orphans = Object.values(map).filter((r) => r.length === 0).length;
 
 	await mkdir(DATA_DIR, { recursive: true });

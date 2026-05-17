@@ -17,26 +17,6 @@ services:
       retries: 12
     restart: unless-stopped
 
-  lm-probe:
-    image: alpine:3.20
-    command:
-      - sh
-      - -c
-      - |
-        apk add --no-cache curl >/dev/null
-        while true; do
-          if curl -fsS -m 3 -H "Authorization: Bearer ${LMSTUDIO_API_KEY:-}" \
-              http://host.containers.internal:1234/v1/models >/dev/null 2>&1; then
-            echo "[$(date -Iseconds)] lm-studio UP"
-          else
-            echo "[$(date -Iseconds)] lm-studio DOWN"
-          fi
-          sleep 30
-        done
-    environment:
-      LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
-    restart: unless-stopped
-
   dais-bridge-dev:
     profiles: ["dev"]
     build:
@@ -50,9 +30,12 @@ services:
       ARANGO_URL: http://arango:8529
       ARANGO_USER: root
       ARANGO_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
-      LMSTUDIO_URL: http://host.containers.internal:1234/v1
-      LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
-      AI_MODEL_ID: ${AI_MODEL_ID:-local-model}
+      LLM_CHAT_URL: http://host.containers.internal:8080/v1
+      LLM_EMBEDDING_URL: http://host.containers.internal:8081/v1
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL_ID: ${AI_MODEL_ID:-llama-4-maverick}
+      AI_EMBEDDING_MODEL_ID: ${AI_EMBEDDING_MODEL_ID:-qwen3-embedding-8b}
+      AI_EMBEDDING_DIMENSION: ${AI_EMBEDDING_DIMENSION:-4096}
       ARANGO_DATABASE: ${ARANGO_DATABASE:-darbees_knowledge}
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
     ports:
@@ -70,9 +53,12 @@ services:
       ARANGO_URL: http://arango:8529
       ARANGO_USER: root
       ARANGO_PASSWORD: ${ARANGO_ROOT_PASSWORD:-password}
-      LMSTUDIO_URL: http://host.containers.internal:1234/v1
-      LMSTUDIO_API_KEY: ${LMSTUDIO_API_KEY:-}
-      AI_MODEL_ID: ${AI_MODEL_ID:-local-model}
+      LLM_CHAT_URL: http://host.containers.internal:8080/v1
+      LLM_EMBEDDING_URL: http://host.containers.internal:8081/v1
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL_ID: ${AI_MODEL_ID:-llama-4-maverick}
+      AI_EMBEDDING_MODEL_ID: ${AI_EMBEDDING_MODEL_ID:-qwen3-embedding-8b}
+      AI_EMBEDDING_DIMENSION: ${AI_EMBEDDING_DIMENSION:-4096}
       ARANGO_DATABASE: ${ARANGO_DATABASE:-darbees_knowledge}
     ports:
       - "5000:5000"

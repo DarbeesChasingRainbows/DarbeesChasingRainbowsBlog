@@ -49,6 +49,16 @@ export function contentHash(post) {
 	return createHash('sha256').update(embedText(post)).digest('hex');
 }
 
+/**
+ * True for filenames Astro's content collections exclude:
+ *   - `*.draft.md`, `*.draft.mdx`
+ *   - `*.wip.md`,   `*.wip.mdx`
+ * Keep this in sync with the `pattern` arrays in src/content.config.ts.
+ */
+function isUnpublishedFilename(name) {
+	return /\.(draft|wip)\.mdx?$/.test(name);
+}
+
 async function walkMdx(dir) {
 	const out = [];
 	let entries;
@@ -58,11 +68,11 @@ async function walkMdx(dir) {
 		return out; // collection dir absent — fine
 	}
 	for (const entry of entries) {
-		if (entry.name === '_templates') continue;
+		if (entry.name === '_templates' || entry.name === '_drafts') continue;
 		const full = join(dir, entry.name);
 		if (entry.isDirectory()) {
 			out.push(...(await walkMdx(full)));
-		} else if (entry.name.endsWith('.mdx')) {
+		} else if (entry.name.endsWith('.mdx') && !isUnpublishedFilename(entry.name)) {
 			out.push(full);
 		}
 	}

@@ -6,6 +6,8 @@ using Darbee.Gateway.Plugins;
 using Darbee.Gateway.Middleware;
 using Darbee.Gateway.Hubs;
 using Darbee.Gateway.Memory;
+using Darbee.Gateway.Models;
+using Darbee.Gateway.Endpoints;
 
 namespace Darbee.Gateway;
 
@@ -20,12 +22,23 @@ public class Program
 
         // Configuration
         var obsidianVault = builder.Configuration["Obsidian:VaultPath"] ?? throw new Exception("Missing Obsidian Vault Path");
-        var lmStudioUrl = Environment.GetEnvironmentVariable("LMSTUDIO_URL")
-            ?? builder.Configuration["AI:LMStudioUrl"]
-            ?? "http://localhost:1234/v1";
+        var legacyLmStudioUrl = Environment.GetEnvironmentVariable("LMSTUDIO_URL");
+        var lmChatUrl = Environment.GetEnvironmentVariable("LLM_CHAT_URL")
+            ?? legacyLmStudioUrl
+            ?? builder.Configuration["AI:ChatUrl"]
+            ?? "http://localhost:8080/v1";
+        if (legacyLmStudioUrl is not null && Environment.GetEnvironmentVariable("LLM_CHAT_URL") is null)
+        {
+            Console.WriteLine("[bridge] LMSTUDIO_URL is deprecated; rename to LLM_CHAT_URL in .env / compose.yaml.");
+        }
+
+        var lmEmbeddingUrl = Environment.GetEnvironmentVariable("LLM_EMBEDDING_URL")
+            ?? builder.Configuration["AI:EmbeddingUrl"]
+            ?? lmChatUrl;
+
         var modelId = Environment.GetEnvironmentVariable("AI_MODEL_ID")
             ?? builder.Configuration["AI:ModelId"]
-            ?? "local-model";
+            ?? "llama-4-maverick";
 
         var arangoUrl = Environment.GetEnvironmentVariable("ARANGO_URL")
             ?? builder.Configuration["ArangoDB:Url"]
@@ -40,24 +53,31 @@ public class Program
             ?? builder.Configuration["ArangoDB:Password"]
             ?? "password";
 
-        var embeddingModelId = builder.Configuration["AI:EmbeddingModelId"] ?? "nomic-embed-text-v1.5";
-        var embeddingDimension = int.Parse(builder.Configuration["AI:EmbeddingDimension"] ?? "768");
+        var embeddingModelId = Environment.GetEnvironmentVariable("AI_EMBEDDING_MODEL_ID")
+            ?? builder.Configuration["AI:EmbeddingModelId"]
+            ?? "qwen3-embedding-8b";
+        var embeddingDimension = int.Parse(
+            Environment.GetEnvironmentVariable("AI_EMBEDDING_DIMENSION")
+            ?? builder.Configuration["AI:EmbeddingDimension"]
+            ?? "4096");
         var vectorNLists = int.Parse(builder.Configuration["Memory:VectorNLists"] ?? "100");
 
-        var lmStudioApiKey = Environment.GetEnvironmentVariable("LMSTUDIO_API_KEY")
-            ?? builder.Configuration["AI:LMStudioApiKey"];
+        var lmApiKey = Environment.GetEnvironmentVariable("AI_API_KEY")
+            ?? Environment.GetEnvironmentVariable("LMSTUDIO_API_KEY")
+            ?? builder.Configuration["AI:ApiKey"];
 
         builder.Services.AddHttpClient("memory");
         builder.Services.AddSingleton<IEmbeddingClient>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new LmStudioEmbeddingClient(http, lmStudioUrl, embeddingModelId, embeddingDimension, lmStudioApiKey);
+            return new OpenAiCompatibleEmbeddingClient(http, lmEmbeddingUrl, embeddingModelId, embeddingDimension, lmApiKey);
         });
         builder.Services.AddSingleton<MemoryStore>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
+            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingModelId, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
         });
+        builder.Services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
@@ -84,11 +104,11 @@ public class Program
         builder.Services.AddKeyedSingleton<Kernel>("kernel-kidsafe", (sp, _) =>
         {
             var kernelBuilder = Kernel.CreateBuilder();
-            kernelBuilder.AddOpenAIChatCompletion(modelId, lmStudioUrl);
+            kernelBuilder.AddOpenAIChatCompletion(modelId, lmChatUrl);
 
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
-            kernelBuilder.Plugins.AddFromObject(new ArangoPlugin(arangoUrl, arangoDb, arangoUser, arangoPass), "ArangoDB");
-            kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmStudioUrl, modelId), "GEO");
+            kernelBuilder.Plugins.AddFromObject(new MemoryPlugin(sp.GetRequiredService<MemoryStore>(), sp.GetRequiredService<ITenantContextAccessor>()), "Memory");
+            kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
             // Intentionally NOT registered on kernel-kidsafe: AssetPlugin, ResearchPlugin.
 
@@ -98,12 +118,12 @@ public class Program
         builder.Services.AddKeyedSingleton<Kernel>("kernel-admin", (sp, _) =>
         {
             var kernelBuilder = Kernel.CreateBuilder();
-            kernelBuilder.AddOpenAIChatCompletion(modelId, lmStudioUrl);
+            kernelBuilder.AddOpenAIChatCompletion(modelId, lmChatUrl);
 
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
-            kernelBuilder.Plugins.AddFromObject(new ArangoPlugin(arangoUrl, arangoDb, arangoUser, arangoPass), "ArangoDB");
+            kernelBuilder.Plugins.AddFromObject(new MemoryPlugin(sp.GetRequiredService<MemoryStore>(), sp.GetRequiredService<ITenantContextAccessor>()), "Memory");
             kernelBuilder.Plugins.AddFromObject(new AssetPlugin(cfAccountId, cfToken), "Assets");
-            kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmStudioUrl, modelId), "GEO");
+            kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
             kernelBuilder.Plugins.AddFromObject(new ResearchPlugin(sp.GetRequiredService<IMcpToolClient>()), "Research");
 
@@ -112,12 +132,6 @@ public class Program
 
         var app = builder.Build();
 
-        using (var scope = app.Services.CreateScope())
-        {
-            var store = scope.ServiceProvider.GetRequiredService<MemoryStore>();
-            await store.EnsureSchemaAsync();
-        }
-
         // 4. Configure Middleware & Endpoints
         app.UseMiddleware<SafetyMiddleware>();
 
@@ -125,6 +139,81 @@ public class Program
 
         app.MapHub<KidSafeHub>("/hubs/kidsafe");
         app.MapHub<ParentHub>("/hubs/parent");
+
+        app.MapPost("/api/admin/reindex-posts", async (
+            ReindexRequest request,
+            MemoryStore store,
+            IEmbeddingClient embeddings,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var response = await ContentRagEndpoints.HandleReindexAsync(request, store, embeddings, ct);
+                return Results.Ok(response);
+            }
+            catch (EmbeddingConfigMismatchException ex)
+            {
+                return Results.Json(new
+                {
+                    error = "embedding_config_mismatch",
+                    message = ex.Message,
+                    previous = ex.Previous,
+                    current = ex.Current,
+                }, statusCode: 503);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = "invalid_request", details = ex.Message });
+            }
+        });
+
+        app.MapPost("/api/memory/search", async (
+            SearchRequest request,
+            MemoryStore store,
+            IEmbeddingClient embeddings,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var response = await ContentRagEndpoints.HandleSearchAsync(request, store, embeddings, ct);
+                return Results.Ok(response);
+            }
+            catch (EmbeddingConfigMismatchException ex)
+            {
+                return Results.Json(new { error = "embedding_config_mismatch", message = ex.Message },
+                    statusCode: 503);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = "invalid_request", details = ex.Message });
+            }
+            catch (HttpRequestException ex)
+            {
+                return Results.Json(new { error = "embedding_server_unreachable", message = ex.Message },
+                    statusCode: 503);
+            }
+        });
+
+        app.MapPost("/api/admin/migrate-embeddings", async (
+            MigrateRequest request,
+            MemoryStore store,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await ContentRagEndpoints.HandleMigrateAsync(request, store, ct);
+                return Results.Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "missing_or_invalid_confirm",
+                    message = ex.Message,
+                    accepted = new[] { "preserve-and-reembed", "wipe-and-reset" }
+                });
+            }
+        });
 
         Console.WriteLine("🚀 Darbee Sovereign Gateway Initializing...");
         app.Run();
