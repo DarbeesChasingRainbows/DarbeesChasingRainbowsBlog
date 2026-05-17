@@ -8,7 +8,7 @@
 import { listPosts, stripMdx, ALL_COLLECTIONS } from './lib/posts.mjs';
 import { bridgePost, BridgeError } from './lib/bridge-client.mjs';
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
 	const args = { force: false, collections: ALL_COLLECTIONS, bridgeUrl: undefined };
 	for (let i = 2; i < argv.length; i++) {
 		const a = argv[i];
