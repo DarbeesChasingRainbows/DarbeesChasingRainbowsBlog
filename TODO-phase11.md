@@ -1,5 +1,15 @@
 # TODO — Phase 11: Graph-Backed RAG
 
+> **2026-05-17 — Stack drift update:** This work was paused at task A6. Since then:
+> - `LmStudioEmbeddingClient` has been renamed to `OpenAiCompatibleEmbeddingClient` (same behavior, accurate name).
+> - The embedding stack switched from LM Studio + `nomic-embed-text-v1.5` (768-dim) to llama.cpp + `qwen3-embedding-8b` (4096-dim).
+> - The bridge now reads `LLM_CHAT_URL` and `LLM_EMBEDDING_URL` (split). `LMSTUDIO_URL` is back-compat with a deprecation warning.
+> - `EnsureSchemaAsync` is now invoked lazily (first-use) rather than at startup, so the new `POST /api/admin/migrate-embeddings` endpoint stays reachable during config-mismatch states.
+> - Posts are now stored as `MemoryKind.Post` in a `memory_posts` collection. See [`docs/superpowers/specs/2026-05-16-content-rag-design.md`](docs/superpowers/specs/2026-05-16-content-rag-design.md).
+> - `MemoryPlugin` (kernel functions `RememberDecision`/`RememberObservation`/`LinkMemory`) was added in parallel via commit `131f509`, advancing Phase 11 B2.
+>
+> When resuming Phase 11 task B3 and beyond, the above is the current state. `MemoryStore` and `IEmbeddingClient` references in the original spec/plan below are correct in spirit; just substitute the new class name and config keys.
+
 > **Where am I?** This is the active punchlist for Phase 11. The full design is in [`docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md`](docs/superpowers/specs/2026-05-09-graph-backed-rag-design.md), the implementation plan with TDD steps + code blocks is in [`docs/superpowers/plans/2026-05-09-graph-backed-rag.md`](docs/superpowers/plans/2026-05-09-graph-backed-rag.md), and the session-history + environment-setup + per-task gotchas live in [`docs/superpowers/RESUME-graph-backed-rag.md`](docs/superpowers/RESUME-graph-backed-rag.md).
 
 **Branch:** `feature/graph-backed-rag`
