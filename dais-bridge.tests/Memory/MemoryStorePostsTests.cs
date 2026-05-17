@@ -131,4 +131,41 @@ public class MemoryStorePostsTests
             await MemoryStoreSchemaTests.DropDb(dbName);
         }
     }
+
+    [Fact]
+    public async Task DeleteStalePostsAsync_RemovesPostsNotInCurrentSet()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            await store.UpsertPostAsync(MakePost(slug: "one"), force: false);
+            await store.UpsertPostAsync(MakePost(slug: "two"), force: false);
+            await store.UpsertPostAsync(MakePost(slug: "three"), force: false);
+
+            // current set keeps "one" and "three"; "two" should be deleted (both vectors)
+            var current = new List<(string Collection, string Slug)>
+            {
+                ("blog", "one"),
+                ("blog", "three"),
+            };
+
+            var deleted = await store.DeleteStalePostsAsync(current);
+
+            Assert.Equal(2, deleted);  // summary + body for "two"
+            Assert.Null(await store.ReadPostDocumentAsync("blog__two__summary"));
+            Assert.Null(await store.ReadPostDocumentAsync("blog__two__body"));
+            Assert.NotNull(await store.ReadPostDocumentAsync("blog__one__summary"));
+            Assert.NotNull(await store.ReadPostDocumentAsync("blog__three__summary"));
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }

@@ -285,6 +285,35 @@ public sealed class MemoryStore : IDisposable
         return VectorWriteOutcome.Embedded;
     }
 
+    public async Task<int> DeleteStalePostsAsync(
+        IReadOnlyCollection<(string Collection, string Slug)> currentPosts,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        var pairs = currentPosts.Select(p => $"{p.Collection}__{p.Slug}").ToArray();
+
+        var aql = """
+            FOR doc IN @@col
+              FILTER doc.tenant_id == "public"
+              FILTER CONCAT(doc.collection, "__", doc.slug) NOT IN @pairs
+              REMOVE doc IN @@col
+              RETURN OLD._key
+            """;
+        var bindVars = new Dictionary<string, object>
+        {
+            ["@col"] = MemoryCollections.Posts,
+            ["pairs"] = pairs,
+        };
+        var cursor = await _arango.Cursor.PostCursorAsync<string>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            {
+                Query = aql,
+                BindVars = bindVars,
+            });
+        return cursor.Result.Count();
+    }
+
     private static string ComputeHash(string text, string modelId)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();
