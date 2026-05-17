@@ -31,6 +31,13 @@ async function main() {
 	const posts = await listPosts({ collections: args.collections });
 	console.log(`Found ${posts.length} posts across ${args.collections.join(', ')}.`);
 
+	if (posts.length === 0) {
+		console.error('No posts found — refusing to reindex (would wipe the memory_posts collection).');
+		console.error(`Working dir: ${process.cwd()}`);
+		console.error(`Collections searched: ${args.collections.join(', ')}`);
+		process.exit(1);
+	}
+
 	const payload = {
 		force: args.force,
 		posts: posts.map((p) => ({

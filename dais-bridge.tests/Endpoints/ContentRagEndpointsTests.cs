@@ -231,4 +231,36 @@ public class ContentRagEndpointsTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             ContentRagEndpoints.HandleMigrateAsync(new MigrateRequest("bad"), store));
     }
+
+    [Fact]
+    public async Task HandleReindexAsync_EmptyPosts_ThrowsArgumentException_DoesNotDeleteAnything()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStorePostsTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName,
+                MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            // Seed: index two posts via a normal reindex
+            var seed = new ReindexRequest(false, new[] { MakeReindexPost("a"), MakeReindexPost("b") });
+            await ContentRagEndpoints.HandleReindexAsync(seed, store, emb);
+
+            // Now an empty-payload reindex must throw and NOT delete anything
+            var emptyRequest = new ReindexRequest(false, Array.Empty<ReindexPost>());
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                ContentRagEndpoints.HandleReindexAsync(emptyRequest, store, emb));
+
+            // Verify seeded docs are still present
+            Assert.NotNull(await store.ReadPostDocumentAsync("blog__a__summary"));
+            Assert.NotNull(await store.ReadPostDocumentAsync("blog__b__summary"));
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }

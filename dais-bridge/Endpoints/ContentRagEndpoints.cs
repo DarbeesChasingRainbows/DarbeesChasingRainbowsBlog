@@ -14,6 +14,9 @@ public static class ContentRagEndpoints
     {
         var sw = Stopwatch.StartNew();
 
+        if (request.Posts.Count == 0)
+            throw new ArgumentException("posts list must be non-empty (received 0 posts — refusing to run, this would wipe the index)");
+
         // Validate: reject duplicate (collection, slug) within request
         var seen = new HashSet<(string, string)>();
         foreach (var p in request.Posts)
