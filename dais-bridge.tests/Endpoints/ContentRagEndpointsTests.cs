@@ -235,6 +235,63 @@ public class ContentRagEndpointsTests
     }
 
     [Fact]
+    public async Task HandleReindexAsync_OnePostFails_OthersStillSucceed_ResponseListsFailure()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStorePostsTests.StubEmbeddingClient
+            {
+                ShouldFailOn = text => text.Contains("broken-post"),
+            };
+            var store = new MemoryStore(ArangoUrl, dbName,
+                MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            var goodPost = MakeReindexPost("good-post");
+            var brokenPost = new ReindexPost(
+                Collection: "blog",
+                Slug: "broken-post",
+                Frontmatter: new ReindexFrontmatter(
+                    Title: "broken-post",
+                    Description: "intro",
+                    PubDate: "2026-04-29",
+                    Category: "Faith",
+                    Tags: null, AiSummary: null, KeyTakeaways: null,
+                    Faq: null, EntityMentions: null),
+                Body: "body for broken-post");
+            var request = new ReindexRequest(Force: false, Posts: new[] { goodPost, brokenPost });
+
+            var response = await ContentRagEndpoints.HandleReindexAsync(request, store, emb);
+
+            Assert.Equal(2, response.Scanned);
+            Assert.Equal(2, response.Posts.Count);
+
+            var goodResult = response.Posts.Single(p => p.Slug == "good-post");
+            Assert.Equal("embedded", goodResult.Summary);
+            Assert.Equal("embedded", goodResult.Body);
+            Assert.Null(goodResult.FailureReason);
+
+            var brokenResult = response.Posts.Single(p => p.Slug == "broken-post");
+            Assert.Equal("failed", brokenResult.Summary);
+            Assert.Equal("failed", brokenResult.Body);
+            Assert.Contains("stub embedding failure", brokenResult.FailureReason);
+
+            // Good post's vectors should be persisted; broken post's should not
+            using var goodDoc = await store.ReadPostDocumentAsync("blog__good-post__summary");
+            using var brokenDoc = await store.ReadPostDocumentAsync("blog__broken-post__summary");
+            Assert.NotNull(goodDoc);
+            Assert.Null(brokenDoc);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
     public async Task HandleReindexAsync_EmptyPosts_ThrowsArgumentException_DoesNotDeleteAnything()
     {
         if (!ArangoEnabled) return;

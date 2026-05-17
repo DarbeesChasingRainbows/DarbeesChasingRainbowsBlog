@@ -17,14 +17,22 @@ public class MemoryStorePostsTests
     {
         public int Dimension { get; set; } = 4;
         public int EmbedCalls { get; private set; }
+        public Func<string, bool>? ShouldFailOn { get; set; }
+
         public Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
         {
             EmbedCalls++;
+            if (ShouldFailOn?.Invoke(text) == true)
+                throw new InvalidOperationException("stub embedding failure");
             return Task.FromResult(new[] { 0.1f, 0.2f, 0.3f, 0.4f });
         }
+
         public Task<IReadOnlyList<float[]>> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
         {
             EmbedCalls += texts.Count;
+            foreach (var t in texts)
+                if (ShouldFailOn?.Invoke(t) == true)
+                    throw new InvalidOperationException("stub embedding failure");
             return Task.FromResult<IReadOnlyList<float[]>>(
                 texts.Select(_ => new[] { 0.1f, 0.2f, 0.3f, 0.4f }).ToArray());
         }
