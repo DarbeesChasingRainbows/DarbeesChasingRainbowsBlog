@@ -167,6 +167,33 @@ public class Program
             }
         });
 
+        app.MapPost("/api/memory/search", async (
+            SearchRequest request,
+            MemoryStore store,
+            IEmbeddingClient embeddings,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var response = await ContentRagEndpoints.HandleSearchAsync(request, store, embeddings, ct);
+                return Results.Ok(response);
+            }
+            catch (EmbeddingConfigMismatchException ex)
+            {
+                return Results.Json(new { error = "embedding_config_mismatch", message = ex.Message },
+                    statusCode: 503);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = "invalid_request", details = ex.Message });
+            }
+            catch (HttpRequestException ex)
+            {
+                return Results.Json(new { error = "embedding_server_unreachable", message = ex.Message },
+                    statusCode: 503);
+            }
+        });
+
         Console.WriteLine("🚀 Darbee Sovereign Gateway Initializing...");
         app.Run();
     }

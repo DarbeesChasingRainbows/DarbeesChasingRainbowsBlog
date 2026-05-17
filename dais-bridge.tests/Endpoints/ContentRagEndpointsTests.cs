@@ -135,4 +135,64 @@ public class ContentRagEndpointsTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             ContentRagEndpoints.HandleReindexAsync(request, store, emb));
     }
+
+    [Fact]
+    public async Task HandleSearchAsync_ReturnsDedupedTopKByBestVectorKind()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStorePostsTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName,
+                MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            var seed = new ReindexRequest(false, new[] {
+                MakeReindexPost("alpha"),
+                MakeReindexPost("beta"),
+                MakeReindexPost("gamma"),
+            });
+            await ContentRagEndpoints.HandleReindexAsync(seed, store, emb);
+
+            var search = new SearchRequest(Query: "anything", Kinds: null, K: 2, Tenant: null);
+            var result = await ContentRagEndpoints.HandleSearchAsync(search, store, emb);
+
+            Assert.Equal(2, result.Results.Count);
+            // Each slug appears at most once (deduped):
+            Assert.Equal(result.Results.Select(r => r.Slug).Distinct().Count(), result.Results.Count);
+            Assert.All(result.Results, r => Assert.Equal("blog", r.Collection));
+            Assert.All(result.Results, r => Assert.StartsWith("/blog/", r.Url));
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task HandleSearchAsync_EmptyCollection_ReturnsEmpty()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStorePostsTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName,
+                MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            await store.EnsureSchemaAsync();
+
+            var search = new SearchRequest(Query: "x", Kinds: null, K: 5, Tenant: null);
+            var result = await ContentRagEndpoints.HandleSearchAsync(search, store, emb);
+
+            Assert.Empty(result.Results);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }

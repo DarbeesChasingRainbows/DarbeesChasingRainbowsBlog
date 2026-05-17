@@ -90,4 +90,66 @@ public static class ContentRagEndpoints
         VectorWriteOutcome.Failed => "failed",
         _ => "unknown",
     };
+
+    public static async Task<SearchResponse> HandleSearchAsync(
+        SearchRequest request,
+        MemoryStore store,
+        IEmbeddingClient embeddings,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Query))
+            throw new ArgumentException("query is required", nameof(request));
+        var k = request.K <= 0 ? 5 : Math.Min(request.K, 50);
+        var tenant = string.IsNullOrWhiteSpace(request.Tenant) ? "public" : request.Tenant;
+
+        var kindStrings = request.Kinds ?? new[] { "post" };
+        var kinds = kindStrings.Select(s => s.ToLowerInvariant() switch
+        {
+            "post" => MemoryKind.Post,
+            _ => throw new ArgumentException($"unknown kind: {s}", nameof(request))
+        }).ToList();
+
+        var embedSw = Stopwatch.StartNew();
+        var queryVec = await embeddings.EmbedAsync(request.Query, ct);
+        embedSw.Stop();
+
+        var searchSw = Stopwatch.StartNew();
+        var rows = await store.SearchAsync(queryVec, kinds, new[] { tenant }, rawK: k * 2, ct);
+        searchSw.Stop();
+
+        // Dedup application-side: best row per (collection, slug)
+        var bestBySlug = new Dictionary<(string, string), PostSearchHit>();
+        foreach (var row in rows)
+        {
+            var key = (row.Collection, row.Slug);
+            if (!bestBySlug.TryGetValue(key, out var existing) || row.Sim > existing.Sim)
+                bestBySlug[key] = row;
+        }
+        var topK = bestBySlug.Values.OrderByDescending(r => r.Sim).Take(k).ToList();
+
+        var results = topK.Select(r => new SearchResult(
+            Slug: r.Slug,
+            Collection: r.Collection,
+            Title: r.Title,
+            MatchedKind: r.VectorKind,
+            Score: r.Sim,
+            Snippet: BuildSnippet(r),
+            Url: $"/{r.Collection}/{r.Slug}/")).ToList();
+
+        return new SearchResponse(
+            QueryEmbedMs: embedSw.ElapsedMilliseconds,
+            SearchMs: searchSw.ElapsedMilliseconds,
+            Results: results);
+    }
+
+    private const int SnippetMaxChars = 280;
+
+    private static string BuildSnippet(PostSearchHit r)
+    {
+        var src = r.VectorKind == "summary"
+            ? (r.AiSummary ?? r.Text ?? "")
+            : (r.Text ?? "");
+        if (src.Length <= SnippetMaxChars) return src;
+        return src[..SnippetMaxChars] + "…";
+    }
 }
