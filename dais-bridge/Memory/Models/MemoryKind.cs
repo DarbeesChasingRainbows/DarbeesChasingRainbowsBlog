@@ -6,7 +6,8 @@ public enum MemoryKind
     Observation,
     Fact,
     Summary,
-    Entity
+    Entity,
+    Post,
 }
 
 public static class MemoryCollections
@@ -18,6 +19,8 @@ public static class MemoryCollections
     public const string Entities = "memory_entities";
     public const string Edges = "memory_edges";
     public const string PendingEmbeddings = "memory_pending_embeddings";
+    public const string Posts = "memory_posts";
+    public const string Meta = "memory_meta";
 
     public static string ForKind(MemoryKind kind) => kind switch
     {
@@ -26,6 +29,7 @@ public static class MemoryCollections
         MemoryKind.Fact => Facts,
         MemoryKind.Summary => Summaries,
         MemoryKind.Entity => Entities,
+        MemoryKind.Post => Posts,
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 }
