@@ -369,6 +369,22 @@ public sealed class MemoryStore : IDisposable
         return hashProp.GetString();
     }
 
+    internal record PostCacheState(string Hash, string Status);
+
+    internal async Task<PostCacheState?> ReadPostCacheStateAsync(string key, CancellationToken ct = default)
+    {
+        using var doc = await ReadPostDocumentAsync(key, ct);
+        if (doc is null) return null;
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("hash", out var hashProp)) return null;
+        var hash = hashProp.GetString();
+        if (hash is null) return null;
+        var status = root.TryGetProperty("status", out var statusProp)
+            ? statusProp.GetString() ?? ""
+            : "";
+        return new PostCacheState(hash, status);
+    }
+
     public async Task<UpsertPostResult> UpsertPostAsync(
         PostDocument post,
         bool force,
@@ -395,8 +411,12 @@ public sealed class MemoryStore : IDisposable
 
         if (!force)
         {
-            var existingHash = await ReadPostHashAsync(key, ct);
-            if (existingHash == hash)
+            var existing = await ReadPostCacheStateAsync(key, ct);
+            // Cache hit only when both the embed text AND the doc's status are
+            // current. A pending_embedding doc with a matching hash means the
+            // embedding was cleared (e.g., by MigrateEmbeddingsAsync) and must
+            // be regenerated regardless of hash equality.
+            if (existing is not null && existing.Hash == hash && existing.Status == "ready")
                 return VectorWriteOutcome.Cached;
         }
 
