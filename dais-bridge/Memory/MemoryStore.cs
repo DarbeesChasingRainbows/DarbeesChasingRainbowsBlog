@@ -153,6 +153,120 @@ public sealed class MemoryStore : IDisposable
         throw new InvalidOperationException($"Failed to write embedding_config (errorNum={errorNum}): {content}");
     }
 
+    public async Task<MigrationResult> MigrateEmbeddingsAsync(
+        string confirmToken,
+        CancellationToken ct = default)
+    {
+        if (confirmToken != "preserve-and-reembed" && confirmToken != "wipe-and-reset")
+            throw new ArgumentException(
+                $"Invalid confirm token '{confirmToken}'. Accepted: 'preserve-and-reembed' or 'wipe-and-reset'.",
+                nameof(confirmToken));
+
+        // Minimal bootstrap: ensure memory_meta exists; do NOT call EnsureSchemaIfNeededAsync
+        // (this endpoint must work even when the full schema is in mismatch state).
+        await EnsureCollectionAsync(MemoryCollections.Meta, isEdge: false);
+
+        var current = new EmbeddingConfig(_embeddingModelId, _embeddingDimension);
+        var previous = await ReadEmbeddingConfigAsync(ct);
+
+        var indexesDropped = new List<string>();
+        var docsMarked = new Dictionary<string, int>();
+
+        if (previous is not null && !previous.Equals(current))
+        {
+            foreach (var collection in new[]
+            {
+                MemoryCollections.Decisions,
+                MemoryCollections.Observations,
+                MemoryCollections.Facts,
+                MemoryCollections.Summaries,
+                MemoryCollections.Posts,
+            })
+            {
+                // Ensure the collection exists before working on it.
+                await EnsureCollectionAsync(collection, isEdge: false);
+
+                // Drop vector indexes
+                var indexes = await ListIndexesAsync(collection);
+                foreach (var idx in indexes.Where(i => i.Type == "vector"))
+                {
+                    await DeleteIndexAsync(idx.Id);
+                    indexesDropped.Add($"{collection}/{idx.Id.Split('/').Last()}");
+                }
+
+                int affected = 0;
+                if (confirmToken == "preserve-and-reembed")
+                {
+                    var aql = """
+                        FOR doc IN @@col
+                          FILTER doc.embedding != null
+                          UPDATE doc WITH {
+                            embedding: null,
+                            status: "pending_embedding",
+                            updated_at: DATE_ISO8601(DATE_NOW())
+                          } IN @@col
+                          RETURN OLD._key
+                        """;
+                    var cursor = await _arango.Cursor.PostCursorAsync<string>(
+                        new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                        {
+                            Query = aql,
+                            BindVars = new Dictionary<string, object> { ["@col"] = collection },
+                        });
+                    var keys = cursor.Result.ToList();
+                    affected = keys.Count;
+
+                    foreach (var key in keys)
+                        await EnqueuePendingEmbeddingAsync(collection, key);
+                }
+                else  // wipe-and-reset
+                {
+                    var aql = """
+                        FOR doc IN @@col
+                          FILTER doc.embedding != null
+                          REMOVE doc IN @@col
+                          RETURN OLD._key
+                        """;
+                    var cursor = await _arango.Cursor.PostCursorAsync<string>(
+                        new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                        {
+                            Query = aql,
+                            BindVars = new Dictionary<string, object> { ["@col"] = collection },
+                        });
+                    affected = cursor.Result.Count();
+                }
+
+                docsMarked[collection] = affected;
+            }
+
+            _vectorIndexReady.Clear();
+        }
+
+        // Always write/refresh the config doc with current values
+        await WriteEmbeddingConfigAsync(current, isFirstTime: previous is null, ct);
+
+        // Reset schema-ready so the next request re-runs EnsureSchemaAsync against fresh state
+        InvalidateSchemaReady();
+
+        // Count queue size after
+        await EnsureCollectionAsync(MemoryCollections.PendingEmbeddings, isEdge: false);
+        var queueAql = "FOR p IN @@col COLLECT WITH COUNT INTO n RETURN n";
+        var queueCursor = await _arango.Cursor.PostCursorAsync<int>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            {
+                Query = queueAql,
+                BindVars = new Dictionary<string, object> { ["@col"] = MemoryCollections.PendingEmbeddings },
+            });
+        var queueSizeAfter = queueCursor.Result.FirstOrDefault();
+
+        return new MigrationResult(
+            previous,
+            current,
+            indexesDropped,
+            docsMarked,
+            queueSizeAfter);
+    }
+
     public async Task EnsureVectorIndexAsync(string collection, CancellationToken ct = default)
     {
         if (_vectorIndexReady.TryGetValue(collection, out var cached) && cached) return;
