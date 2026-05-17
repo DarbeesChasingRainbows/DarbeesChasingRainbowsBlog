@@ -60,6 +60,8 @@ public class MemoryStoreSchemaTests
             Assert.Contains("memory_entities", collections);
             Assert.Contains("memory_edges", collections);
             Assert.Contains("memory_pending_embeddings", collections);
+            Assert.Contains("memory_posts", collections);
+            Assert.Contains("memory_meta", collections);
         }
         finally
         {

@@ -46,7 +46,9 @@ public sealed class MemoryStore : IDisposable
             MemoryCollections.Facts,
             MemoryCollections.Summaries,
             MemoryCollections.Entities,
-            MemoryCollections.PendingEmbeddings
+            MemoryCollections.PendingEmbeddings,
+            MemoryCollections.Posts,    // NEW
+            MemoryCollections.Meta,     // NEW
         })
         {
             await EnsureCollectionAsync(name, isEdge: false);
@@ -68,6 +70,10 @@ public sealed class MemoryStore : IDisposable
         await EnsurePersistentIndexAsync(MemoryCollections.Entities, new[] { "tenant_id", "canonical_name" });
         await EnsurePersistentIndexAsync(MemoryCollections.Entities, new[] { "tenant_id", "aliases[*]" });
         await EnsurePersistentIndexAsync(MemoryCollections.Edges, new[] { "tenant_id", "kind" });
+
+        // NEW: persistent indexes on memory_posts
+        await EnsurePersistentIndexAsync(MemoryCollections.Posts, new[] { "tenant_id", "status", "vector_kind" });
+        await EnsurePersistentIndexAsync(MemoryCollections.Posts, new[] { "collection", "slug" });
     }
 
     public async Task EnsureVectorIndexAsync(string collection, CancellationToken ct = default)
