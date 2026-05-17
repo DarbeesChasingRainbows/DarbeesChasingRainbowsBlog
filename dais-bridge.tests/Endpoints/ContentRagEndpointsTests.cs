@@ -195,4 +195,40 @@ public class ContentRagEndpointsTests
             await MemoryStoreSchemaTests.DropDb(dbName);
         }
     }
+
+    [Fact]
+    public async Task HandleMigrateAsync_NoMismatch_IsNoop()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var store = new MemoryStore(ArangoUrl, dbName,
+                MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+            await store.EnsureSchemaAsync();
+
+            var request = new MigrateRequest("preserve-and-reembed");
+            var result = await ContentRagEndpoints.HandleMigrateAsync(request, store);
+
+            Assert.NotNull(result.Previous);
+            Assert.Equal(result.Previous, result.Current);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task HandleMigrateAsync_InvalidConfirm_Throws()
+    {
+        using var http = new HttpClient();
+        var store = new MemoryStore("http://unused:8529", "unused", "u", "p",
+            "m", 4, 1, http);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            ContentRagEndpoints.HandleMigrateAsync(new MigrateRequest("bad"), store));
+    }
 }

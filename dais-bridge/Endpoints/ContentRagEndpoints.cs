@@ -152,4 +152,12 @@ public static class ContentRagEndpoints
         if (src.Length <= SnippetMaxChars) return src;
         return src[..SnippetMaxChars] + "…";
     }
+
+    public static async Task<MigrationResult> HandleMigrateAsync(
+        MigrateRequest request,
+        MemoryStore store,
+        CancellationToken ct = default)
+    {
+        return await store.MigrateEmbeddingsAsync(request.Confirm ?? "", ct);
+    }
 }

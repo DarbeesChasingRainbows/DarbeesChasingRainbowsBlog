@@ -194,6 +194,27 @@ public class Program
             }
         });
 
+        app.MapPost("/api/admin/migrate-embeddings", async (
+            MigrateRequest request,
+            MemoryStore store,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                var result = await ContentRagEndpoints.HandleMigrateAsync(request, store, ct);
+                return Results.Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "missing_or_invalid_confirm",
+                    message = ex.Message,
+                    accepted = new[] { "preserve-and-reembed", "wipe-and-reset" }
+                });
+            }
+        });
+
         Console.WriteLine("🚀 Darbee Sovereign Gateway Initializing...");
         app.Run();
     }
