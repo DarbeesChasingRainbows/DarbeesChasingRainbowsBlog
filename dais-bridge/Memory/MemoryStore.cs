@@ -314,6 +314,81 @@ public sealed class MemoryStore : IDisposable
         return cursor.Result.Count();
     }
 
+    public async Task<List<PostSearchHit>> SearchAsync(
+        float[] queryVec,
+        IReadOnlyList<MemoryKind> kinds,
+        IReadOnlyList<string> tenants,
+        int rawK,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        if (rawK < 1) throw new ArgumentOutOfRangeException(nameof(rawK), "must be >= 1");
+
+        // Only MemoryKind.Post is supported in this phase; future work adds other kinds.
+        if (!kinds.Contains(MemoryKind.Post))
+            return new List<PostSearchHit>();
+
+        var aql = """
+            LET q = @query_vec
+            FOR doc IN @@col
+              FILTER doc.tenant_id IN @tenants
+              FILTER doc.status == "ready"
+              FILTER doc.vector_kind IN ["summary", "body"]
+              LET sim = COSINE_SIMILARITY(doc.embedding, q)
+              SORT sim DESC
+              LIMIT @raw_k
+              RETURN {
+                key:         doc._key,
+                slug:        doc.slug,
+                collection:  doc.collection,
+                vector_kind: doc.vector_kind,
+                title:       doc.title,
+                text:        doc.text,
+                description: doc.description,
+                ai_summary:  doc.ai_summary,
+                pub_date:    doc.pub_date,
+                category:    doc.category,
+                tags:        doc.tags,
+                sim:         sim
+              }
+            """;
+        var bindVars = new Dictionary<string, object>
+        {
+            ["@col"] = MemoryCollections.Posts,
+            ["query_vec"] = queryVec,
+            ["tenants"] = tenants.ToArray(),
+            ["raw_k"] = rawK,
+        };
+
+        var cursor = await _arango.Cursor.PostCursorAsync<SearchRow>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            {
+                Query = aql,
+                BindVars = bindVars,
+            });
+
+        return cursor.Result.Select(r => new PostSearchHit
+        {
+            Key = r.key,
+            Slug = r.slug,
+            Collection = r.collection,
+            VectorKind = r.vector_kind,
+            Title = r.title,
+            Text = r.text,
+            Description = r.description,
+            AiSummary = r.ai_summary,
+            PubDate = r.pub_date,
+            Category = r.category,
+            Tags = r.tags ?? Array.Empty<string>(),
+            Sim = r.sim,
+        }).ToList();
+    }
+
+    private sealed record SearchRow(
+        string key, string slug, string collection, string vector_kind,
+        string title, string text, string description, string? ai_summary,
+        string? pub_date, string? category, IReadOnlyList<string>? tags, double sim);
+
     private static string ComputeHash(string text, string modelId)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();
