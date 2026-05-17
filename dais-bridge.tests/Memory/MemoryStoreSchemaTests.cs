@@ -47,7 +47,7 @@ public class MemoryStoreSchemaTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, embeddingDimension: 768, vectorNLists: 1, http);
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http);
 
             await store.EnsureSchemaAsync();
             await store.EnsureSchemaAsync();

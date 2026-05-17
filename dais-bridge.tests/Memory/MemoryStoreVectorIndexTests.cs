@@ -29,7 +29,7 @@ public class MemoryStoreVectorIndexTests
             var store = new MemoryStore(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                embeddingDimension: 768, vectorNLists: 5, http);
+                "test-embed-model", embeddingDimension: 768, vectorNLists: 5, http);
             await store.EnsureSchemaAsync();
 
             await store.EnsureVectorIndexAsync("memory_decisions");
@@ -50,7 +50,7 @@ public class MemoryStoreVectorIndexTests
             var store = new MemoryStore(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                embeddingDimension: 768, vectorNLists: 1, http);
+                "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http);
             await store.EnsureSchemaAsync();
 
             await InsertDocAsync(http, MemoryStoreSchemaTests.ArangoUrl, dbName, "memory_decisions",
@@ -74,7 +74,7 @@ public class MemoryStoreVectorIndexTests
             var store = new MemoryStore(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                embeddingDimension: 768, vectorNLists: 1, http);
+                "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http);
             await store.EnsureSchemaAsync();
 
             await store.EnsureVectorIndexAsync("memory_decisions");

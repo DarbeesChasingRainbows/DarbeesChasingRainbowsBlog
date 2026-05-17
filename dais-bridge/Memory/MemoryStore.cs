@@ -18,17 +18,19 @@ public sealed class MemoryStore : IDisposable
     private readonly string _db;
     private readonly string _user;
     private readonly string _pass;
+    private readonly string _embeddingModelId;
     private readonly int _embeddingDimension;
     private readonly int _vectorNLists;
     private readonly IEmbeddingClient? _embeddings;
     private readonly ConcurrentDictionary<string, bool> _vectorIndexReady = new();
 
-    public MemoryStore(string url, string db, string user, string pass, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
+    public MemoryStore(string url, string db, string user, string pass, string embeddingModelId, int embeddingDimension, int vectorNLists, HttpClient rawHttp, IEmbeddingClient? embeddings = null)
     {
         _baseUrl = url.TrimEnd('/');
         _db = db;
         _user = user;
         _pass = pass;
+        _embeddingModelId = embeddingModelId;
         _embeddingDimension = embeddingDimension;
         _vectorNLists = vectorNLists;
         _rawHttp = rawHttp;
@@ -74,6 +76,52 @@ public sealed class MemoryStore : IDisposable
         // NEW: persistent indexes on memory_posts
         await EnsurePersistentIndexAsync(MemoryCollections.Posts, new[] { "tenant_id", "status", "vector_kind" });
         await EnsurePersistentIndexAsync(MemoryCollections.Posts, new[] { "collection", "slug" });
+
+        var current = new EmbeddingConfig(_embeddingModelId, _embeddingDimension);
+        var stored = await ReadEmbeddingConfigAsync(ct);
+        if (stored is null)
+        {
+            await WriteEmbeddingConfigAsync(current, isFirstTime: true, ct);
+        }
+        else if (!stored.Equals(current))
+        {
+            throw new EmbeddingConfigMismatchException(stored, current);
+        }
+    }
+
+    public async Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
+    {
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}/embedding_config";
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(content);
+        var model = doc.RootElement.GetProperty("model").GetString() ?? "";
+        var dim = doc.RootElement.GetProperty("dimension").GetInt32();
+        return new EmbeddingConfig(model, dim);
+    }
+
+    private async Task WriteEmbeddingConfigAsync(EmbeddingConfig config, bool isFirstTime, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["_key"] = "embedding_config",
+            ["model"] = config.Model,
+            ["dimension"] = config.Dimension,
+            ["last_set_at"] = now,
+        };
+        if (isFirstTime) doc["first_set_at"] = now;
+
+        var url = isFirstTime
+            ? $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}"
+            : $"{_baseUrl}/_db/{_db}/_api/document/{MemoryCollections.Meta}/embedding_config";
+        var method = isFirstTime ? HttpMethod.Post : HttpMethod.Patch;
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc, method);
+        if (ok || errorNum == 1210 /* duplicate */) return;
+        throw new InvalidOperationException($"Failed to write embedding_config (errorNum={errorNum}): {content}");
     }
 
     public async Task EnsureVectorIndexAsync(string collection, CancellationToken ct = default)
@@ -232,9 +280,10 @@ public sealed class MemoryStore : IDisposable
         return request;
     }
 
-    private async Task<(bool ok, int errorNum, string content)> PostJsonRawAsync(string url, object body)
+    private async Task<(bool ok, int errorNum, string content)> PostJsonRawAsync(string url, object body, HttpMethod? method = null)
     {
-        var request = BuildAuthedRequest(HttpMethod.Post, url);
+        method ??= HttpMethod.Post;
+        var request = BuildAuthedRequest(method, url);
         var json = JsonSerializer.Serialize(body);
         request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         var response = await _rawHttp.SendAsync(request);

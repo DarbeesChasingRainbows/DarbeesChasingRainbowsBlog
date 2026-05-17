@@ -35,7 +35,7 @@ public class MemoryStoreWriteTests
             var store = new MemoryStore(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                embeddingDimension: 4, vectorNLists: 1, http, new ConstantEmbeddingClient(4));
+                "test-embed-model", embeddingDimension: 4, vectorNLists: 1, http, new ConstantEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             var result = await store.UpsertDecisionAsync(
@@ -63,7 +63,7 @@ public class MemoryStoreWriteTests
             var store = new MemoryStore(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                embeddingDimension: 4, vectorNLists: 1, http, new FailingEmbeddingClient(4));
+                "test-embed-model", embeddingDimension: 4, vectorNLists: 1, http, new FailingEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             var result = await store.UpsertDecisionAsync(
