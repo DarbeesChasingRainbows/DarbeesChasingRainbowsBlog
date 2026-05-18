@@ -33,12 +33,7 @@ const {
 
 // Site-wide JSON-LD: Organization + Person + WebSite are emitted on every
 // page so the Darbees entity is consistently discoverable by AI agents.
-const siteGraph = [
-	buildOrganizationJsonLd(),
-	buildPersonJsonLd(),
-	buildWebSiteJsonLd(),
-	...graph,
-];
+const siteGraph = [buildOrganizationJsonLd(), buildPersonJsonLd(), buildWebSiteJsonLd(), ...graph];
 ---
 
 <!doctype html>

@@ -36,9 +36,7 @@ function resolveApiKey() {
 	if (process.env.AI_API_KEY) return process.env.AI_API_KEY;
 	if (process.env.LMSTUDIO_API_KEY) {
 		if (!warnedLmstudioApiKey) {
-			console.warn(
-				'[openai-compatible] LMSTUDIO_API_KEY is deprecated; set AI_API_KEY instead.',
-			);
+			console.warn('[openai-compatible] LMSTUDIO_API_KEY is deprecated; set AI_API_KEY instead.');
 			warnedLmstudioApiKey = true;
 		}
 		return process.env.LMSTUDIO_API_KEY;

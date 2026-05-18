@@ -91,7 +91,9 @@ async function main() {
 	const dims = new Set(rows.map((r) => r.vector.length));
 	if (dims.size !== 1) {
 		console.error(`Inconsistent vector dimensions in memory_posts: ${[...dims].join(', ')}`);
-		console.error('This indicates a partial migration. Run `npm run rag:reindex -- --force` to repair.');
+		console.error(
+			'This indicates a partial migration. Run `npm run rag:reindex -- --force` to repair.',
+		);
 		process.exit(1);
 	}
 
