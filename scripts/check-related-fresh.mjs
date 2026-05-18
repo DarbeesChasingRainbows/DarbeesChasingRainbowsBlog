@@ -2,11 +2,14 @@
 /**
  * Compare mtimes of published MDX files against src/data/related-posts.json.
  * Warns by default, exits 1 with --strict. Used as the npm `prebuild` hook.
+ *
+ * Paths are resolved relative to process.cwd(); run from the repo root.
  */
 import { stat } from 'node:fs/promises';
 import { listPosts, PRIMARY_COLLECTIONS } from './lib/posts.mjs';
 
 const RELATED_POSTS = 'src/data/related-posts.json';
+const MAX_SLUGS_SHOWN = 5;
 
 async function main() {
 	const strict = process.argv.includes('--strict');
@@ -33,8 +36,10 @@ async function main() {
 	}
 
 	console.warn(`⚠ related-posts.json is stale for ${stale.length} post(s):`);
-	for (const s of stale.slice(0, 5)) console.warn(`    ${s}`);
-	if (stale.length > 5) console.warn(`    ... and ${stale.length - 5} more`);
+	for (const s of stale.slice(0, MAX_SLUGS_SHOWN)) console.warn(`    ${s}`);
+	if (stale.length > MAX_SLUGS_SHOWN) {
+		console.warn(`    ... and ${stale.length - MAX_SLUGS_SHOWN} more`);
+	}
 	console.warn('  Run `npm run rag:rebuild-all` to refresh.');
 	process.exit(strict ? 1 : 0);
 }
