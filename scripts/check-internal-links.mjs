@@ -57,10 +57,13 @@ async function* walkHtml(root, dir = root) {
 
 /** Extract href values from raw HTML. Crude but sufficient for our output. */
 function extractHrefs(html) {
+	// Strip <script>…</script> blocks first so that href= strings inside
+	// bundled JavaScript are not mistaken for HTML anchor attributes.
+	const stripped = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
 	const out = [];
 	const re = /\bhref=("[^"]*"|'[^']*'|[^\s>]+)/gi;
 	let m;
-	while ((m = re.exec(html)) !== null) {
+	while ((m = re.exec(stripped)) !== null) {
 		out.push(m[1].replace(/^['"]|['"]$/g, ''));
 	}
 	return out;
