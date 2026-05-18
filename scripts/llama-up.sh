@@ -24,7 +24,9 @@ LLAMA_EMBED_PORT="${LLAMA_EMBED_PORT:-8081}"
 LLAMA_EMBED_CTX="${LLAMA_EMBED_CTX:-4096}"
 
 LLAMA_NGL="${LLAMA_NGL:-99}"
-LLAMA_HOST="${LLAMA_HOST:-127.0.0.1}"
+# Bind to 0.0.0.0 so podman containers can reach via host.containers.internal.
+# Override to 127.0.0.1 for host-only if the workstation is on an untrusted network.
+LLAMA_HOST="${LLAMA_HOST:-0.0.0.0}"
 
 # Wait up to N seconds for each /health to report ok before declaring success.
 LLAMA_READY_TIMEOUT="${LLAMA_READY_TIMEOUT:-180}"
