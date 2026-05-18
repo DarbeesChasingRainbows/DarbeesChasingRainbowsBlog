@@ -78,20 +78,29 @@ test('runAql wraps fetch network failures in ArangoError', async () => {
 });
 
 test('runAql sends Basic auth from env vars', async () => {
+	const prevUser = process.env.ARANGO_USER;
+	const prevPass = process.env.ARANGO_PASSWORD;
 	process.env.ARANGO_USER = 'root';
 	process.env.ARANGO_PASSWORD = 's3cret';
-	let capturedAuth;
-	await withFetch(
-		async (_url, init) => {
-			capturedAuth = init.headers.Authorization;
-			return jsonResponse({ result: [] });
-		},
-		async () => {
-			await runAql('FOR x IN c RETURN x');
-		},
-	);
-	const expected = `Basic ${Buffer.from('root:s3cret').toString('base64')}`;
-	assert.equal(capturedAuth, expected);
+	try {
+		let capturedAuth;
+		await withFetch(
+			async (_url, init) => {
+				capturedAuth = init.headers.Authorization;
+				return jsonResponse({ result: [] });
+			},
+			async () => {
+				await runAql('FOR x IN c RETURN x');
+			},
+		);
+		const expected = `Basic ${Buffer.from('root:s3cret').toString('base64')}`;
+		assert.equal(capturedAuth, expected);
+	} finally {
+		if (prevUser === undefined) delete process.env.ARANGO_USER;
+		else process.env.ARANGO_USER = prevUser;
+		if (prevPass === undefined) delete process.env.ARANGO_PASSWORD;
+		else process.env.ARANGO_PASSWORD = prevPass;
+	}
 });
 
 test('runAql aborts after timeoutMs and throws ArangoError mentioning timeout', async () => {
