@@ -57,12 +57,12 @@ const OUT_PATH = `${DATA_DIR}/related-posts.json`;
 
 async function main() {
 	const aql = `
-        FOR doc IN memory_posts
-          FILTER doc.tenant_id == "public"
-          FILTER doc.status == "ready"
-          FILTER doc.vector_kind == "body"
-          RETURN { collection: doc.collection, id: doc.slug, vector: doc.embedding }
-    `;
+		FOR doc IN memory_posts
+			FILTER doc.tenant_id == "public"
+			FILTER doc.status == "ready"
+			FILTER doc.vector_kind == "body"
+			RETURN { collection: doc.collection, id: doc.slug, vector: doc.embedding }
+	`;
 
 	let rows;
 	try {
@@ -87,6 +87,7 @@ async function main() {
 		process.exit(1);
 	}
 
+	// cosineSimilarity silently produces wrong dot-products for mismatched-length vectors; catch here before any compute.
 	const dims = new Set(rows.map((r) => r.vector.length));
 	if (dims.size !== 1) {
 		console.error(`Inconsistent vector dimensions in memory_posts: ${[...dims].join(', ')}`);
@@ -94,7 +95,12 @@ async function main() {
 		process.exit(1);
 	}
 
-	const floor = Number(process.env.RELATED_FLOOR ?? 0.5);
+	const parsedFloor = Number(process.env.RELATED_FLOOR ?? 0.5);
+	if (Number.isNaN(parsedFloor)) {
+		console.error(`RELATED_FLOOR="${process.env.RELATED_FLOOR}" is not a number.`);
+		process.exit(1);
+	}
+	const floor = parsedFloor;
 	const map = buildRelatedMap(rows, { limit: 3, floor });
 	const orphans = Object.values(map).filter((r) => r.length === 0).length;
 
