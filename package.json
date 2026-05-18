@@ -25,7 +25,7 @@
 		"geo:fill": "node --env-file-if-exists=.env scripts/geo-fill.mjs",
 		"geo:fill:all": "node --env-file-if-exists=.env scripts/geo-fill.mjs --all",
 		"rag:check-fresh": "node scripts/check-related-fresh.mjs",
-		"rag:rebuild-all": "npm run rag:reindex && npm run related:rebuild",
+		"rag:rebuild-all": "npm run rag:reindex && npm run related:rebuild && npm run rag:check-fresh",
 		"rag:reindex": "node --env-file-if-exists=.env scripts/rag-reindex.mjs",
 		"related:rebuild": "node --env-file-if-exists=.env scripts/related-rebuild.mjs",
 		"image:watch": "node --env-file-if-exists=.env scripts/image-watcher.mjs",
