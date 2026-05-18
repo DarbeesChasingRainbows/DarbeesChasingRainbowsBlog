@@ -1,17 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 
-// NOTE: <meta name="robots" content="noindex"> cannot be injected into <head>
-// via BaseLayout — BaseLayout exposes no head slot. This page relies on its
-// dev-only URL (never linked from nav) and the absence of a sitemap entry to
-// stay out of search indices. If a head slot is added to BaseLayout in future,
-// restore the noindex tag.
 const isDev = import.meta.env.DEV;
 const description =
 	'Local-only search across blog, projects, and field notes. Requires the dev-server proxy.';
 ---
 
-<BaseLayout title="Search the blog (dev)" description={description}>
+<BaseLayout title="Search the blog (dev)" description={description} noindex={true}>
 	<div class="container mx-auto max-w-3xl px-4 py-12">
 		<h1 class="font-display mb-2 text-3xl font-bold">Search the blog (dev)</h1>
 		<p class="text-base-content/70 mb-6">{description}</p>

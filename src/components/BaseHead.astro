@@ -14,11 +14,12 @@ interface Props {
 	ogType?: 'website' | 'article';
 	publishDate?: Date;
 	updatedDate?: Date;
+	noindex?: boolean;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
-const { title, description, image, ogType = 'website', publishDate, updatedDate } = Astro.props;
+const { title, description, image, ogType = 'website', publishDate, updatedDate, noindex = false } = Astro.props;
 
 const seoTitle = buildSeoTitle(title);
 const seoDescription = buildSeoDescription(description);
@@ -42,6 +43,7 @@ const imageUrl = image
 />
 <meta name="generator" content={Astro.generator} />
 <meta name="theme-color" content="#2e4a3e" />
+{noindex && <meta name="robots" content="noindex" />}
 
 <Font cssVariable="--font-nunito" preload />
 <Font cssVariable="--font-inter" preload />

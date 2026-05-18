@@ -16,6 +16,7 @@ interface Props {
 	updatedDate?: Date;
 	bodyClass?: string;
 	graph?: unknown[];
+	noindex?: boolean;
 }
 
 const {
@@ -27,6 +28,7 @@ const {
 	updatedDate,
 	bodyClass,
 	graph = [],
+	noindex = false,
 } = Astro.props;
 
 // Site-wide JSON-LD: Organization + Person + WebSite are emitted on every
@@ -49,6 +51,7 @@ const siteGraph = [
 			ogType={ogType}
 			publishDate={publishDate}
 			updatedDate={updatedDate}
+			noindex={noindex}
 		/>
 	</head>
 	<body class:list={['bg-base-100 flex min-h-screen flex-col scroll-smooth', bodyClass]}>
