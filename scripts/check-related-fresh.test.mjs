@@ -13,11 +13,7 @@ async function setup({ withRelated = true, mdxMtime, relatedMtime } = {}) {
 	await mkdir(join(dir, 'src/data'), { recursive: true });
 
 	const post = join(dir, 'src/content/blog/hello.mdx');
-	await writeFile(
-		post,
-		'---\ntitle: Hello\npubDate: 2026-01-01\n---\nbody',
-		'utf8',
-	);
+	await writeFile(post, '---\ntitle: Hello\npubDate: 2026-01-01\n---\nbody', 'utf8');
 	if (mdxMtime != null) await utimes(post, mdxMtime / 1000, mdxMtime / 1000);
 
 	if (withRelated) {
