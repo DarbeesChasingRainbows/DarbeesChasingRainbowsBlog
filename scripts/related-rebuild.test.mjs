@@ -1,17 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cosineSimilarity, cacheKey, topRelated, buildRelatedMap } from './related-rebuild.mjs';
+import { cosineSimilarity, topRelated, buildRelatedMap } from './related-rebuild.mjs';
 
 test('cosineSimilarity: identical=1, orthogonal=0, zero-vector=0', () => {
 	assert.equal(cosineSimilarity([1, 0], [1, 0]), 1);
 	assert.equal(cosineSimilarity([1, 0], [0, 1]), 0);
 	assert.equal(cosineSimilarity([0, 0], [1, 1]), 0);
 	assert.ok(Math.abs(cosineSimilarity([1, 0], [1, 1]) - 0.7071) < 0.001);
-});
-
-test('cacheKey combines content hash and embedding model id', () => {
-	assert.equal(cacheKey('abc', 'model-x'), 'abc:model-x');
-	assert.notEqual(cacheKey('abc', 'model-x'), cacheKey('abc', 'model-y'));
 });
 
 test('topRelated applies the floor, sorts desc, and caps at the limit', () => {
