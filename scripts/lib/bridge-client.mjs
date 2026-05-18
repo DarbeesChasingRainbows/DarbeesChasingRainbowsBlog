@@ -9,6 +9,7 @@ const DEFAULT_BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:5000';
 export class BridgeError extends Error {
 	constructor(message, { status, body } = {}) {
 		super(message);
+		this.name = 'BridgeError';
 		this.status = status;
 		this.body = body;
 	}
