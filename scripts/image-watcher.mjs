@@ -147,8 +147,8 @@ async function main() {
 	const client = createClient();
 	client
 		.listModels()
-		.then(() => console.log('LM Studio reachable.'))
-		.catch(() => console.warn('⚠ LM Studio not reachable yet — will retry per dropped file.'));
+		.then(() => console.log('LLM server reachable.'))
+		.catch(() => console.warn('⚠ LLM server not reachable yet — will retry per dropped file.'));
 
 	// chokidar v4 watches a directory path (no glob support). Recursive by default.
 	let queue = Promise.resolve();
