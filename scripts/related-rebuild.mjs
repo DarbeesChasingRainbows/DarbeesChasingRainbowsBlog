@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * #6 related posts — embed every published post, compute cosine similarity,
- * write src/data/related-posts.json (consumed at Astro build time).
- *
- * This file exports its pure helpers (for tests) and runs the rebuild when
- * invoked directly. Orchestration lives below the helpers.
+ * Related posts (#6) — read body vectors from Arango (memory_posts), compute
+ * pairwise cosine similarity, write src/data/related-posts.json (consumed at
+ * Astro build time). Arango is the single source of truth for vectors; this
+ * script does not embed.
  */
 
 /** Cosine similarity of two equal-length numeric vectors. Returns 0 for a zero vector. */
@@ -19,11 +18,6 @@ export function cosineSimilarity(a, b) {
 	}
 	if (na === 0 || nb === 0) return 0;
 	return dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
-
-/** Cache key: content hash + embedding model id, so a model swap invalidates the cache. */
-export function cacheKey(contentHashValue, embeddingModelId) {
-	return `${contentHashValue}:${embeddingModelId}`;
 }
 
 /**
@@ -54,60 +48,68 @@ export function buildRelatedMap(posts, opts) {
 // ---------------------------------------------------------------------------
 // Orchestration — runs only when this file is invoked directly.
 // ---------------------------------------------------------------------------
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { createClient } from './lib/lmstudio.mjs';
-import { listPosts, embedText, contentHash, PRIMARY_COLLECTIONS } from './lib/posts.mjs';
+import { ArangoError, runAql } from './lib/arango-client.mjs';
 
 const DATA_DIR = 'src/data';
 const OUT_PATH = `${DATA_DIR}/related-posts.json`;
-const CACHE_PATH = `${DATA_DIR}/related-posts.cache.json`;
-
-async function readJson(path, fallback) {
-	try {
-		return JSON.parse(await readFile(path, 'utf8'));
-	} catch {
-		return fallback;
-	}
-}
 
 async function main() {
-	const embeddingModel = process.env.AI_EMBEDDING_MODEL_ID || '';
-	if (!embeddingModel) {
-		console.error('AI_EMBEDDING_MODEL_ID is not set — cannot rebuild related posts.');
+	const aql = `
+		FOR doc IN memory_posts
+			FILTER doc.tenant_id == "public"
+			FILTER doc.status == "ready"
+			FILTER doc.vector_kind == "body"
+			RETURN { collection: doc.collection, id: doc.slug, vector: doc.embedding }
+	`;
+
+	let rows;
+	try {
+		rows = await runAql(aql);
+	} catch (err) {
+		if (err instanceof ArangoError) {
+			console.error(`Arango error: ${err.message}`);
+			if (err.status === 404) {
+				console.error(
+					'Hint: database `darbees_knowledge` may not exist yet. ' +
+						'Run `make up` then `npm run rag:reindex` to bootstrap it.',
+				);
+			}
+		} else {
+			console.error(err.stack || err.message);
+		}
 		process.exit(1);
 	}
 
-	const client = createClient();
-	const posts = await listPosts({ collections: PRIMARY_COLLECTIONS, includeDrafts: false });
-	const cache = await readJson(CACHE_PATH, {});
-	const nextCache = {};
-	let embedded = 0,
-		fromCache = 0;
-
-	const withVectors = [];
-	for (const post of posts) {
-		const key = cacheKey(contentHash(post), embeddingModel);
-		let vector = cache[key];
-		if (vector) {
-			fromCache++;
-		} else {
-			vector = await client.embed(embedText(post));
-			embedded++;
-		}
-		nextCache[key] = vector;
-		withVectors.push({ collection: post.collection, id: post.id, vector });
+	if (rows.length === 0) {
+		console.error('No ready vectors in memory_posts. Run `npm run rag:reindex` first.');
+		process.exit(1);
 	}
 
-	const floor = Number(process.env.RELATED_FLOOR ?? 0.5);
-	const map = buildRelatedMap(withVectors, { limit: 3, floor });
+	// cosineSimilarity silently produces wrong dot-products for mismatched-length vectors; catch here before any compute.
+	const dims = new Set(rows.map((r) => r.vector.length));
+	if (dims.size !== 1) {
+		console.error(`Inconsistent vector dimensions in memory_posts: ${[...dims].join(', ')}`);
+		console.error(
+			'This indicates a partial migration. Run `npm run rag:reindex -- --force` to repair.',
+		);
+		process.exit(1);
+	}
+
+	const parsedFloor = Number(process.env.RELATED_FLOOR ?? 0.5);
+	if (Number.isNaN(parsedFloor)) {
+		console.error(`RELATED_FLOOR="${process.env.RELATED_FLOOR}" is not a number.`);
+		process.exit(1);
+	}
+	const floor = parsedFloor;
+	const map = buildRelatedMap(rows, { limit: 3, floor });
 	const orphans = Object.values(map).filter((r) => r.length === 0).length;
 
 	await mkdir(DATA_DIR, { recursive: true });
 	await writeFile(OUT_PATH, `${JSON.stringify(map, null, '\t')}\n`, 'utf8');
-	await writeFile(CACHE_PATH, `${JSON.stringify(nextCache, null, '\t')}\n`, 'utf8');
 
-	console.log(`${embedded} embedded, ${fromCache} from cache, ${orphans} posts with 0 relations`);
+	console.log(`${rows.length} posts indexed, ${orphans} with 0 relations (floor=${floor})`);
 	console.log(`Wrote ${OUT_PATH}`);
 }
 

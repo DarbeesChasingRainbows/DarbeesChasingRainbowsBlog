@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const isDev = import.meta.env.DEV;
+const description =
+	'Local-only search across blog, projects, and field notes. Requires the dev-server proxy.';
+---
+
+<BaseLayout title="Search the blog (dev)" description={description} noindex={true}>
+	<div class="container mx-auto max-w-3xl px-4 py-12">
+		<h1 class="font-display mb-2 text-3xl font-bold">Search the blog (dev)</h1>
+		<p class="text-base-content/70 mb-6">{description}</p>
+
+		{
+			!isDev && (
+				<div class="alert alert-warning mb-6" role="alert">
+					<span>
+						This page only works under <code>npm run dev</code>. In production builds the proxy is
+						absent and the search request will fail.
+					</span>
+				</div>
+			)
+		}
+
+		<form id="search-form" class="card bg-base-200 mb-6 p-4">
+			<label for="search-query" class="label">
+				<span class="label-text font-medium">Query</span>
+			</label>
+			<input
+				id="search-query"
+				name="query"
+				type="text"
+				class="input input-bordered w-full"
+				placeholder="What did I write about cast iron pans?"
+				required
+				autocomplete="off"
+			/>
+
+			<label for="search-k" class="label mt-3">
+				<span class="label-text font-medium">Results (1–20)</span>
+			</label>
+			<input
+				id="search-k"
+				name="k"
+				type="number"
+				min="1"
+				max="20"
+				value="5"
+				class="input input-bordered w-24"
+			/>
+
+			<button id="search-submit" type="submit" class="btn btn-primary mt-4 w-fit"> Search </button>
+		</form>
+
+		<p id="status" class="text-base-content/60 mb-4 min-h-[1.5rem] text-sm" role="status"></p>
+		<p id="timings" class="text-base-content/50 mb-4 min-h-[1.25rem] text-xs"></p>
+
+		<section
+			id="results"
+			class="space-y-3"
+			role="region"
+			aria-live="polite"
+			aria-atomic="false"
+			aria-label="Search results"
+		>
+		</section>
+	</div>
+
+	<script>
+		const form = document.getElementById('search-form') as HTMLFormElement;
+		const submit = document.getElementById('search-submit') as HTMLButtonElement;
+		const status = document.getElementById('status') as HTMLParagraphElement;
+		const timings = document.getElementById('timings') as HTMLParagraphElement;
+		const results = document.getElementById('results') as HTMLElement;
+
+		let activeController: AbortController | null = null;
+
+		interface SearchResult {
+			slug: string;
+			collection: string;
+			title: string;
+			matchedKind: string;
+			score: number;
+			snippet: string;
+			url: string;
+		}
+
+		interface SearchResponse {
+			queryEmbedMs: number;
+			searchMs: number;
+			results: SearchResult[];
+		}
+
+		function escapeHtml(s: string): string {
+			return s
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;');
+		}
+
+		function renderResults(items: SearchResult[]): void {
+			if (items.length === 0) {
+				results.innerHTML = '';
+				return;
+			}
+			results.innerHTML = items
+				.map((r) => {
+					const href = escapeHtml(r.url);
+					const title = escapeHtml(r.title || r.slug);
+					const snippet = escapeHtml(r.snippet || '');
+					const score = (Number(r.score) || 0).toFixed(3);
+					const kind = escapeHtml(r.matchedKind || '');
+					return `
+						<a href="${href}" class="card bg-base-100 hover:bg-base-200 block p-4 shadow-sm transition">
+							<div class="flex items-center justify-between gap-3">
+								<h2 class="font-display text-lg font-semibold">${title}</h2>
+								<span class="badge badge-outline shrink-0">${score} · ${kind}</span>
+							</div>
+							${snippet ? `<p class="text-base-content/70 mt-1 text-sm">${snippet}</p>` : ''}
+							<p class="text-base-content/50 mt-2 text-xs">${escapeHtml(r.collection)}/${escapeHtml(r.slug)}</p>
+						</a>
+					`;
+				})
+				.join('');
+		}
+
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+
+			if (activeController) activeController.abort();
+			activeController = new AbortController();
+			const signal = AbortSignal.any([activeController.signal, AbortSignal.timeout(30_000)]);
+
+			const data = new FormData(form);
+			const query = String(data.get('query') || '').trim();
+			const k = Math.max(1, Math.min(20, Number(data.get('k') || 5)));
+			if (!query) return;
+
+			submit.setAttribute('aria-disabled', 'true');
+			submit.disabled = true;
+			status.textContent = 'Searching…';
+			timings.textContent = '';
+			results.innerHTML = '';
+
+			try {
+				const res = await fetch('/dev-api/search', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ query, k }),
+					signal,
+				});
+				if (!res.ok) {
+					const body = await res.text();
+					status.textContent = `Error ${res.status}: ${body.slice(0, 200)}`;
+					return;
+				}
+				const payload: SearchResponse = await res.json();
+				const items = payload.results || [];
+				if (items.length === 0) {
+					status.textContent = 'No results.';
+				} else {
+					status.textContent = `${items.length} result${items.length === 1 ? '' : 's'}.`;
+				}
+				if (payload.queryEmbedMs != null && payload.searchMs != null) {
+					timings.textContent = `embed ${payload.queryEmbedMs}ms · search ${payload.searchMs}ms`;
+				}
+				renderResults(items);
+			} catch (err: unknown) {
+				const e = err as { name?: string; message?: string } | null | undefined;
+				const reason = signal.reason as { name?: string } | null | undefined;
+				if (e?.name === 'AbortError' && reason?.name === 'TimeoutError') {
+					status.textContent = 'Search timed out after 30s.';
+				} else if (e?.name === 'AbortError') {
+					// Superseded by a newer submit — leave the newer handler to update status.
+				} else {
+					status.textContent = `Network error: ${e?.message || e}`;
+				}
+			} finally {
+				submit.removeAttribute('aria-disabled');
+				submit.disabled = false;
+			}
+		});
+	</script>
+</BaseLayout>

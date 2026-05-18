@@ -12,6 +12,15 @@ export default defineConfig({
 	integrations: [mdx(), sitemap(), icon()],
 	vite: {
 		plugins: [tailwindcss()],
+		server: {
+			proxy: {
+				'/dev-api/search': {
+					target: process.env.BRIDGE_URL || 'http://localhost:5000',
+					changeOrigin: true,
+					rewrite: () => '/api/memory/search',
+				},
+			},
+		},
 	},
 	fonts: [
 		{

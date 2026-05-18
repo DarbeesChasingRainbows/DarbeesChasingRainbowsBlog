@@ -66,7 +66,7 @@ import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { watch } from 'chokidar';
 import sharp from 'sharp';
-import { createClient } from './lib/lmstudio.mjs';
+import { createClient } from './lib/openai-compatible.mjs';
 
 const INBOX_ROOT = 'obsidian-templates/inbox';
 const ASSETS_ROOT = 'src/assets';
@@ -147,8 +147,8 @@ async function main() {
 	const client = createClient();
 	client
 		.listModels()
-		.then(() => console.log('LM Studio reachable.'))
-		.catch(() => console.warn('⚠ LM Studio not reachable yet — will retry per dropped file.'));
+		.then(() => console.log('LLM server reachable.'))
+		.catch(() => console.warn('⚠ LLM server not reachable yet — will retry per dropped file.'));
 
 	// chokidar v4 watches a directory path (no glob support). Recursive by default.
 	let queue = Promise.resolve();

@@ -36,6 +36,8 @@ CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 | Rebuild related posts     | `npm run related:rebuild`        | After adding/editing posts |
 | Watch image inbox         | `npm run image:watch`            | While adding photos   |
 | Reindex content RAG       | `npm run rag:reindex`            | After adding/editing posts; requires bridge stack up (`make up`) + llama.cpp on :8080/:8081 |
+| Reindex + rebuild related | `npm run rag:rebuild-all`        | After adding/editing posts, before commit                                                  |
+| Check related-posts freshness | `npm run rag:check-fresh`    | Manual sanity check (also runs automatically before `npm run build`)                       |
 | Script unit tests         | `npm run test:scripts`           | CI runs this          |
 
 Full guide: [scripts/README.md](scripts/README.md). `geo:fill`, `related:rebuild`, and `rag:reindex` call local embedding services.

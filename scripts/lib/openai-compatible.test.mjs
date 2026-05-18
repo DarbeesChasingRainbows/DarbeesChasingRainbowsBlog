@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createClient } from './lmstudio.mjs';
+import { createClient } from './openai-compatible.mjs';
 
 /** Build a fake fetch that records calls and returns a canned JSON response. */
 function fakeFetch(responseBody, { ok = true, status = 200 } = {}) {

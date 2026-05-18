@@ -11,7 +11,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import matter from 'gray-matter';
-import { createClient } from './lib/lmstudio.mjs';
+import { createClient } from './lib/openai-compatible.mjs';
 import { listPosts, stripMdx, ALL_COLLECTIONS } from './lib/posts.mjs';
 import { mergeFrontmatter, serialize } from './lib/frontmatter-merge.mjs';
 

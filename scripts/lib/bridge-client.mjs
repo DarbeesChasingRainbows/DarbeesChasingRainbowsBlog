@@ -9,21 +9,31 @@ const DEFAULT_BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:5000';
 export class BridgeError extends Error {
 	constructor(message, { status, body } = {}) {
 		super(message);
+		this.name = 'BridgeError';
 		this.status = status;
 		this.body = body;
 	}
 }
 
-export async function bridgePost(path, body, { bridgeUrl = DEFAULT_BRIDGE_URL } = {}) {
+export async function bridgePost(
+	path,
+	body,
+	{ bridgeUrl = DEFAULT_BRIDGE_URL, timeoutMs = 30_000 } = {},
+) {
 	const url = `${bridgeUrl.replace(/\/$/, '')}${path}`;
+	const signal = AbortSignal.timeout(timeoutMs);
 	let response;
 	try {
 		response = await fetch(url, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body),
+			signal,
 		});
 	} catch (cause) {
+		if (cause?.name === 'AbortError' || cause?.name === 'TimeoutError') {
+			throw new BridgeError(`bridge timeout after ${timeoutMs}ms: ${url}`);
+		}
 		throw new BridgeError(`bridge unreachable at ${url}: ${cause.message}`);
 	}
 	const text = await response.text();
