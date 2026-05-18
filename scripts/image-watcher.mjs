@@ -66,7 +66,7 @@ import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { watch } from 'chokidar';
 import sharp from 'sharp';
-import { createClient } from './lib/lmstudio.mjs';
+import { createClient } from './lib/openai-compatible.mjs';
 
 const INBOX_ROOT = 'obsidian-templates/inbox';
 const ASSETS_ROOT = 'src/assets';

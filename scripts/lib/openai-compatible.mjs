@@ -1,26 +1,61 @@
 /**
  * Thin fetch-based client for any OpenAI-compatible local server
- * (llama.cpp `llama-server`, LM Studio, Ollama with OpenAI shim, etc.).
+ * (llama.cpp `llama-server` is the primary target; LM Studio and Ollama
+ * with its OpenAI shim work too).
  *
  * `fetch` is injectable for tests; everything else falls back to env vars.
  *
  * Multi-server deployments: llama.cpp serves one model per process, so
  * chat / embedding / vision typically run on separate ports. Override
  * the per-task base URLs with LLM_CHAT_URL / LLM_EMBEDDING_URL /
- * LLM_VISION_URL; otherwise all three fall back to LMSTUDIO_URL.
+ * LLM_VISION_URL; otherwise all three fall back to the global baseUrl.
+ *
+ * Back-compat: `LMSTUDIO_URL` and `LMSTUDIO_API_KEY` are still honored
+ * but emit a one-time deprecation warning at client-creation time.
  */
 const DEFAULT_BASE_URL = 'http://localhost:8080/v1';
 
+let warnedLmstudioUrl = false;
+let warnedLmstudioApiKey = false;
+
+function resolveBaseUrl() {
+	if (process.env.LLM_CHAT_URL) return process.env.LLM_CHAT_URL;
+	if (process.env.LMSTUDIO_URL) {
+		if (!warnedLmstudioUrl) {
+			console.warn(
+				'[openai-compatible] LMSTUDIO_URL is deprecated; set LLM_CHAT_URL (or pass baseUrl) instead.',
+			);
+			warnedLmstudioUrl = true;
+		}
+		return process.env.LMSTUDIO_URL;
+	}
+	return DEFAULT_BASE_URL;
+}
+
+function resolveApiKey() {
+	if (process.env.AI_API_KEY) return process.env.AI_API_KEY;
+	if (process.env.LMSTUDIO_API_KEY) {
+		if (!warnedLmstudioApiKey) {
+			console.warn(
+				'[openai-compatible] LMSTUDIO_API_KEY is deprecated; set AI_API_KEY instead.',
+			);
+			warnedLmstudioApiKey = true;
+		}
+		return process.env.LMSTUDIO_API_KEY;
+	}
+	return '';
+}
+
 export function createClient({
 	fetch = globalThis.fetch,
-	baseUrl = process.env.LMSTUDIO_URL || DEFAULT_BASE_URL,
+	baseUrl = resolveBaseUrl(),
 	chatBaseUrl = process.env.LLM_CHAT_URL,
 	embeddingBaseUrl = process.env.LLM_EMBEDDING_URL,
 	visionBaseUrl = process.env.LLM_VISION_URL,
-	apiKey = process.env.LMSTUDIO_API_KEY || '',
-	chatModel = process.env.AI_MODEL_ID || 'local-model',
+	apiKey = resolveApiKey(),
+	chatModel = process.env.AI_MODEL_ID || 'llama-4-maverick',
 	visionModel = process.env.AI_VISION_MODEL_ID || 'qwen/qwen3-vl-8b-instruct',
-	embeddingModel = process.env.AI_EMBEDDING_MODEL_ID || 'text-embedding-qwen3-embedding-8b',
+	embeddingModel = process.env.AI_EMBEDDING_MODEL_ID || 'qwen3-embedding-8b',
 } = {}) {
 	const trim = (u) => u.replace(/\/$/, '');
 	const base = trim(baseUrl);
@@ -46,7 +81,7 @@ export function createClient({
 
 	function requireKeys(obj, keys, where) {
 		for (const k of keys) {
-			if (!(k in obj)) throw new Error(`LM Studio ${where}: response missing key "${k}"`);
+			if (!(k in obj)) throw new Error(`LLM ${where}: response missing key "${k}"`);
 		}
 		return obj;
 	}
