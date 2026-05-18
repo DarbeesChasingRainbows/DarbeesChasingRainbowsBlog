@@ -36,3 +36,6 @@ obsidian-templates/
 
 # Git Worktrees
 .worktrees/
+
+# llama-server runtime state (PID files + logs from scripts/llama-up.sh)
+.runtime/

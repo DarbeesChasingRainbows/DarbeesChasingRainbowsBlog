@@ -1,9 +1,10 @@
 .DEFAULT_GOAL := help
 COMPOSE := podman compose
 
-.PHONY: help up up-dev up-prod down restart build rebuild ps logs \
-        logs-arango logs-lm logs-bridge shell-bridge shell-arango \
-        health clean init
+.PHONY: help up up-dev up-prod up-stack up-stack-prod down down-stack \
+        restart build rebuild ps logs logs-arango logs-lm logs-bridge \
+        logs-llm-chat logs-llm-embed shell-bridge shell-arango health \
+        clean init podman-socket llm-up llm-down llm-status llm-restart
 
 help:                              ## List available targets
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / \
@@ -13,15 +14,44 @@ init:                              ## First-time setup: ensure .env exists
 	@test -f .env || (cp .env.example .env && \
 		echo "Created .env from .env.example — fill in AI_API_KEY and verify LLM_CHAT_URL / LLM_EMBEDDING_URL")
 
-up: up-dev                         ## Alias for up-dev
+podman-socket:                     ## Ensure the user podman socket is running (needed by compose)
+	@systemctl --user is-active podman.socket >/dev/null 2>&1 || \
+		systemctl --user start podman.socket
 
-up-dev: init                       ## Start dev stack
+up: up-stack                       ## Bring up everything: podman stack + host llama-servers
+
+up-stack: init podman-socket llm-up  ## Start dev compose stack + host llama-servers
 	$(COMPOSE) --profile dev up -d
 
-up-prod: init                      ## Start prod stack
+up-stack-prod: init podman-socket llm-up  ## Start prod compose stack + host llama-servers
 	$(COMPOSE) --profile prod up -d
 
-down:                              ## Stop and remove all containers
+up-dev: init podman-socket         ## Start dev compose stack only (no llama-servers)
+	$(COMPOSE) --profile dev up -d
+
+up-prod: init podman-socket        ## Start prod compose stack only (no llama-servers)
+	$(COMPOSE) --profile prod up -d
+
+llm-up:                            ## Start host llama-servers (chat :8080, embed :8081)
+	@bash scripts/llama-up.sh
+
+llm-down:                          ## Stop host llama-servers
+	@bash scripts/llama-down.sh
+
+llm-status:                        ## Report llama-server health + PIDs
+	@bash scripts/llama-status.sh
+
+llm-restart: llm-down llm-up       ## Restart host llama-servers
+
+logs-llm-chat:                     ## Tail chat llama-server log
+	@tail -f .runtime/llama-chat.log
+
+logs-llm-embed:                    ## Tail embedding llama-server log
+	@tail -f .runtime/llama-embed.log
+
+down: down-stack llm-down          ## Stop containers AND host llama-servers
+
+down-stack:                        ## Stop and remove containers only
 	$(COMPOSE) --profile dev --profile prod down
 
 restart:                           ## Restart all running services
@@ -61,9 +91,10 @@ health:                            ## Smoke-check that services are reachable
 	@echo "--- ArangoDB:" && \
 		curl -fsS -u root:$${ARANGO_ROOT_PASSWORD:-password} \
 			http://localhost:8529/_api/version || echo "  DOWN"
-	@echo "--- LM Studio (host):" && \
-		curl -fsS -H "Authorization: Bearer $${LMSTUDIO_API_KEY}" \
-			http://localhost:1234/v1/models >/dev/null && echo "  UP" || echo "  DOWN"
+	@echo "--- llama-chat (host :8080):" && \
+		curl -fsS http://localhost:8080/health >/dev/null && echo "  UP" || echo "  DOWN"
+	@echo "--- llama-embed (host :8081):" && \
+		curl -fsS http://localhost:8081/health >/dev/null && echo "  UP" || echo "  DOWN"
 	@echo "--- DAIS Bridge (5000):" && \
 		curl -fsS http://localhost:5000/ || echo "  DOWN"
 
