@@ -72,3 +72,27 @@ test('bridgePost strips trailing slash from bridgeUrl', async () => {
 		globalThis.fetch = originalFetch;
 	}
 });
+
+test('bridgePost aborts after timeoutMs and throws BridgeError mentioning timeout', async () => {
+	const originalFetch = globalThis.fetch;
+	try {
+		globalThis.fetch = async (_url, init) =>
+			new Promise((_, reject) => {
+				init.signal.addEventListener('abort', () => {
+					const err = new Error('aborted');
+					err.name = 'AbortError';
+					reject(err);
+				});
+			});
+		await assert.rejects(
+			() => bridgePost('/x', {}, { bridgeUrl: 'http://test', timeoutMs: 50 }),
+			(err) => {
+				assert.ok(err instanceof BridgeError);
+				assert.match(err.message, /timeout|bridge timeout/i);
+				return true;
+			},
+		);
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+});
