@@ -115,6 +115,57 @@ public class MemoryStorePostsTests
     }
 
     [Fact]
+    public async Task UpsertPostAsync_HashMatch_ButStatusPending_TreatsAsCacheMiss_AndReembeds()
+    {
+        // Post-migration recovery scenario: MigrateEmbeddingsAsync clears
+        // doc.embedding and sets status=pending_embedding but leaves hash intact.
+        // A subsequent reindex (without --force) must re-embed those docs,
+        // not skip them via hash-only cache.
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            // First write: doc lands with status=ready
+            var first = await store.UpsertPostAsync(MakePost(), force: false);
+            Assert.Equal(VectorWriteOutcome.Embedded, first.Summary);
+            Assert.Equal(VectorWriteOutcome.Embedded, first.Body);
+            var callsAfterFirst = emb.EmbedCalls;
+
+            // Simulate migration: flip the existing summary doc to status=pending_embedding
+            // (preserving hash) — mirrors what MigrateEmbeddingsAsync.preserve-and-reembed does
+            await store.InsertRawPostAsync(new Dictionary<string, object?>
+            {
+                ["_key"] = "blog__welcome__summary",
+                ["slug"] = "welcome",
+                ["collection"] = "blog",
+                ["vector_kind"] = "summary",
+                ["tenant_id"] = "public",
+                ["text"] = "(stale)",
+                ["embedding"] = (float[]?)null,
+                ["hash"] = (await store.ReadPostHashAsync("blog__welcome__summary"))!,
+                ["title"] = "Welcome",
+                ["description"] = "An intro post.",
+                ["status"] = "pending_embedding",
+            });
+
+            // Reindex without --force. Despite the hash matching, status=pending_embedding
+            // must drive a re-embed (cache miss).
+            var second = await store.UpsertPostAsync(MakePost(), force: false);
+            Assert.Equal(VectorWriteOutcome.Embedded, second.Summary);
+            Assert.Equal(callsAfterFirst + 1, emb.EmbedCalls);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
     public async Task UpsertPostAsync_ForceTrue_ReembedsEvenOnHashMatch()
     {
         if (!ArangoEnabled) return;
