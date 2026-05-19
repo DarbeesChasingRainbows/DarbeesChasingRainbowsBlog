@@ -433,10 +433,95 @@ LIMIT {k * 2};";
         => throw new NotImplementedException("Phase 2 T9: ListPendingEmbeddings.");
 
     // ----- IMemoryRepository: deletes -----
-    public Task<int> DeleteStalePostsAsync(IReadOnlyCollection<(string Collection, string Slug)> currentPosts, IReadOnlyCollection<string>? scopedCollections = null, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T8: DeleteStalePosts.");
-    public Task<int> DeleteStaleNotesAsync(IReadOnlyList<string> currentKeys, string tenant, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T8: DeleteStaleNotes.");
+
+    public async Task<int> DeleteStalePostsAsync(
+        IReadOnlyCollection<(string Collection, string Slug)> currentPosts,
+        IReadOnlyCollection<string>? scopedCollections = null,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        // Default scope: collections present in the current set.
+        IReadOnlyCollection<string> scope = scopedCollections
+            ?? currentPosts.Select(p => p.Collection).Distinct().ToList();
+
+        if (scope.Count == 0) return 0;
+
+        // Build the keep-list as "collection|slug" strings for the IN test.
+        // '|' is not valid in slug or collection vocabulary, so no collisions possible.
+        var keepKeys = currentPosts.Select(p => $"{p.Collection}|{p.Slug}").ToList();
+
+        var sql = @"
+LET $deleted = (
+    DELETE FROM memory_posts
+    WHERE collection IN $scope
+      AND string::concat(collection, '|', slug) NOT IN $keep
+    RETURN BEFORE
+);
+RETURN array::len($deleted);";
+
+        var parameters = new Dictionary<string, object?>
+        {
+            ["scope"] = scope,
+            ["keep"] = keepKeys,
+        };
+
+        var resp = await _surreal.RawQuery(sql, parameters, ct);
+        // The final statement is `RETURN array::len(...)` — result is at index 1 (0-based).
+        try
+        {
+            return resp.GetValue<int>(1);
+        }
+        catch
+        {
+            var arr = resp.GetValue<List<int>>(1);
+            return arr is null || arr.Count == 0 ? 0 : arr[0];
+        }
+    }
+
+    public async Task<int> DeleteStaleNotesAsync(
+        IReadOnlyList<string> currentKeys,
+        string tenant,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        int total = 0;
+        foreach (var collection in new[]
+        {
+            MemoryCollections.Observations,
+            MemoryCollections.Facts,
+            MemoryCollections.Decisions,
+        })
+        {
+            var sql = $@"
+LET $deleted = (
+    DELETE FROM {collection}
+    WHERE tenant_id = $tenant
+      AND source = 'obsidian'
+      AND note_key NOT IN $keep
+    RETURN BEFORE
+);
+RETURN array::len($deleted);";
+
+            var parameters = new Dictionary<string, object?>
+            {
+                ["tenant"] = tenant,
+                ["keep"] = currentKeys,
+            };
+
+            var resp = await _surreal.RawQuery(sql, parameters, ct);
+            int n;
+            try { n = resp.GetValue<int>(1); }
+            catch
+            {
+                var arr = resp.GetValue<List<int>>(1);
+                n = arr is null || arr.Count == 0 ? 0 : arr[0];
+            }
+            total += n;
+        }
+        return total;
+    }
 
     // ----- IMemoryRepository: query -----
     public Task<List<T>> QueryAsync<T>(string query, Dictionary<string, object> bindVars, CancellationToken ct = default)
