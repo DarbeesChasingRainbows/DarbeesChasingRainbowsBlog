@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Darbee.Gateway.Domain.Models;
 using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Services;
+using Darbee.Gateway.Domain.ValueObjects;
 using SurrealDb.Net;
 
 namespace Darbee.Gateway.Infrastructure.SurrealDb;
@@ -135,10 +137,162 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     }
 
     // ----- IMemoryRepository: writes -----
-    public Task<UpsertPostResult> UpsertPostAsync(PostDocument post, bool force, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T6: UpsertPost.");
-    public Task<UpsertNoteResult> UpsertNoteAsync(NoteDocument note, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T6: UpsertNote.");
+
+    public async Task<UpsertPostResult> UpsertPostAsync(PostDocument post, bool force, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        var summaryText = PostTextComposer.ComposeSummary(post);
+        var bodyText = PostTextComposer.ComposeBody(post);
+
+        var summary = await UpsertOnePostVectorAsync(post, "summary", summaryText, force, ct);
+        var body = await UpsertOnePostVectorAsync(post, "body", bodyText, force, ct);
+
+        return new UpsertPostResult(
+            Slug: post.Slug,
+            Collection: post.Collection,
+            Summary: summary,
+            Body: body);
+    }
+
+    private async Task<VectorWriteOutcome> UpsertOnePostVectorAsync(
+        PostDocument post, string vectorKind, string text, bool force, CancellationToken ct)
+    {
+        var recordId = $"{post.Collection}__{post.Slug}__{vectorKind}";
+        var hash = ContentHash.From(text, _embeddingModelId).Value;
+
+        // Cache check: if existing doc has same hash AND status=ready AND !force, skip embed.
+        if (!force)
+        {
+            var existingHash = await SelectScalarAsync<string>(
+                "SELECT VALUE hash FROM type::thing($table, $id) WHERE status = 'ready'",
+                new Dictionary<string, object?> { ["table"] = "memory_posts", ["id"] = recordId },
+                ct);
+            if (existingHash == hash)
+                return VectorWriteOutcome.Cached;
+        }
+
+        float[] embedding;
+        try
+        {
+            embedding = await _embeddings.EmbedAsync(text, ct);
+        }
+        catch
+        {
+            return VectorWriteOutcome.Failed;
+        }
+        if (embedding.Length != _embeddingDimension)
+            throw new InvalidOperationException(
+                $"Embedding dimension mismatch: expected {_embeddingDimension}, got {embedding.Length}");
+
+        var now = DateTime.UtcNow.ToString("o");
+        var doc = new Dictionary<string, object?>
+        {
+            ["collection"] = post.Collection,
+            ["slug"] = post.Slug,
+            ["title"] = post.Title,
+            ["description"] = post.Description,
+            ["ai_summary"] = post.AiSummary,
+            ["vector_kind"] = vectorKind,
+            ["tenant_id"] = "public",
+            ["status"] = "ready",
+            ["text"] = text,
+            ["hash"] = hash,
+            ["embedding"] = embedding,
+            ["kind"] = "post",
+            ["source"] = "blog",
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+
+        await _surreal.RawQuery(
+            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            new Dictionary<string, object?>
+            {
+                ["table"] = "memory_posts",
+                ["id"] = recordId,
+                ["doc"] = doc,
+            },
+            ct);
+
+        return VectorWriteOutcome.Embedded;
+    }
+
+    public async Task<UpsertNoteResult> UpsertNoteAsync(NoteDocument note, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        var collection = MemoryCollections.ForKind(note.Kind);
+        var recordId = ContentHash.Sha1Hex(note.Key);
+        var hash = ContentHash.From(note.Text, _embeddingModelId).Value;
+
+        var existingHash = await SelectScalarAsync<string>(
+            "SELECT VALUE hash FROM type::thing($table, $id) WHERE status = 'ready'",
+            new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
+            ct);
+        if (existingHash == hash)
+            return new UpsertNoteResult(note.Key, VectorWriteOutcome.Cached);
+
+        float[] embedding;
+        try
+        {
+            embedding = await _embeddings.EmbedAsync(note.Text, ct);
+        }
+        catch (Exception ex)
+        {
+            return new UpsertNoteResult(note.Key, VectorWriteOutcome.Failed, ex.Message);
+        }
+        if (embedding.Length != _embeddingDimension)
+            throw new InvalidOperationException(
+                $"Embedding dimension mismatch: expected {_embeddingDimension}, got {embedding.Length}");
+
+        // Read existing created_at to preserve it on overwrite.
+        var existingCreatedAt = await SelectScalarAsync<string>(
+            "SELECT VALUE created_at FROM type::thing($table, $id)",
+            new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
+            ct);
+
+        var now = DateTime.UtcNow.ToString("o");
+        var doc = new Dictionary<string, object?>
+        {
+            ["note_key"] = note.Key,
+            ["tenant_id"] = note.TenantId,
+            ["kind"] = note.Kind.ToString().ToLowerInvariant(),
+            ["title"] = note.Title,
+            ["text"] = note.Text,
+            ["hash"] = hash,
+            ["embedding"] = embedding,
+            ["status"] = "ready",
+            ["source"] = "obsidian",
+            ["metadata"] = note.Metadata ?? new Dictionary<string, object>(),
+            ["created_at"] = existingCreatedAt ?? now,
+            ["updated_at"] = now,
+        };
+
+        await _surreal.RawQuery(
+            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            new Dictionary<string, object?>
+            {
+                ["table"] = collection,
+                ["id"] = recordId,
+                ["doc"] = doc,
+            },
+            ct);
+
+        return new UpsertNoteResult(note.Key, VectorWriteOutcome.Embedded);
+    }
+
+    private async Task<T?> SelectScalarAsync<T>(
+        string surql,
+        Dictionary<string, object?> parameters,
+        CancellationToken ct)
+    {
+        var resp = await _surreal.RawQuery(surql, parameters, ct);
+        // SELECT VALUE ... returns a flat array (no field wrapping). resp[0] is the first statement result.
+        var first = resp.GetValue<List<T>>(0);
+        if (first is null || first.Count == 0) return default;
+        return first[0];
+    }
     public Task<WriteResult> UpsertDecisionAsync(string tenantId, string subject, string chose, string because, IReadOnlyList<string> alternatives, CancellationToken ct = default)
         => throw new NotImplementedException("Phase 2 T9: UpsertDecision.");
     public Task<WriteResult> UpsertObservationAsync(string tenantId, string source, string text, object payload, CancellationToken ct = default)
