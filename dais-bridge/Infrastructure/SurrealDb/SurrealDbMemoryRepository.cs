@@ -293,18 +293,188 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         if (first is null || first.Count == 0) return default;
         return first[0];
     }
-    public Task<WriteResult> UpsertDecisionAsync(string tenantId, string subject, string chose, string because, IReadOnlyList<string> alternatives, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: UpsertDecision.");
-    public Task<WriteResult> UpsertObservationAsync(string tenantId, string source, string text, object payload, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: UpsertObservation.");
-    public Task<WriteResult> UpsertFactAsync(string tenantId, string text, string? sourceThread, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: UpsertFact.");
-    public Task<WriteResult> UpsertSummaryAsync(string tenantId, string text, string threadId, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: UpsertSummary.");
-    public Task<string> UpsertEntityAsync(string tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: UpsertEntity.");
-    public Task<string> UpsertEdgeAsync(string tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: UpsertEdge.");
+    public Task<WriteResult> UpsertDecisionAsync(
+        string tenantId, string subject, string chose, string because,
+        IReadOnlyList<string> alternatives, CancellationToken ct = default)
+    {
+        var tenant = new TenantId(tenantId);
+        var text = $"Decision: {subject}. Chose {chose} because {because}. Alternatives considered: {string.Join(", ", alternatives)}";
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenant.Value,
+            ["subject"] = subject,
+            ["chose"] = chose,
+            ["because"] = because,
+            ["alternatives"] = alternatives,
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+        return EnsureSchemaThenUpsertAsync(MemoryCollections.Decisions, text, doc, ct);
+    }
+
+    public Task<WriteResult> UpsertObservationAsync(
+        string tenantId, string source, string text, object payload, CancellationToken ct = default)
+    {
+        var tenant = new TenantId(tenantId);
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenant.Value,
+            ["source"] = source,
+            ["payload"] = payload,
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+        return EnsureSchemaThenUpsertAsync(MemoryCollections.Observations, text, doc, ct);
+    }
+
+    public Task<WriteResult> UpsertFactAsync(
+        string tenantId, string text, string? sourceThread, CancellationToken ct = default)
+    {
+        var tenant = new TenantId(tenantId);
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenant.Value,
+            ["source_thread"] = sourceThread,
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+        return EnsureSchemaThenUpsertAsync(MemoryCollections.Facts, text, doc, ct);
+    }
+
+    public Task<WriteResult> UpsertSummaryAsync(
+        string tenantId, string text, string threadId, CancellationToken ct = default)
+    {
+        var tenant = new TenantId(tenantId);
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["text"] = text,
+            ["tenant_id"] = tenant.Value,
+            ["thread_id"] = threadId,
+            ["created_at"] = now,
+            ["updated_at"] = now,
+        };
+        return EnsureSchemaThenUpsertAsync(MemoryCollections.Summaries, text, doc, ct);
+    }
+
+    public async Task<string> UpsertEntityAsync(
+        string tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var tenant = new TenantId(tenantId);
+
+        // Deterministic key: sha1(tenant + canonical_name) so the same entity dedupes across calls.
+        var recordId = ContentHash.Sha1Hex($"{tenant.Value}|{canonicalName}");
+        var doc = new Dictionary<string, object?>
+        {
+            ["canonical_name"] = canonicalName,
+            ["aliases"] = aliases,
+            ["type"] = type,
+            ["tenant_id"] = tenant.Value,
+            ["created_at"] = DateTime.UtcNow.ToString("O"),
+        };
+        await _surreal.RawQuery(
+            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            new Dictionary<string, object?>
+            {
+                ["table"] = MemoryCollections.Entities,
+                ["id"] = recordId,
+                ["doc"] = doc,
+            },
+            ct);
+        return recordId;
+    }
+
+    public async Task<string> UpsertEdgeAsync(
+        string tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var tenant = new TenantId(tenantId);
+
+        // Deterministic key so the same (from, to, kind) edge dedupes.
+        var recordId = ContentHash.Sha1Hex($"{tenant.Value}|{fromId}->{toId}|{kind}");
+
+        // SurrealDB RELATE creates a graph edge. fromId/toId are colon-separated record references
+        // e.g. "memory_entities:abc123". Split on ':' to get table and id parts.
+        var sql = @"
+RELATE type::thing(string::split($from, ':')[0], string::split($from, ':')[1])
+    -> memory_edges
+    -> type::thing(string::split($to, ':')[0], string::split($to, ':')[1])
+SET id = type::thing('memory_edges', $id),
+    kind = $kind,
+    weight = $weight,
+    tenant_id = $tenant,
+    created_at = $now;";
+
+        var parameters = new Dictionary<string, object?>
+        {
+            ["from"] = fromId,
+            ["to"] = toId,
+            ["id"] = recordId,
+            ["kind"] = kind,
+            ["weight"] = weight,
+            ["tenant"] = tenant.Value,
+            ["now"] = DateTime.UtcNow.ToString("O"),
+        };
+        await _surreal.RawQuery(sql, parameters, ct);
+        return recordId;
+    }
+
+    private async Task<WriteResult> EnsureSchemaThenUpsertAsync(
+        string collection, string text, Dictionary<string, object?> doc, CancellationToken ct)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        return await UpsertContentAsync(collection, text, doc, ct);
+    }
+
+    private async Task<WriteResult> UpsertContentAsync(
+        string collection,
+        string text,
+        Dictionary<string, object?> doc,
+        CancellationToken ct)
+    {
+        // Deterministic key from created_at + first 64 chars of text to keep writes idempotent within a window.
+        var seed = $"{doc.GetValueOrDefault("created_at")}|{(text.Length > 64 ? text[..64] : text)}";
+        var recordId = ContentHash.Sha1Hex(seed);
+        doc["status"] = "pending_embedding";
+
+        await _surreal.RawQuery(
+            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId, ["doc"] = doc },
+            ct);
+
+        try
+        {
+            var emb = await _embeddings.EmbedAsync(text, ct);
+            if (emb.Length != _embeddingDimension)
+                throw new InvalidOperationException(
+                    $"Embedding dimension mismatch: expected {_embeddingDimension}, got {emb.Length}");
+
+            await _surreal.RawQuery(
+                "UPDATE type::thing($table, $id) SET embedding = $emb, status = 'ready', updated_at = $now;",
+                new Dictionary<string, object?>
+                {
+                    ["table"] = collection,
+                    ["id"] = recordId,
+                    ["emb"] = emb,
+                    ["now"] = DateTime.UtcNow.ToString("O"),
+                },
+                ct);
+
+            return WriteResult.Ready(recordId);
+        }
+        catch
+        {
+            // Embedding unavailable or failed — document stays in pending_embedding state.
+            return WriteResult.Pending(recordId);
+        }
+    }
 
     // ----- IMemoryRepository: reads -----
 
@@ -425,12 +595,56 @@ LIMIT {k * 2};";
         [System.Text.Json.Serialization.JsonPropertyName("tags")] public List<string>? Tags { get; set; }
         [System.Text.Json.Serialization.JsonPropertyName("sim")] public double Sim { get; set; }
     }
-    public Task<string?> ReadPostHashAsync(string key, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: ReadPostHash.");
-    public Task<JsonDocument?> ReadNoteDocumentAsync(string collection, string noteKey, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: ReadNoteDocument.");
-    public Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T9: ListPendingEmbeddings.");
+    public async Task<string?> ReadPostHashAsync(string key, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        return await SelectScalarAsync<string>(
+            "SELECT VALUE hash FROM type::thing($table, $id);",
+            new Dictionary<string, object?> { ["table"] = "memory_posts", ["id"] = key },
+            ct);
+    }
+
+    public async Task<JsonDocument?> ReadNoteDocumentAsync(string collection, string noteKey, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var recordId = ContentHash.Sha1Hex(noteKey);
+        var resp = await _surreal.RawQuery(
+            "SELECT * FROM type::thing($table, $id);",
+            new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
+            ct);
+
+        // SELECT returns an array of rows; expect 0 or 1.
+        var rows = resp.GetValue<List<JsonElement>>(0);
+        if (rows is null || rows.Count == 0) return null;
+        return JsonDocument.Parse(rows[0].GetRawText());
+    }
+
+    public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(
+        int limit = 100, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var sql = $@"
+SELECT
+    record::id(id) AS id,
+    target_collection AS targetCollection,
+    target_key AS targetKey
+FROM {MemoryCollections.PendingEmbeddings}
+ORDER BY queued_at ASC
+LIMIT $limit;";
+        var resp = await _surreal.RawQuery(
+            sql,
+            new Dictionary<string, object?> { ["limit"] = limit },
+            ct);
+        var rows = resp.GetValue<List<PendingEmbeddingRow>>(0) ?? new List<PendingEmbeddingRow>();
+        return rows.Select(r => (r.Id, r.TargetCollection, r.TargetKey)).ToList();
+    }
+
+    private sealed class PendingEmbeddingRow
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")] public string Id { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("targetCollection")] public string TargetCollection { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("targetKey")] public string TargetKey { get; set; } = "";
+    }
 
     // ----- IMemoryRepository: deletes -----
 
@@ -524,8 +738,14 @@ RETURN array::len($deleted);";
     }
 
     // ----- IMemoryRepository: query -----
-    public Task<List<T>> QueryAsync<T>(string query, Dictionary<string, object> bindVars, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T11: raw QueryAsync for recall engine.");
+    public async Task<List<T>> QueryAsync<T>(string query, Dictionary<string, object> bindVars, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        // Bind vars come in as IDictionary<string, object>; the SDK wants object?.
+        var p = bindVars.ToDictionary(kv => kv.Key, kv => (object?)kv.Value);
+        var resp = await _surreal.RawQuery(query, p, ct);
+        return resp.GetValue<List<T>>(0) ?? new List<T>();
+    }
 
     // ----- IEmbeddingMigrator -----
     public Task<MigrationResult> MigrateEmbeddingsAsync(string confirmToken, CancellationToken ct = default)
