@@ -307,8 +307,124 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         => throw new NotImplementedException("Phase 2 T9: UpsertEdge.");
 
     // ----- IMemoryRepository: reads -----
-    public Task<List<PostSearchHit>> SearchAsync(float[] queryVec, IReadOnlyList<MemoryKind> kinds, IReadOnlyList<string> tenants, int k, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T7: Search with KNN.");
+
+    public async Task<List<PostSearchHit>> SearchAsync(
+        float[] queryVec,
+        IReadOnlyList<MemoryKind> kinds,
+        IReadOnlyList<string> tenants,
+        int k,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        if (queryVec.Length != _embeddingDimension)
+            throw new InvalidOperationException(
+                $"Query vector dimension mismatch: expected {_embeddingDimension}, got {queryVec.Length}");
+
+        if (kinds.Count == 0 || tenants.Count == 0 || k <= 0)
+            return new List<PostSearchHit>();
+
+        var allHits = new List<PostSearchHit>();
+
+        foreach (var kind in kinds)
+        {
+            var collection = MemoryCollections.ForKind(kind);
+            var hits = await SearchOneCollectionAsync(collection, kind, queryVec, tenants, k, ct);
+            allHits.AddRange(hits);
+        }
+
+        // Final top-K by similarity DESC across the union.
+        return allHits.OrderByDescending(h => h.Sim).Take(k).ToList();
+    }
+
+    private async Task<List<PostSearchHit>> SearchOneCollectionAsync(
+        string collection,
+        MemoryKind kind,
+        float[] queryVec,
+        IReadOnlyList<string> tenants,
+        int k,
+        CancellationToken ct)
+    {
+        // Different projections for posts vs notes. Posts have slug+collection+vector_kind;
+        // notes have note_key. Build a single SELECT and let null fields stay null.
+        var sql = $@"
+SELECT
+    record::id(id) AS key,
+    slug,
+    collection,
+    vector_kind,
+    note_key,
+    kind,
+    tenant_id,
+    title,
+    description,
+    text,
+    ai_summary,
+    pub_date,
+    category,
+    tags,
+    1.0 - vector::distance::knn() AS sim
+FROM {collection}
+WHERE tenant_id IN $tenants
+  AND status = 'ready'
+  AND embedding <|{k * 2}, COSINE|> $qvec
+ORDER BY sim DESC
+LIMIT {k * 2};";
+
+        var parameters = new Dictionary<string, object?>
+        {
+            ["tenants"] = tenants,
+            ["qvec"] = queryVec,
+        };
+
+        var resp = await _surreal.RawQuery(sql, parameters, ct);
+        var rows = resp.GetValue<List<SurrealSearchRow>>(0) ?? new List<SurrealSearchRow>();
+        return rows.Select(r => MapRowToHit(r, collection, kind)).ToList();
+    }
+
+    private static PostSearchHit MapRowToHit(SurrealSearchRow row, string collection, MemoryKind kind)
+    {
+        // Notes use note_key as the human key; posts use slug+collection+vector_kind.
+        var slug = row.Slug ?? row.NoteKey ?? row.Key ?? string.Empty;
+        var coll = row.Collection ?? collection;
+        var vk = row.VectorKind ?? kind.ToString().ToLowerInvariant();
+        return new PostSearchHit
+        {
+            Key = row.Key ?? string.Empty,
+            Slug = slug,
+            Collection = coll,
+            VectorKind = vk,
+            Kind = row.Kind ?? kind.ToString().ToLowerInvariant(),
+            TenantId = row.TenantId,
+            Title = row.Title ?? string.Empty,
+            Text = row.Text ?? string.Empty,
+            Description = row.Description ?? string.Empty,
+            AiSummary = row.AiSummary,
+            PubDate = row.PubDate,
+            Category = row.Category,
+            Tags = row.Tags ?? (IReadOnlyList<string>)Array.Empty<string>(),
+            Sim = row.Sim,
+        };
+    }
+
+    private sealed class SurrealSearchRow
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("key")] public string? Key { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("slug")] public string? Slug { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("collection")] public string? Collection { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("vector_kind")] public string? VectorKind { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("note_key")] public string? NoteKey { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("kind")] public string? Kind { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("tenant_id")] public string? TenantId { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("title")] public string? Title { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("description")] public string? Description { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("text")] public string? Text { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("ai_summary")] public string? AiSummary { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("pub_date")] public string? PubDate { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("category")] public string? Category { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("tags")] public List<string>? Tags { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("sim")] public double Sim { get; set; }
+    }
     public Task<string?> ReadPostHashAsync(string key, CancellationToken ct = default)
         => throw new NotImplementedException("Phase 2 T9: ReadPostHash.");
     public Task<JsonDocument?> ReadNoteDocumentAsync(string collection, string noteKey, CancellationToken ct = default)
