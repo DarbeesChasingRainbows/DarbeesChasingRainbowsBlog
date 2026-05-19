@@ -748,10 +748,163 @@ RETURN array::len($deleted);";
     }
 
     // ----- IEmbeddingMigrator -----
-    public Task<MigrationResult> MigrateEmbeddingsAsync(string confirmToken, CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T10: MigrateEmbeddings.");
-    public Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
-        => throw new NotImplementedException("Phase 2 T10: ReadEmbeddingConfig.");
+
+    public async Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
+    {
+        // memory_meta:embedding_config is a fixed record id.
+        var resp = await _surreal.RawQuery(
+            "SELECT model, dimension FROM type::thing($table, $id);",
+            new Dictionary<string, object?>
+            {
+                ["table"] = MemoryCollections.Meta,
+                ["id"] = "embedding_config",
+            },
+            ct);
+        var rows = resp.GetValue<List<EmbeddingConfigRow>>(0);
+        if (rows is null || rows.Count == 0) return null;
+        var r = rows[0];
+        if (string.IsNullOrWhiteSpace(r.Model) || r.Dimension <= 0) return null;
+        return new EmbeddingConfig(r.Model, r.Dimension);
+    }
+
+    private sealed class EmbeddingConfigRow
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("model")] public string Model { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("dimension")] public int Dimension { get; set; }
+    }
+
+    private async Task WriteEmbeddingConfigAsync(EmbeddingConfig config, bool isFirstTime, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        var doc = new Dictionary<string, object?>
+        {
+            ["model"] = config.Model,
+            ["dimension"] = config.Dimension,
+            ["last_set_at"] = now,
+        };
+        if (isFirstTime) doc["first_set_at"] = now;
+
+        await _surreal.RawQuery(
+            "UPSERT type::thing($table, $id) MERGE $doc;",
+            new Dictionary<string, object?>
+            {
+                ["table"] = MemoryCollections.Meta,
+                ["id"] = "embedding_config",
+                ["doc"] = doc,
+            },
+            ct);
+    }
+
+    public async Task<MigrationResult> MigrateEmbeddingsAsync(
+        string confirmToken,
+        CancellationToken ct = default)
+    {
+        if (confirmToken != "preserve-and-reembed" && confirmToken != "wipe-and-reset")
+            throw new ArgumentException(
+                $"Invalid confirm token '{confirmToken}'. Accepted: 'preserve-and-reembed' or 'wipe-and-reset'.",
+                nameof(confirmToken));
+
+        await EnsureSchemaIfNeededAsync(ct);
+
+        var current = new EmbeddingConfig(_embeddingModelId, _embeddingDimension);
+        var previous = await ReadEmbeddingConfigAsync(ct);
+
+        var contentCollections = new[]
+        {
+            MemoryCollections.Posts,
+            MemoryCollections.Observations,
+            MemoryCollections.Facts,
+            MemoryCollections.Decisions,
+            MemoryCollections.Summaries,
+        };
+
+        // Drop existing HNSW indexes — they'll be recreated against the new dimension
+        // on the next EnsureSchemaAsync call (which the constructor flow runs at startup).
+        var indexesDropped = new List<string>();
+        foreach (var coll in contentCollections)
+        {
+            var indexName = coll switch
+            {
+                "memory_posts" => "idx_posts_embed",
+                "memory_observations" => "idx_observations_embed",
+                "memory_facts" => "idx_facts_embed",
+                "memory_decisions" => "idx_decisions_embed",
+                "memory_summaries" => "idx_summaries_embed",
+                _ => null,
+            };
+            if (indexName is null) continue;
+
+            try
+            {
+                await _surreal.RawQuery($"REMOVE INDEX IF EXISTS {indexName} ON TABLE {coll};", null, ct);
+                indexesDropped.Add(indexName);
+            }
+            catch
+            {
+                // Idempotent — REMOVE INDEX may be a no-op on older SurrealDB versions.
+            }
+        }
+
+        var docsMarked = new Dictionary<string, int>();
+        int queueSize = 0;
+
+        if (confirmToken == "preserve-and-reembed")
+        {
+            foreach (var coll in contentCollections)
+            {
+                var sql = $@"
+LET $updated = (
+    UPDATE {coll}
+    SET embedding = NONE, status = 'pending_embedding'
+    WHERE embedding IS NOT NONE
+    RETURN AFTER
+);
+RETURN array::len($updated);";
+                var resp = await _surreal.RawQuery(sql, null, ct);
+                int n;
+                try { n = resp.GetValue<int>(1); }
+                catch
+                {
+                    var arr = resp.GetValue<List<int>>(1);
+                    n = arr is null || arr.Count == 0 ? 0 : arr[0];
+                }
+                docsMarked[coll] = n;
+                queueSize += n;
+            }
+        }
+        else // wipe-and-reset
+        {
+            foreach (var coll in contentCollections)
+            {
+                var sql = $@"
+LET $deleted = (DELETE {coll} RETURN BEFORE);
+RETURN array::len($deleted);";
+                var resp = await _surreal.RawQuery(sql, null, ct);
+                int n;
+                try { n = resp.GetValue<int>(1); }
+                catch
+                {
+                    var arr = resp.GetValue<List<int>>(1);
+                    n = arr is null || arr.Count == 0 ? 0 : arr[0];
+                }
+                docsMarked[coll] = n;
+            }
+            queueSize = 0;
+        }
+
+        // Recreate the HNSW indexes against the new dimension.
+        // Every DEFINE has IF NOT EXISTS, so this is safe to re-run.
+        await EnsureSchemaAsync(ct);
+
+        await WriteEmbeddingConfigAsync(current, isFirstTime: previous is null, ct);
+
+        return new MigrationResult(
+            Previous: previous,
+            Current: current,
+            IndexesDropped: indexesDropped,
+            DocsMarkedForReembed: docsMarked,
+            QueueSizeAfter: queueSize);
+    }
 
     public void Dispose()
     {
