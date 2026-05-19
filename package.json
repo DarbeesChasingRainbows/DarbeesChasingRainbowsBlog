@@ -29,7 +29,12 @@
 		"rag:reindex": "node --env-file-if-exists=.env scripts/rag-reindex.mjs",
 		"related:rebuild": "node --env-file-if-exists=.env scripts/related-rebuild.mjs",
 		"image:watch": "node --env-file-if-exists=.env scripts/image-watcher.mjs",
-		"test:scripts": "node --test 'scripts/**/*.test.mjs'"
+		"test:scripts": "node --test 'scripts/**/*.test.mjs'",
+		"obsidian:build": "npm --prefix obsidian-plugin run build",
+		"obsidian:dev": "npm --prefix obsidian-plugin run dev",
+		"obsidian:link": "bash scripts/obsidian-link.sh",
+		"obsidian:unlink": "bash scripts/obsidian-unlink.sh",
+		"test:plugin": "npm --prefix obsidian-plugin test"
 	},
 	"dependencies": {
 		"@astrojs/check": "^0.9.9",

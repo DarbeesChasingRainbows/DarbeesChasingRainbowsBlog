@@ -6,6 +6,8 @@ public sealed class PostSearchHit
 	public string Slug { get; init; } = "";
 	public string Collection { get; init; } = "";
 	public string VectorKind { get; init; } = "";
+	public string? Kind { get; init; }
+	public string? TenantId { get; init; }
 	public string Title { get; init; } = "";
 	public string Text { get; init; } = "";
 	public string Description { get; init; } = "";

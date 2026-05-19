@@ -1,0 +1,9 @@
+{
+  "id": "darbee-memory",
+  "name": "Darbee Memory",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Ingest flagged Obsidian notes into the Darbee memory bridge and query memory from the sidebar.",
+  "author": "Darbees",
+  "isDesktopOnly": true
+}

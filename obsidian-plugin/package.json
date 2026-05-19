@@ -1,0 +1,22 @@
+{
+  "name": "darbee-memory",
+  "version": "0.1.0",
+  "description": "Darbee memory ingest + sidebar search for Obsidian.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.23.0",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": ["obsidian"],
+  "license": "MIT"
+}

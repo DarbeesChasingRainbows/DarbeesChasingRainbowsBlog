@@ -38,7 +38,10 @@ CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 | Reindex content RAG       | `npm run rag:reindex`            | After adding/editing posts; requires bridge stack up (`make up`) + llama.cpp on :8080/:8081 |
 | Reindex + rebuild related | `npm run rag:rebuild-all`        | After adding/editing posts, before commit                                                  |
 | Check related-posts freshness | `npm run rag:check-fresh`    | Manual sanity check (also runs automatically before `npm run build`)                       |
+| Build Obsidian plugin     | `npm run obsidian:build`         | After editing `obsidian-plugin/` source                                                    |
+| Link plugin into vault    | `npm run obsidian:link`          | First-time install; idempotent                                                             |
 | Script unit tests         | `npm run test:scripts`           | CI runs this          |
+| Plugin unit tests         | `npm run test:plugin`            | Vitest suite for `obsidian-plugin/`                                                        |
 
 Full guide: [scripts/README.md](scripts/README.md). `geo:fill`, `related:rebuild`, and `rag:reindex` call local embedding services.
 
@@ -126,6 +129,7 @@ Source of truth: [src/content.config.ts](src/content.config.ts).
 - **Prettier Parse Errors**: HTML comments in JSX fragments break build.
 - **Tailwind v4 JIT**: Avoid commas in arbitrary values in HTML; use CSS classes.
 - **Typescript 6**: No narrowing across destructuring — cast `data` or use `entry.data.field`.
+- **Memory ingest**: The Obsidian plugin (`obsidian-plugin/`) runs on save. The `memory: true` frontmatter is the only opt-in. Removing it un-flags the note; on next save the bridge stale-deletes the corresponding memory row (tenant=private only — public posts unaffected).
 
 ## When in doubt
 Read [HANDOFF.md](HANDOFF.md) for a full history of remediation phases.

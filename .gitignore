@@ -36,3 +36,7 @@ obsidian-templates/
 
 # Git Worktrees
 .worktrees/
+
+# Obsidian plugin build artifacts
+obsidian-plugin/node_modules/
+obsidian-plugin/dist/

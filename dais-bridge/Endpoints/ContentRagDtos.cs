@@ -42,7 +42,8 @@ public sealed record SearchRequest(
     string Query,
     IReadOnlyList<string>? Kinds,
     int K,
-    string? Tenant);
+    string? Tenant,
+    IReadOnlyList<string>? Tenants = null);
 
 public sealed record SearchResponse(
     long QueryEmbedMs,
@@ -56,6 +57,33 @@ public sealed record SearchResult(
     string MatchedKind,
     double Score,
     string Snippet,
-    string Url);
+    string Url,
+    string Kind = "post",
+    string Tenant = "public");
 
 public sealed record MigrateRequest(string Confirm);
+
+public sealed record NoteRecord(
+    string Key,
+    string Kind,
+    string Text,
+    string Title,
+    IReadOnlyDictionary<string, object>? Metadata);
+
+public sealed record IngestNotesRequest(
+    string Tenant,
+    IReadOnlyList<NoteRecord> Notes,
+    IReadOnlyList<string> CurrentKeys);
+
+public sealed record IngestNoteResult(
+    string Key,
+    string Outcome,
+    string? Reason);
+
+public sealed record IngestNotesResponse(
+    int EmbeddedCount,
+    int CachedCount,
+    int FailedCount,
+    int StaleDeletedCount,
+    long DurationMs,
+    IReadOnlyList<IngestNoteResult> PerNote);

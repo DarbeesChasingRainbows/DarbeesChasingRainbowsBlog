@@ -135,6 +135,32 @@ public sealed class MemoryStore : IDisposable
         if (!ok) throw new InvalidOperationException($"InsertRawPostAsync failed: {content}");
     }
 
+    internal async Task InsertRawPostAsync(Dictionary<string, object?> doc, string collection, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{collection}?overwrite=true";
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc);
+        if (!ok) throw new InvalidOperationException($"InsertRawPostAsync failed on '{collection}': {content}");
+    }
+
+    private async Task UpsertRawDocumentAsync(string collection, Dictionary<string, object?> doc, CancellationToken ct = default)
+    {
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{collection}?overwrite=true";
+        var (ok, errorNum, content) = await PostJsonRawAsync(url, doc);
+        if (!ok) throw new InvalidOperationException($"UpsertRawDocumentAsync failed on '{collection}/{doc["_key"]}': {content}");
+    }
+
+    private async Task<JsonDocument?> ReadDocumentByKeyAsync(string collection, string arangoKey, CancellationToken ct = default)
+    {
+        var url = $"{_baseUrl}/_db/{_db}/_api/document/{collection}/{arangoKey}";
+        using var request = BuildAuthedRequest(HttpMethod.Get, url);
+        using var response = await _rawHttp.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync(ct);
+        return JsonDocument.Parse(content);
+    }
+
     // Not gated: called from EnsureSchemaAsync during bootstrap — gating would deadlock.
     public async Task<EmbeddingConfig?> ReadEmbeddingConfigAsync(CancellationToken ct = default)
     {
@@ -428,6 +454,7 @@ public sealed class MemoryStore : IDisposable
             ["slug"] = post.Slug,
             ["collection"] = post.Collection,
             ["vector_kind"] = vectorKind,
+            ["kind"] = "post",
             ["tenant_id"] = "public",
             ["text"] = text,
             ["embedding"] = embedding,
@@ -450,6 +477,130 @@ public sealed class MemoryStore : IDisposable
             throw new InvalidOperationException($"Post upsert failed (errorNum={errorNum}): {content}");
 
         return VectorWriteOutcome.Embedded;
+    }
+
+    public async Task<UpsertNoteResult> UpsertNoteAsync(NoteDocument note, CancellationToken ct = default)
+    {
+        if (_embeddings is null)
+            throw new InvalidOperationException("MemoryStore was constructed without an IEmbeddingClient — cannot upsert notes");
+
+        await EnsureSchemaIfNeededAsync(ct);
+
+        var collection = MemoryCollections.ForKind(note.Kind);
+        var arangoKey = Sha1Hex(note.Key);
+        var hash = Sha256Hex($"{_embeddingModelId}\n{note.Text}");
+
+        // Cache check: if existing doc has same hash AND status=ready, skip embed.
+        using var existing = await ReadDocumentByKeyAsync(collection, arangoKey, ct);
+        if (existing is not null)
+        {
+            var existingHash = existing.RootElement.TryGetProperty("hash", out var h) ? h.GetString() : null;
+            var existingStatus = existing.RootElement.TryGetProperty("status", out var s) ? s.GetString() : null;
+            if (existingHash == hash && existingStatus == "ready")
+                return new UpsertNoteResult(note.Key, VectorWriteOutcome.Cached);
+        }
+
+        float[] embedding;
+        try
+        {
+            embedding = await _embeddings.EmbedAsync(note.Text, ct);
+        }
+        catch (Exception ex)
+        {
+            return new UpsertNoteResult(note.Key, VectorWriteOutcome.Failed, ex.Message);
+        }
+
+        if (embedding.Length != _embeddingDimension)
+            throw new InvalidOperationException(
+                $"Embedding dimension mismatch: expected {_embeddingDimension}, got {embedding.Length}");
+
+        var now = DateTime.UtcNow.ToString("o");
+        var createdAt = existing is not null && existing.RootElement.TryGetProperty("created_at", out var c)
+            ? c.GetString() ?? now
+            : now;
+
+        var doc = new Dictionary<string, object?>
+        {
+            ["_key"] = arangoKey,
+            ["note_key"] = note.Key,
+            ["tenant_id"] = note.TenantId,
+            ["kind"] = note.Kind.ToString().ToLowerInvariant(),
+            ["title"] = note.Title,
+            ["text"] = note.Text,
+            ["hash"] = hash,
+            ["embedding"] = embedding,
+            ["status"] = "ready",
+            ["source"] = "obsidian",
+            ["metadata"] = note.Metadata ?? new Dictionary<string, object>(),
+            ["created_at"] = createdAt,
+            ["updated_at"] = now,
+        };
+
+        await UpsertRawDocumentAsync(collection, doc, ct);
+        return new UpsertNoteResult(note.Key, VectorWriteOutcome.Embedded);
+    }
+
+    public async Task<JsonDocument?> ReadNoteDocumentAsync(string collection, string noteKey, CancellationToken ct = default)
+    {
+        var arangoKey = Sha1Hex(noteKey);
+        return await ReadDocumentByKeyAsync(collection, arangoKey, ct);
+    }
+
+    public async Task<int> DeleteStaleNotesAsync(
+        IReadOnlyList<string> currentKeys,
+        string tenant,
+        CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+
+        int totalDeleted = 0;
+        foreach (var collection in new[]
+        {
+            MemoryCollections.Observations,
+            MemoryCollections.Facts,
+            MemoryCollections.Decisions,
+        })
+        {
+            var aql = $@"
+                FOR d IN {collection}
+                  FILTER d.tenant_id == @tenant
+                  FILTER d.source == ""obsidian""
+                  FILTER d.note_key NOT IN @currentKeys
+                  REMOVE d IN {collection}
+                  RETURN OLD";
+            var bindVars = new Dictionary<string, object>
+            {
+                ["tenant"] = tenant,
+                ["currentKeys"] = currentKeys,
+            };
+            var cursor = await _arango.Cursor.PostCursorAsync<object>(
+                new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                {
+                    Query = aql,
+                    BindVars = bindVars,
+                });
+            totalDeleted += cursor.Result?.Count() ?? 0;
+        }
+        return totalDeleted;
+    }
+
+    // Hex SHA-1 digest, used to derive Arango `_key` values from human-readable
+    // note keys (paths with slashes are not valid Arango keys).
+    private static string Sha1Hex(string s)
+    {
+        using var sha = System.Security.Cryptography.SHA1.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(s));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    // Plain hex SHA-256 digest. Distinct from the post-side `ComputeHash` helper, which
+    // returns `"sha256:" + hex` of `$"{modelId}:{text}"` for legacy compatibility with
+    // the posts cache schema. Notes hash `$"{modelId}\n{text}"` without the prefix.
+    private static string Sha256Hex(string s)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(s));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     public async Task<int> DeleteStalePostsAsync(
@@ -504,69 +655,149 @@ public sealed class MemoryStore : IDisposable
         await EnsureSchemaIfNeededAsync(ct);
         if (rawK < 1) throw new ArgumentOutOfRangeException(nameof(rawK), "must be >= 1");
 
-        // Only MemoryKind.Post is supported in this phase; future work adds other kinds.
-        if (!kinds.Contains(MemoryKind.Post))
-            return new List<PostSearchHit>();
+        var allHits = new List<PostSearchHit>();
 
-        var aql = """
-            LET q = @query_vec
-            FOR doc IN @@col
-              FILTER doc.tenant_id IN @tenants
-              FILTER doc.status == "ready"
-              FILTER doc.vector_kind IN ["summary", "body"]
-              LET sim = COSINE_SIMILARITY(doc.embedding, q)
-              SORT sim DESC
-              LIMIT @raw_k
-              RETURN {
-                key:         doc._key,
-                slug:        doc.slug,
-                collection:  doc.collection,
-                vector_kind: doc.vector_kind,
-                title:       doc.title,
-                text:        doc.text,
-                description: doc.description,
-                ai_summary:  doc.ai_summary,
-                pub_date:    doc.pub_date,
-                category:    doc.category,
-                tags:        doc.tags,
-                sim:         sim
-              }
-            """;
-        var bindVars = new Dictionary<string, object>
+        // Posts
+        if (kinds.Contains(MemoryKind.Post))
         {
-            ["@col"] = MemoryCollections.Posts,
-            ["query_vec"] = queryVec,
-            ["tenants"] = tenants.ToArray(),
-            ["raw_k"] = rawK,
-        };
-
-        var cursor = await _arango.Cursor.PostCursorAsync<SearchRow>(
-            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+            var aql = """
+                LET q = @query_vec
+                FOR doc IN @@col
+                  FILTER doc.tenant_id IN @tenants
+                  FILTER doc.status == "ready"
+                  FILTER doc.vector_kind IN ["summary", "body"]
+                  LET sim = COSINE_SIMILARITY(doc.embedding, q)
+                  SORT sim DESC
+                  LIMIT @raw_k
+                  RETURN {
+                    key:         doc._key,
+                    slug:        doc.slug,
+                    collection:  doc.collection,
+                    vector_kind: doc.vector_kind,
+                    kind:        doc.kind != null ? doc.kind : "post",
+                    tenant_id:   doc.tenant_id,
+                    title:       doc.title,
+                    text:        doc.text,
+                    description: doc.description,
+                    ai_summary:  doc.ai_summary,
+                    pub_date:    doc.pub_date,
+                    category:    doc.category,
+                    tags:        doc.tags,
+                    sim:         sim
+                  }
+                """;
+            var bindVars = new Dictionary<string, object>
             {
-                Query = aql,
-                BindVars = bindVars,
-            });
+                ["@col"] = MemoryCollections.Posts,
+                ["query_vec"] = queryVec,
+                ["tenants"] = tenants.ToArray(),
+                ["raw_k"] = rawK,
+            };
 
-        return cursor.Result.Select(r => new PostSearchHit
+            var cursor = await _arango.Cursor.PostCursorAsync<SearchRow>(
+                new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                {
+                    Query = aql,
+                    BindVars = bindVars,
+                });
+
+            allHits.AddRange(cursor.Result.Select(r => new PostSearchHit
+            {
+                Key = r.key,
+                Slug = r.slug ?? "",
+                Collection = r.collection ?? "",
+                VectorKind = r.vector_kind ?? "body",
+                Kind = r.kind ?? "post",
+                TenantId = r.tenant_id,
+                Title = r.title ?? "",
+                Text = r.text ?? "",
+                Description = r.description ?? "",
+                AiSummary = r.ai_summary,
+                PubDate = r.pub_date,
+                Category = r.category,
+                Tags = r.tags ?? Array.Empty<string>(),
+                Sim = r.sim,
+            }));
+        }
+
+        // Note kinds (observation, fact, decision)
+        var noteKindCollections = new List<(MemoryKind kind, string collection)>
         {
-            Key = r.key,
-            Slug = r.slug,
-            Collection = r.collection,
-            VectorKind = r.vector_kind,
-            Title = r.title,
-            Text = r.text,
-            Description = r.description,
-            AiSummary = r.ai_summary,
-            PubDate = r.pub_date,
-            Category = r.category,
-            Tags = r.tags ?? Array.Empty<string>(),
-            Sim = r.sim,
-        }).ToList();
+            (MemoryKind.Observation, MemoryCollections.Observations),
+            (MemoryKind.Fact, MemoryCollections.Facts),
+            (MemoryKind.Decision, MemoryCollections.Decisions),
+        };
+        foreach (var (kind, collection) in noteKindCollections)
+        {
+            if (!kinds.Contains(kind)) continue;
+
+            var aql = """
+                LET q = @query_vec
+                FOR doc IN @@col
+                  FILTER doc.tenant_id IN @tenants
+                  FILTER doc.status == "ready"
+                  LET sim = COSINE_SIMILARITY(doc.embedding, q)
+                  SORT sim DESC
+                  LIMIT @raw_k
+                  RETURN {
+                    key:         doc._key,
+                    slug:        doc.note_key,
+                    collection:  "",
+                    vector_kind: doc.kind != null ? doc.kind : @kind_str,
+                    kind:        doc.kind != null ? doc.kind : @kind_str,
+                    tenant_id:   doc.tenant_id,
+                    title:       doc.title,
+                    text:        doc.text,
+                    description: "",
+                    ai_summary:  null,
+                    pub_date:    null,
+                    category:    null,
+                    tags:        [],
+                    sim:         sim
+                  }
+                """;
+            var bindVars = new Dictionary<string, object>
+            {
+                ["@col"] = collection,
+                ["query_vec"] = queryVec,
+                ["tenants"] = tenants.ToArray(),
+                ["raw_k"] = rawK,
+                ["kind_str"] = kind.ToString().ToLowerInvariant(),
+            };
+
+            var cursor = await _arango.Cursor.PostCursorAsync<SearchRow>(
+                new ArangoDBNetStandard.CursorApi.Models.PostCursorBody
+                {
+                    Query = aql,
+                    BindVars = bindVars,
+                });
+
+            allHits.AddRange(cursor.Result.Select(r => new PostSearchHit
+            {
+                Key = r.key,
+                Slug = r.slug ?? "",
+                Collection = r.collection ?? "",
+                VectorKind = r.vector_kind ?? kind.ToString().ToLowerInvariant(),
+                Kind = r.kind ?? kind.ToString().ToLowerInvariant(),
+                TenantId = r.tenant_id,
+                Title = r.title ?? "",
+                Text = r.text ?? "",
+                Description = r.description ?? "",
+                AiSummary = r.ai_summary,
+                PubDate = r.pub_date,
+                Category = r.category,
+                Tags = r.tags ?? Array.Empty<string>(),
+                Sim = r.sim,
+            }));
+        }
+
+        return allHits;
     }
 
     private sealed record SearchRow(
-        string key, string slug, string collection, string vector_kind,
-        string title, string text, string description, string? ai_summary,
+        string key, string? slug, string? collection, string? vector_kind,
+        string? kind, string? tenant_id,
+        string? title, string? text, string? description, string? ai_summary,
         string? pub_date, string? category, IReadOnlyList<string>? tags, double sim);
 
     private static string ComputeHash(string text, string modelId)

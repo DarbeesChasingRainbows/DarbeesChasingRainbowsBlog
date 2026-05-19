@@ -324,4 +324,169 @@ public class ContentRagEndpointsTests
             await MemoryStoreSchemaTests.DropDb(dbName);
         }
     }
+
+    [Fact]
+    public async Task HandleSearchAsync_BackCompat_DefaultsToPostsPublic()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
+            await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://n1.md"));
+
+            var req = new SearchRequest(Query: "hello", Kinds: null, K: 5, Tenant: null, Tenants: null);
+            var resp = await ContentRagEndpoints.HandleSearchAsync(req, store, emb);
+
+            Assert.All(resp.Results, r => Assert.Equal("post", r.Kind));
+            Assert.All(resp.Results, r => Assert.Equal("public", r.Tenant));
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task HandleSearchAsync_KindsFilter_ReturnsOnlyObservations()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
+            await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://n1.md"));
+
+            var req = new SearchRequest(
+                Query: "hello",
+                Kinds: new[] { "observation" },
+                K: 5,
+                Tenant: null,
+                Tenants: new[] { "private" });
+            var resp = await ContentRagEndpoints.HandleSearchAsync(req, store, emb);
+
+            Assert.NotEmpty(resp.Results);
+            Assert.All(resp.Results, r => Assert.Equal("observation", r.Kind));
+            Assert.All(resp.Results, r => Assert.Equal("private", r.Tenant));
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task HandleSearchAsync_TenantIsolation_PrivateNeverLeaksWhenQueryingPublic()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStoreNotesTests.StubEmbeddingClient(); // returns identical embedding for any text
+            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "publicPost"), force: false);
+            await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://privateNote.md"));
+
+            var req = new SearchRequest(
+                Query: "anything",
+                Kinds: new[] { "post", "observation" },
+                K: 5,
+                Tenant: null,
+                Tenants: new[] { "public" });
+            var resp = await ContentRagEndpoints.HandleSearchAsync(req, store, emb);
+
+            Assert.NotEmpty(resp.Results);
+            Assert.All(resp.Results, r => Assert.Equal("public", r.Tenant));
+            Assert.DoesNotContain(resp.Results, r => r.Kind == "observation");
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task HandleSearchAsync_UnionAcrossKinds_RanksByScore()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
+            await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://n1.md"));
+
+            var req = new SearchRequest(
+                Query: "x",
+                Kinds: new[] { "post", "observation" },
+                K: 10,
+                Tenant: null,
+                Tenants: new[] { "public", "private" });
+            var resp = await ContentRagEndpoints.HandleSearchAsync(req, store, emb);
+
+            for (int i = 1; i < resp.Results.Count; i++)
+                Assert.True(resp.Results[i - 1].Score >= resp.Results[i].Score);
+
+            Assert.Contains(resp.Results, r => r.Kind == "post");
+            Assert.Contains(resp.Results, r => r.Kind == "observation");
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
+
+    [Fact]
+    public async Task HandleIngestNotesAsync_RoundTrip_ReturnsCountsAndStaleDeletes()
+    {
+        if (!ArangoEnabled) return;
+        var dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
+        try
+        {
+            using var http = new HttpClient();
+            var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
+            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+
+            // Pre-seed an obsidian note that will become stale.
+            await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://old.md"));
+
+            var req = new IngestNotesRequest(
+                Tenant: "private",
+                Notes: new[]
+                {
+                    new NoteRecord(
+                        Key: "obsidian://new.md",
+                        Kind: "observation",
+                        Text: "fresh note",
+                        Title: "new",
+                        Metadata: null),
+                },
+                CurrentKeys: new[] { "obsidian://new.md" });
+            var resp = await ContentRagEndpoints.HandleIngestNotesAsync(req, store);
+
+            Assert.Equal(1, resp.EmbeddedCount);
+            Assert.Equal(0, resp.CachedCount);
+            Assert.Equal(0, resp.FailedCount);
+            Assert.Equal(1, resp.StaleDeletedCount);
+            Assert.Equal("embedded", resp.PerNote.Single(p => p.Key == "obsidian://new.md").Outcome);
+        }
+        finally
+        {
+            await MemoryStoreSchemaTests.DropDb(dbName);
+        }
+    }
 }

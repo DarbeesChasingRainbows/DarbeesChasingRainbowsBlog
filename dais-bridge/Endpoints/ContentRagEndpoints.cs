@@ -106,13 +106,25 @@ public static class ContentRagEndpoints
     {
         if (string.IsNullOrWhiteSpace(request.Query))
             throw new ArgumentException("query is required", nameof(request));
-        var k = request.K <= 0 ? 5 : Math.Min(request.K, 50);
-        var tenant = string.IsNullOrWhiteSpace(request.Tenant) ? "public" : request.Tenant;
 
-        var kindStrings = request.Kinds ?? new[] { "post" };
+        var k = request.K <= 0 ? 5 : Math.Min(request.K, 50);
+
+        // Tenants: prefer plural; fall back to singular for back-compat; default ["public"].
+        IReadOnlyList<string> tenants;
+        if (request.Tenants is { Count: > 0 })
+            tenants = request.Tenants;
+        else if (!string.IsNullOrWhiteSpace(request.Tenant))
+            tenants = new[] { request.Tenant! };
+        else
+            tenants = new[] { "public" };
+
+        var kindStrings = request.Kinds is { Count: > 0 } ? request.Kinds : new[] { "post" };
         var kinds = kindStrings.Select(s => s.ToLowerInvariant() switch
         {
             "post" => MemoryKind.Post,
+            "observation" => MemoryKind.Observation,
+            "fact" => MemoryKind.Fact,
+            "decision" => MemoryKind.Decision,
             _ => throw new ArgumentException($"unknown kind: {s}", nameof(request))
         }).ToList();
 
@@ -121,10 +133,10 @@ public static class ContentRagEndpoints
         embedSw.Stop();
 
         var searchSw = Stopwatch.StartNew();
-        var rows = await store.SearchAsync(queryVec, kinds, new[] { tenant }, rawK: k * 2, ct);
+        var rows = await store.SearchAsync(queryVec, kinds, tenants, rawK: k * 2, ct);
         searchSw.Stop();
 
-        // Dedup application-side: best row per (collection, slug)
+        // Posts dedup application-side: best row per (collection, slug).
         var bestBySlug = new Dictionary<(string, string), PostSearchHit>();
         foreach (var row in rows)
         {
@@ -134,14 +146,34 @@ public static class ContentRagEndpoints
         }
         var topK = bestBySlug.Values.OrderByDescending(r => r.Sim).Take(k).ToList();
 
-        var results = topK.Select(r => new SearchResult(
-            Slug: r.Slug,
-            Collection: r.Collection,
-            Title: r.Title,
-            MatchedKind: r.VectorKind,
-            Score: r.Sim,
-            Snippet: BuildSnippet(r),
-            Url: $"/{r.Collection}/{r.Slug}/")).ToList();
+        var results = topK.Select(r =>
+        {
+            var kindLower = (r.Kind ?? "post").ToLowerInvariant();
+            if (kindLower == "post")
+            {
+                return new SearchResult(
+                    Slug: r.Slug,
+                    Collection: r.Collection,
+                    Title: r.Title,
+                    MatchedKind: r.VectorKind,
+                    Score: r.Sim,
+                    Snippet: BuildSnippet(r),
+                    Url: $"/{r.Collection}/{r.Slug}/",
+                    Kind: "post",
+                    Tenant: r.TenantId ?? "public");
+            }
+            // Notes: Slug = note_key, Collection = "", Url = note_key (obsidian://...).
+            return new SearchResult(
+                Slug: r.Slug,
+                Collection: string.Empty,
+                Title: r.Title,
+                MatchedKind: kindLower,
+                Score: r.Sim,
+                Snippet: BuildSnippet(r),
+                Url: r.Slug,
+                Kind: kindLower,
+                Tenant: r.TenantId ?? "private");
+        }).ToList();
 
         return new SearchResponse(
             QueryEmbedMs: embedSw.ElapsedMilliseconds,
@@ -158,6 +190,88 @@ public static class ContentRagEndpoints
             : (r.Text ?? "");
         if (src.Length <= SnippetMaxChars) return src;
         return src[..SnippetMaxChars] + "…";
+    }
+
+    public static async Task<IngestNotesResponse> HandleIngestNotesAsync(
+        IngestNotesRequest request,
+        MemoryStore store,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Tenant))
+            throw new ArgumentException("tenant is required", nameof(request));
+
+        var sw = Stopwatch.StartNew();
+
+        int embedded = 0, cached = 0, failed = 0;
+        var perNote = new List<IngestNoteResult>();
+
+        foreach (var n in request.Notes)
+        {
+            MemoryKind kind;
+            try
+            {
+                kind = n.Kind.ToLowerInvariant() switch
+                {
+                    "observation" => MemoryKind.Observation,
+                    "fact" => MemoryKind.Fact,
+                    "decision" => MemoryKind.Decision,
+                    _ => throw new ArgumentException($"unsupported kind for note: {n.Kind}")
+                };
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                perNote.Add(new IngestNoteResult(n.Key, "failed", ex.Message));
+                continue;
+            }
+
+            var doc = new NoteDocument(
+                Key: n.Key,
+                Title: n.Title,
+                Text: n.Text,
+                Kind: kind,
+                TenantId: request.Tenant,
+                Metadata: n.Metadata);
+
+            UpsertNoteResult r;
+            try
+            {
+                r = await store.UpsertNoteAsync(doc, ct);
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                perNote.Add(new IngestNoteResult(n.Key, "failed", ex.Message));
+                continue;
+            }
+
+            if (r.Outcome == VectorWriteOutcome.Embedded)
+            {
+                embedded++;
+                perNote.Add(new IngestNoteResult(n.Key, "embedded", null));
+            }
+            else if (r.Outcome == VectorWriteOutcome.Cached)
+            {
+                cached++;
+                perNote.Add(new IngestNoteResult(n.Key, "cached", null));
+            }
+            else
+            {
+                failed++;
+                perNote.Add(new IngestNoteResult(n.Key, "failed", r.Reason));
+            }
+        }
+
+        var staleDeleted = await store.DeleteStaleNotesAsync(request.CurrentKeys, request.Tenant, ct);
+
+        sw.Stop();
+        return new IngestNotesResponse(
+            EmbeddedCount: embedded,
+            CachedCount: cached,
+            FailedCount: failed,
+            StaleDeletedCount: staleDeleted,
+            DurationMs: sw.ElapsedMilliseconds,
+            PerNote: perNote);
     }
 
     public static async Task<MigrationResult> HandleMigrateAsync(
