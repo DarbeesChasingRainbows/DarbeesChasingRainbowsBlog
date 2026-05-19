@@ -137,7 +137,9 @@ public class MemoryStorePostsTests
             var callsAfterFirst = emb.EmbedCalls;
 
             // Simulate migration: flip the existing summary doc to status=pending_embedding
-            // (preserving hash) — mirrors what MigrateEmbeddingsAsync.preserve-and-reembed does
+            // (preserving hash) — mirrors what MigrateEmbeddingsAsync.preserve-and-reembed does.
+            // The embedding key is OMITTED (not set to null) because the sparse vector index
+            // in ArangoDB 3.12 rejects explicit-null writes on the indexed field.
             await store.InsertRawPostAsync(new Dictionary<string, object?>
             {
                 ["_key"] = "blog__welcome__summary",
@@ -146,7 +148,6 @@ public class MemoryStorePostsTests
                 ["vector_kind"] = "summary",
                 ["tenant_id"] = "public",
                 ["text"] = "(stale)",
-                ["embedding"] = (float[]?)null,
                 ["hash"] = (await store.ReadPostHashAsync("blog__welcome__summary"))!,
                 ["title"] = "Welcome",
                 ["description"] = "An intro post.",

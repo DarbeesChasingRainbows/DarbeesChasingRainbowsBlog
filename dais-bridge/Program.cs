@@ -79,6 +79,15 @@ public class Program
         });
         builder.Services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
 
+        var recallAlpha = double.Parse(builder.Configuration["Memory:RecallAlpha"] ?? "0.7");
+        var recallBeta = double.Parse(builder.Configuration["Memory:RecallBeta"] ?? "0.3");
+        builder.Services.AddSingleton<MemoryRecallEngine>(sp =>
+        {
+            var store = sp.GetRequiredService<MemoryStore>();
+            var emb = sp.GetRequiredService<IEmbeddingClient>();
+            return new MemoryRecallEngine(store, emb, recallAlpha, recallBeta);
+        });
+
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
 
@@ -107,7 +116,12 @@ public class Program
             kernelBuilder.AddOpenAIChatCompletion(modelId, lmChatUrl);
 
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
-            kernelBuilder.Plugins.AddFromObject(new MemoryPlugin(sp.GetRequiredService<MemoryStore>(), sp.GetRequiredService<ITenantContextAccessor>()), "Memory");
+            kernelBuilder.Plugins.AddFromObject(
+                new MemoryPlugin(
+                    sp.GetRequiredService<MemoryStore>(),
+                    sp.GetRequiredService<ITenantContextAccessor>(),
+                    sp.GetRequiredService<MemoryRecallEngine>()),
+                "Memory");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
             // Intentionally NOT registered on kernel-kidsafe: AssetPlugin, ResearchPlugin.
@@ -121,7 +135,12 @@ public class Program
             kernelBuilder.AddOpenAIChatCompletion(modelId, lmChatUrl);
 
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
-            kernelBuilder.Plugins.AddFromObject(new MemoryPlugin(sp.GetRequiredService<MemoryStore>(), sp.GetRequiredService<ITenantContextAccessor>()), "Memory");
+            kernelBuilder.Plugins.AddFromObject(
+                new MemoryPlugin(
+                    sp.GetRequiredService<MemoryStore>(),
+                    sp.GetRequiredService<ITenantContextAccessor>(),
+                    sp.GetRequiredService<MemoryRecallEngine>()),
+                "Memory");
             kernelBuilder.Plugins.AddFromObject(new AssetPlugin(cfAccountId, cfToken), "Assets");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");

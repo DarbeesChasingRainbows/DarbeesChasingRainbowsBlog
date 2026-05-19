@@ -23,6 +23,7 @@ public sealed class MemoryStore : IDisposable
     private readonly int _vectorNLists;
     private readonly IEmbeddingClient? _embeddings;
     private readonly ConcurrentDictionary<string, bool> _vectorIndexReady = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _vectorIndexLocks = new();
     private volatile bool _schemaReady;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
     private Exception? _schemaError;
@@ -241,6 +242,12 @@ public sealed class MemoryStore : IDisposable
                 int affected = 0;
                 if (confirmToken == "preserve-and-reembed")
                 {
+                    // keepNull:false strips the embedding attribute entirely instead of
+                    // leaving it as JSON null. Required because a sparse vector index in
+                    // ArangoDB 3.12 still rejects writes that include the indexed field as
+                    // explicit null ("array expected for vector attribute"). Stripping the
+                    // attribute is equivalent for our purposes — the doc is marked pending
+                    // and will be re-embedded asynchronously.
                     var aql = """
                         FOR doc IN @@col
                           FILTER doc.embedding != null
@@ -248,7 +255,7 @@ public sealed class MemoryStore : IDisposable
                             embedding: null,
                             status: "pending_embedding",
                             updated_at: DATE_ISO8601(DATE_NOW())
-                          } IN @@col
+                          } IN @@col OPTIONS { keepNull: false }
                           RETURN OLD._key
                         """;
                     var cursor = await _arango.Cursor.PostCursorAsync<string>(
@@ -315,46 +322,125 @@ public sealed class MemoryStore : IDisposable
     {
         if (_vectorIndexReady.TryGetValue(collection, out var cached) && cached) return;
 
-        var indexes = await ListIndexesAsync(collection);
-
-        foreach (var idx in indexes.Where(i => i.Type == "vector" && i.TrainingState != "ready"))
+        var sem = _vectorIndexLocks.GetOrAdd(collection, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync(ct);
+        try
         {
-            await DeleteIndexAsync(idx.Id);
+            // Re-check inside the lock — another thread may have just finished.
+            if (_vectorIndexReady.TryGetValue(collection, out var c2) && c2) return;
+
+            var indexes = await ListIndexesAsync(collection);
+
+            // 1. Ready index with correct params → done.
+            if (indexes.Any(i => i.Type == "vector"
+                && i.TrainingState == "ready"
+                && i.Params?.Dimension == _embeddingDimension
+                && i.Params?.NLists == _vectorNLists))
+            {
+                _vectorIndexReady[collection] = true;
+                return;
+            }
+
+            // 2. Training-in-progress index with correct params → don't disturb it.
+            //    It will become ready; the next write/read will see it.
+            if (indexes.Any(i => i.Type == "vector"
+                && i.TrainingState != "ready"
+                && i.Params?.Dimension == _embeddingDimension
+                && i.Params?.NLists == _vectorNLists))
+            {
+                return;
+            }
+
+            // 3. Drop genuinely-stale vector indexes (wrong dimension or nLists).
+            //    Swallow 1212 (already gone) — another thread may have raced us.
+            foreach (var idx in indexes.Where(i =>
+                i.Type == "vector"
+                && (i.Params?.Dimension != _embeddingDimension || i.Params?.NLists != _vectorNLists)))
+            {
+                try { await DeleteIndexAsync(idx.Id); }
+                catch { /* already dropped or in flight */ }
+            }
+
+            // 4. Create a new index — only if we have enough docs to train.
+            var docCount = await CountDocumentsAsync(collection);
+            if (docCount < _vectorNLists) return;
+
+            var url = $"{_baseUrl}/_db/{_db}/_api/index?collection={collection}";
+            var body = new
+            {
+                type = "vector",
+                fields = new[] { "embedding" },
+                // sparse=true: skip docs without an embedding field. Required because our write
+                // path is two-stage (POST pending doc → PATCH with embedding once it returns from
+                // the embedding service, or enqueue for retry on failure). Without sparse the
+                // initial POST fails with "vector field not present in document".
+                sparse = true,
+                // defaultNProbe=8 overrides ArangoDB's default of 1, which is too aggressive
+                // and produces empty results when LIMIT is small. Faiss best practice is nProbe
+                // proportional to sqrt(nLists); 8 is a sensible floor for our nLists range.
+                @params = new
+                {
+                    dimension = _embeddingDimension,
+                    metric = "cosine",
+                    nLists = _vectorNLists,
+                    defaultNProbe = 8,
+                }
+            };
+            var (ok, errorNum, content) = await PostJsonRawAsync(url, body);
+            if (ok)
+            {
+                _vectorIndexReady[collection] = true;
+                return;
+            }
+
+            // 1555: vector index feature not enabled on the server (--vector-index flag).
+            //       Treat as soft no-op so write paths still work.
+            // 1212: index dropped mid-flight (race with a parallel writer that just won).
+            //       Re-check on next call; current write has already succeeded.
+            // 1210/1207: duplicate index already created by a parallel writer. Same handling.
+            if (errorNum == 1555 || errorNum == 1212 || errorNum == 1210 || errorNum == 1207) return;
+            throw new InvalidOperationException($"Vector index creation failed (errorNum={errorNum}) on '{collection}': {content}");
         }
-
-        if (indexes.Any(i => i.Type == "vector"
-            && i.TrainingState == "ready"
-            && i.Params?.Dimension == _embeddingDimension
-            && i.Params?.NLists == _vectorNLists))
+        finally
         {
-            _vectorIndexReady[collection] = true;
-            return;
+            sem.Release();
         }
-
-        var docCount = await CountDocumentsAsync(collection);
-        if (docCount < _vectorNLists) return;
-
-        var url = $"{_baseUrl}/_db/{_db}/_api/index?collection={collection}";
-        var body = new
-        {
-            type = "vector",
-            fields = new[] { "embedding" },
-            @params = new { dimension = _embeddingDimension, metric = "cosine", nLists = _vectorNLists }
-        };
-        var (ok, errorNum, content) = await PostJsonRawAsync(url, body);
-        if (ok)
-        {
-            _vectorIndexReady[collection] = true;
-            return;
-        }
-        if (errorNum == 1555) return;
-        throw new InvalidOperationException($"Vector index creation failed (errorNum={errorNum}) on '{collection}': {content}");
     }
 
     public async Task<bool> HasUsableVectorIndexAsync(string collection)
     {
         var indexes = await ListIndexesAsync(collection);
         return indexes.Any(i => i.Type == "vector" && i.TrainingState == "ready");
+    }
+
+    /// <summary>
+    /// Fast, cached, read-only check used by read paths (SearchAsync, VectorTopKAsync)
+    /// to decide between APPROX_NEAR_COSINE (trained Faiss IVF index available) and
+    /// COSINE_SIMILARITY (exact scan fallback). Never attempts to create or train.
+    /// Once a trained index is discovered, the result is cached for the lifetime of
+    /// this MemoryStore instance.
+    /// </summary>
+    public async Task<bool> IsVectorIndexReadyAsync(string collection, CancellationToken ct = default)
+    {
+        if (_vectorIndexReady.TryGetValue(collection, out var cached) && cached) return true;
+
+        try
+        {
+            var indexes = await ListIndexesAsync(collection);
+            var ready = indexes.Any(i =>
+                i.Type == "vector"
+                && i.TrainingState == "ready"
+                && i.Params?.Dimension == _embeddingDimension
+                && i.Params?.NLists == _vectorNLists);
+            if (ready) _vectorIndexReady[collection] = true;
+            return ready;
+        }
+        catch
+        {
+            // Collection may not exist yet, or server may not support vector indexes.
+            // Fall back to exact path silently.
+            return false;
+        }
     }
 
     public async Task<int> CountVectorIndexesAsync(string collection)
@@ -476,6 +562,9 @@ public sealed class MemoryStore : IDisposable
         if (!ok)
             throw new InvalidOperationException($"Post upsert failed (errorNum={errorNum}): {content}");
 
+        // Lazy vector-index creation: when docCount crosses nLists, this builds the
+        // Faiss IVF index so subsequent SearchAsync calls can use APPROX_NEAR_COSINE.
+        await EnsureVectorIndexAsync(MemoryCollections.Posts, ct);
         return VectorWriteOutcome.Embedded;
     }
 
@@ -537,6 +626,7 @@ public sealed class MemoryStore : IDisposable
         };
 
         await UpsertRawDocumentAsync(collection, doc, ct);
+        await EnsureVectorIndexAsync(collection, ct);
         return new UpsertNoteResult(note.Key, VectorWriteOutcome.Embedded);
     }
 
@@ -657,7 +747,19 @@ public sealed class MemoryStore : IDisposable
 
         var allHits = new List<PostSearchHit>();
 
-        // Posts
+        // Posts.
+        //
+        // We deliberately use COSINE_SIMILARITY (exact) instead of APPROX_NEAR_COSINE.
+        // Rationale: ArangoDB 3.12's APPROX_NEAR_COSINE does NOT support pre-filtering
+        // (https://github.com/arangodb/arangodb/issues/21690 — only post-filter is allowed,
+        // meaning the LIMIT is applied BEFORE the tenant filter). That makes tenant
+        // isolation impossible to guarantee — a tenant with many docs can starve other
+        // tenants' results. Pre-filter pushdown lands in ArangoDB 4.0.
+        //
+        // Exact cosine is O(N) per tenant, but for our workload (≤ 10k vectors per
+        // tenant, 768-dim embeddings) this is sub-millisecond on AVX-512 hardware.
+        // A trained Faiss IVF index still exists (sparse, on the embedding field) —
+        // ready for APPROX_NEAR_COSINE the day pre-filter pushdown is available.
         if (kinds.Contains(MemoryKind.Post))
         {
             var aql = """
@@ -727,6 +829,7 @@ public sealed class MemoryStore : IDisposable
             (MemoryKind.Fact, MemoryCollections.Facts),
             (MemoryKind.Decision, MemoryCollections.Decisions),
         };
+        // See "Posts" branch above for rationale on COSINE_SIMILARITY vs APPROX_NEAR_COSINE.
         foreach (var (kind, collection) in noteKindCollections)
         {
             if (!kinds.Contains(kind)) continue;
@@ -1030,6 +1133,18 @@ public sealed class MemoryStore : IDisposable
         };
         var insert = await _arango.Document.PostDocumentAsync(MemoryCollections.Edges, doc);
         return insert._key;
+    }
+
+    /// <summary>
+    /// Generic AQL query helper used by MemoryRecallEngine.
+    /// Ensures schema (cached) before issuing the cursor request.
+    /// </summary>
+    public async Task<List<T>> QueryAsync<T>(string aql, Dictionary<string, object> bindVars, CancellationToken ct = default)
+    {
+        await EnsureSchemaIfNeededAsync(ct);
+        var cursor = await _arango.Cursor.PostCursorAsync<T>(
+            new ArangoDBNetStandard.CursorApi.Models.PostCursorBody { Query = aql, BindVars = bindVars });
+        return cursor.Result.ToList();
     }
 
     public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(int limit = 100, CancellationToken ct = default)

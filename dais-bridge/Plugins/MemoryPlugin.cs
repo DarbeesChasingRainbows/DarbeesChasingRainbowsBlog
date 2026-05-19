@@ -11,11 +11,13 @@ public sealed class MemoryPlugin
 {
     private readonly MemoryStore _store;
     private readonly ITenantContextAccessor _tenant;
+    private readonly MemoryRecallEngine _recall;
 
-    public MemoryPlugin(MemoryStore store, ITenantContextAccessor tenant)
+    public MemoryPlugin(MemoryStore store, ITenantContextAccessor tenant, MemoryRecallEngine recall)
     {
         _store = store;
         _tenant = tenant;
+        _recall = recall;
     }
 
     [KernelFunction, Description("Records an architectural or design decision into long-term memory.")]
@@ -52,5 +54,30 @@ public sealed class MemoryPlugin
         var t = _tenant.Required;
         var result = await _store.UpsertEdgeAsync(t.TenantId, fromId, toId, edgeKind, weight);
         return result;
+    }
+
+    [KernelFunction, Description("Recalls memories most relevant to a query, combining graph expansion (via mentioned entities) and vector similarity. Tenant-scoped automatically.")]
+    public async Task<string> Recall(
+        [Description("Natural-language query")] string query,
+        [Description("Maximum results (default 8)")] int topK = 8,
+        [Description("Graph expansion hops from extracted entities (default 1)")] int expandHops = 1)
+    {
+        var t = _tenant.Required;
+        var result = await _recall.RecallAsync(t.TenantId, query, topK, expandHops);
+        return JsonSerializer.Serialize(new
+        {
+            extractedEntityIds = result.ExtractedEntityIds,
+            items = result.Items.Select(i => new
+            {
+                kind = i.Item.Kind.ToString(),
+                key = i.Item.Key,
+                text = i.Item.Text,
+                cosine = i.Cosine,
+                proximity = i.Proximity,
+                score = i.Score,
+                hops = i.HopsFromQuery,
+                path = i.PathEntityKeys,
+            }),
+        });
     }
 }

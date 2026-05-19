@@ -92,11 +92,15 @@ public class MemoryStoreMigrationTests
                 $"expected ≥2 posts marked, got {result.DocsMarkedForReembed[MemoryCollections.Posts]}");
             Assert.True(result.QueueSizeAfter >= 2);
 
-            // Post-migration: doc has null embedding, pending status, text intact
+            // Post-migration: doc has the embedding key STRIPPED (not null), pending status,
+            // text intact. The strip is required because a sparse vector index in
+            // ArangoDB 3.12 rejects explicit-null on the indexed field.
             using var post = await newStore.ReadPostDocumentAsync("blog__one__summary");
             Assert.NotNull(post);
             Assert.Equal("pending_embedding", post!.RootElement.GetProperty("status").GetString());
-            Assert.Equal(System.Text.Json.JsonValueKind.Null, post.RootElement.GetProperty("embedding").ValueKind);
+            Assert.False(
+                post.RootElement.TryGetProperty("embedding", out _),
+                "embedding key should be stripped (keepNull:false), not set to null");
             Assert.Equal("Welcome", post.RootElement.GetProperty("title").GetString());
         }
         finally
