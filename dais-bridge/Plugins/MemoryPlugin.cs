@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.Ports;
 using Darbee.Gateway.Models;
 using Microsoft.SemanticKernel;
 
@@ -9,11 +9,11 @@ namespace Darbee.Gateway.Plugins;
 
 public sealed class MemoryPlugin
 {
-    private readonly MemoryStore _store;
+    private readonly IMemoryRepository _store;
     private readonly ITenantContextAccessor _tenant;
-    private readonly MemoryRecallEngine _recall;
+    private readonly IRecallEngine _recall;
 
-    public MemoryPlugin(MemoryStore store, ITenantContextAccessor tenant, MemoryRecallEngine recall)
+    public MemoryPlugin(IMemoryRepository store, ITenantContextAccessor tenant, IRecallEngine recall)
     {
         _store = store;
         _tenant = tenant;

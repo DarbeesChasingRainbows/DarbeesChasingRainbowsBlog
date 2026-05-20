@@ -1,6 +1,8 @@
 using System.Net.Http;
 using System.Net.Http.Json;
-using Darbee.Gateway.Memory;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Infrastructure.Embedding;
+using Darbee.Gateway.Domain.Exceptions;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -26,10 +28,10 @@ public class MemoryStoreVectorIndexTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(
+            var store = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-embed-model", embeddingDimension: 768, vectorNLists: 5, http);
+                "test-embed-model", embeddingDimension: 768, vectorNLists: 5, http, new StubDomainEventDispatcher());
             await store.EnsureSchemaAsync();
 
             await store.EnsureVectorIndexAsync("memory_decisions");
@@ -47,10 +49,10 @@ public class MemoryStoreVectorIndexTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(
+            var store = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http);
+                "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http, new StubDomainEventDispatcher());
             await store.EnsureSchemaAsync();
 
             await InsertDocAsync(http, MemoryStoreSchemaTests.ArangoUrl, dbName, "memory_decisions",
@@ -71,10 +73,10 @@ public class MemoryStoreVectorIndexTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(
+            var store = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http);
+                "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http, new StubDomainEventDispatcher());
             await store.EnsureSchemaAsync();
 
             await store.EnsureVectorIndexAsync("memory_decisions");

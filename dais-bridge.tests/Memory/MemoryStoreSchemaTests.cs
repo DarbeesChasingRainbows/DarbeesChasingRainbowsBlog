@@ -1,7 +1,7 @@
 using System.Net.Http;
 using ArangoDBNetStandard;
 using ArangoDBNetStandard.Transport.Http;
-using Darbee.Gateway.Memory;
+using Darbee.Gateway.Infrastructure.Arango;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -47,7 +47,7 @@ public class MemoryStoreSchemaTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass, "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass, "test-embed-model", embeddingDimension: 768, vectorNLists: 1, http, new StubDomainEventDispatcher());
 
             await store.EnsureSchemaAsync();
             await store.EnsureSchemaAsync();

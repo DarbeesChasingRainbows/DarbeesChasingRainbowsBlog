@@ -1,5 +1,7 @@
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Infrastructure.Embedding;
+using Darbee.Gateway.Domain.Exceptions;
+using Darbee.Gateway.Domain.Models;
 
 namespace Darbee.Gateway.Tests.Memory;
 

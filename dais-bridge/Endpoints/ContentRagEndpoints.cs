@@ -1,6 +1,7 @@
 using System.Diagnostics;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Endpoints;
 
@@ -8,7 +9,7 @@ public static class ContentRagEndpoints
 {
     public static async Task<ReindexResponse> HandleReindexAsync(
         ReindexRequest request,
-        MemoryStore store,
+        IMemoryRepository store,
         IEmbeddingClient embeddings,
         CancellationToken ct = default)
     {
@@ -100,7 +101,7 @@ public static class ContentRagEndpoints
 
     public static async Task<SearchResponse> HandleSearchAsync(
         SearchRequest request,
-        MemoryStore store,
+        IMemoryRepository store,
         IEmbeddingClient embeddings,
         CancellationToken ct = default)
     {
@@ -110,13 +111,13 @@ public static class ContentRagEndpoints
         var k = request.K <= 0 ? 5 : Math.Min(request.K, 50);
 
         // Tenants: prefer plural; fall back to singular for back-compat; default ["public"].
-        IReadOnlyList<string> tenants;
+        IReadOnlyList<TenantId> tenants;
         if (request.Tenants is { Count: > 0 })
-            tenants = request.Tenants;
+            tenants = request.Tenants.Select(t => new TenantId(t)).ToList();
         else if (!string.IsNullOrWhiteSpace(request.Tenant))
-            tenants = new[] { request.Tenant! };
+            tenants = new[] { new TenantId(request.Tenant!) };
         else
-            tenants = new[] { "public" };
+            tenants = new[] { new TenantId("public") };
 
         var kindStrings = request.Kinds is { Count: > 0 } ? request.Kinds : new[] { "post" };
         var kinds = kindStrings.Select(s => s.ToLowerInvariant() switch
@@ -133,7 +134,7 @@ public static class ContentRagEndpoints
         embedSw.Stop();
 
         var searchSw = Stopwatch.StartNew();
-        var rows = await store.SearchAsync(queryVec, kinds, tenants, rawK: k * 2, ct);
+        var rows = await store.SearchAsync(queryVec, kinds, tenants, k * 2, ct);
         searchSw.Stop();
 
         // Posts dedup application-side: best row per (collection, slug).
@@ -160,7 +161,7 @@ public static class ContentRagEndpoints
                     Snippet: BuildSnippet(r),
                     Url: $"/{r.Collection}/{r.Slug}/",
                     Kind: "post",
-                    Tenant: r.TenantId ?? "public");
+                    Tenant: r.TenantId?.Value ?? "public");
             }
             // Notes: Slug = note_key, Collection = "", Url = note_key (obsidian://...).
             return new SearchResult(
@@ -172,7 +173,7 @@ public static class ContentRagEndpoints
                 Snippet: BuildSnippet(r),
                 Url: r.Slug,
                 Kind: kindLower,
-                Tenant: r.TenantId ?? "private");
+                Tenant: r.TenantId?.Value ?? "private");
         }).ToList();
 
         return new SearchResponse(
@@ -194,7 +195,7 @@ public static class ContentRagEndpoints
 
     public static async Task<IngestNotesResponse> HandleIngestNotesAsync(
         IngestNotesRequest request,
-        MemoryStore store,
+        IMemoryRepository store,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Tenant))
@@ -230,7 +231,7 @@ public static class ContentRagEndpoints
                 Title: n.Title,
                 Text: n.Text,
                 Kind: kind,
-                TenantId: request.Tenant,
+                TenantId: new TenantId(request.Tenant),
                 Metadata: n.Metadata);
 
             UpsertNoteResult r;
@@ -262,7 +263,7 @@ public static class ContentRagEndpoints
             }
         }
 
-        var staleDeleted = await store.DeleteStaleNotesAsync(request.CurrentKeys, request.Tenant, ct);
+        var staleDeleted = await store.DeleteStaleNotesAsync(request.CurrentKeys, new TenantId(request.Tenant), ct);
 
         sw.Stop();
         return new IngestNotesResponse(
@@ -276,9 +277,9 @@ public static class ContentRagEndpoints
 
     public static async Task<MigrationResult> HandleMigrateAsync(
         MigrateRequest request,
-        MemoryStore store,
+        IEmbeddingMigrator migrator,
         CancellationToken ct = default)
     {
-        return await store.MigrateEmbeddingsAsync(request.Confirm ?? "", ct);
+        return await migrator.MigrateEmbeddingsAsync(request.Confirm ?? "", ct);
     }
 }

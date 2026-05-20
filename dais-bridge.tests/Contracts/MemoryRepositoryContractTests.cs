@@ -1,5 +1,6 @@
 using Darbee.Gateway.Domain.Models;
 using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Tests.Contracts;
 
@@ -71,13 +72,13 @@ public abstract class MemoryRepositoryContractTests : IAsyncLifetime
         string key = "obsidian://daily/note.md",
         MemoryKind kind = MemoryKind.Observation,
         string text = "I noticed the cast iron pan rusts in the trailer.",
-        string tenant = "private") =>
+        TenantId? tenant = null) =>
         new NoteDocument(
             Key: key,
             Title: "Note",
             Text: text,
             Kind: kind,
-            TenantId: tenant,
+            TenantId: tenant ?? new TenantId("private"),
             Metadata: new Dictionary<string, object> { ["source"] = "obsidian" });
 
     // ---- Contract tests (LSP guarantees) ----
@@ -149,12 +150,12 @@ public abstract class MemoryRepositoryContractTests : IAsyncLifetime
         var hits = await Repository.SearchAsync(
             new[] { 0.1f, 0.2f, 0.3f, 0.4f },
             new[] { MemoryKind.Post },
-            new[] { "public" },
+            new[] { new TenantId("public") },
             k: 5);
 
         Assert.NotEmpty(hits);
         // All results must be from the "public" tenant (posts always land there).
-        Assert.All(hits, h => Assert.Equal("public", h.TenantId));
+        Assert.All(hits, h => Assert.Equal("public", h.TenantId.Value));
     }
 
     [Fact]
@@ -170,7 +171,7 @@ public abstract class MemoryRepositoryContractTests : IAsyncLifetime
         var hits = await Repository.SearchAsync(
             new[] { 0.1f, 0.2f, 0.3f, 0.4f },
             new[] { MemoryKind.Post, MemoryKind.Observation },
-            new[] { "public" },
+            new[] { new TenantId("public") },
             k: 10);
 
         // CRITICAL REGRESSION GUARD: no hit may carry a non-public tenant_id.
@@ -200,7 +201,7 @@ public abstract class MemoryRepositoryContractTests : IAsyncLifetime
         await Repository.UpsertNoteAsync(MakeNote(key: "obsidian://a.md"));
         await Repository.UpsertNoteAsync(MakeNote(key: "obsidian://b.md"));
 
-        var deleted = await Repository.DeleteStaleNotesAsync(Array.Empty<string>(), tenant: "private");
+        var deleted = await Repository.DeleteStaleNotesAsync(Array.Empty<string>(), tenant: new TenantId("private"));
 
         Assert.Equal(2, deleted);
     }

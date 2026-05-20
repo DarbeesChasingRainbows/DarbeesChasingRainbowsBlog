@@ -3,6 +3,8 @@ using Darbee.Gateway.Domain.Models;
 using Darbee.Gateway.Domain.Ports;
 using Darbee.Gateway.Domain.Services;
 using Darbee.Gateway.Domain.ValueObjects;
+using Darbee.Gateway.Domain.Exceptions;
+using Darbee.Gateway.Domain.Events;
 using SurrealDb.Net;
 
 namespace Darbee.Gateway.Infrastructure.SurrealDb;
@@ -18,6 +20,7 @@ public sealed class SurrealDbMemoryRepository : IMemoryRepository, ISchemaManage
     private readonly string _embeddingModelId;
     private readonly int _embeddingDimension;
     private readonly IEmbeddingClient _embeddings;
+    private readonly IDomainEventDispatcher _dispatcher;
 
     // ----- lazy schema state (double-checked locking, mirrors MemoryStore) -----
     private volatile bool _schemaReady;
@@ -28,12 +31,14 @@ public sealed class SurrealDbMemoryRepository : IMemoryRepository, ISchemaManage
         ISurrealDbClient surreal,
         string embeddingModelId,
         int embeddingDimension,
-        IEmbeddingClient embeddings)
+        IEmbeddingClient embeddings,
+        IDomainEventDispatcher dispatcher)
     {
         _surreal = surreal;
         _embeddingModelId = embeddingModelId;
         _embeddingDimension = embeddingDimension;
         _embeddings = embeddings;
+        _dispatcher = dispatcher;
     }
 
     // ----- ISchemaManager -----
@@ -126,9 +131,15 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     public async Task<List<string>> ListCollectionsAsync(CancellationToken ct = default)
     {
         var resp = await _surreal.RawQuery("INFO FOR DB;", null, ct);
-        var first = resp.GetValue<JsonElement>(0);
+        // JsonElement cannot be deserialized by the Dahomey CBOR engine the SDK uses internally.
+        // Use Dictionary<string, object?> and then extract table names via System.Text.Json.
+        var first = resp.GetValue<Dictionary<string, object?>>(0);
+        if (first is null) return new List<string>();
+        var json = System.Text.Json.JsonSerializer.Serialize(first);
+        var doc = System.Text.Json.JsonDocument.Parse(json);
         var tables = new List<string>();
-        if (first.ValueKind == JsonValueKind.Object && first.TryGetProperty("tables", out var tablesEl))
+        if (doc.RootElement.ValueKind == JsonValueKind.Object
+            && doc.RootElement.TryGetProperty("tables", out var tablesEl))
         {
             foreach (var p in tablesEl.EnumerateObject())
                 tables.Add(p.Name);
@@ -148,6 +159,11 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         var summary = await UpsertOnePostVectorAsync(post, "summary", summaryText, force, ct);
         var body = await UpsertOnePostVectorAsync(post, "body", bodyText, force, ct);
 
+        if (summary == VectorWriteOutcome.Embedded || body == VectorWriteOutcome.Embedded)
+        {
+            await _dispatcher.DispatchAsync(new PostEmbeddedEvent(post.Slug, post.Collection, new TenantId("public"), DateTime.UtcNow), ct);
+        }
+
         return new UpsertPostResult(
             Slug: post.Slug,
             Collection: post.Collection,
@@ -165,7 +181,7 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         if (!force)
         {
             var existingHash = await SelectScalarAsync<string>(
-                "SELECT VALUE hash FROM type::thing($table, $id) WHERE status = 'ready'",
+                "SELECT VALUE hash FROM type::record($table, $id) WHERE status = 'ready'",
                 new Dictionary<string, object?> { ["table"] = "memory_posts", ["id"] = recordId },
                 ct);
             if (existingHash == hash)
@@ -206,7 +222,7 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         };
 
         await _surreal.RawQuery(
-            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            "UPSERT type::record($table, $id) CONTENT $doc;",
             new Dictionary<string, object?>
             {
                 ["table"] = "memory_posts",
@@ -227,7 +243,7 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         var hash = ContentHash.From(note.Text, _embeddingModelId).Value;
 
         var existingHash = await SelectScalarAsync<string>(
-            "SELECT VALUE hash FROM type::thing($table, $id) WHERE status = 'ready'",
+            "SELECT VALUE hash FROM type::record($table, $id) WHERE status = 'ready'",
             new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
             ct);
         if (existingHash == hash)
@@ -248,7 +264,7 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
 
         // Read existing created_at to preserve it on overwrite.
         var existingCreatedAt = await SelectScalarAsync<string>(
-            "SELECT VALUE created_at FROM type::thing($table, $id)",
+            "SELECT VALUE created_at FROM type::record($table, $id)",
             new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
             ct);
 
@@ -270,7 +286,7 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         };
 
         await _surreal.RawQuery(
-            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            "UPSERT type::record($table, $id) CONTENT $doc;",
             new Dictionary<string, object?>
             {
                 ["table"] = collection,
@@ -278,6 +294,8 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
                 ["doc"] = doc,
             },
             ct);
+
+        await _dispatcher.DispatchAsync(new NoteEmbeddedEvent(note.Key, note.Kind.ToString(), note.TenantId, DateTime.UtcNow), ct);
 
         return new UpsertNoteResult(note.Key, VectorWriteOutcome.Embedded);
     }
@@ -294,16 +312,15 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         return first[0];
     }
     public Task<WriteResult> UpsertDecisionAsync(
-        string tenantId, string subject, string chose, string because,
+        TenantId tenantId, string subject, string chose, string because,
         IReadOnlyList<string> alternatives, CancellationToken ct = default)
     {
-        var tenant = new TenantId(tenantId);
         var text = $"Decision: {subject}. Chose {chose} because {because}. Alternatives considered: {string.Join(", ", alternatives)}";
         var now = DateTime.UtcNow.ToString("O");
         var doc = new Dictionary<string, object?>
         {
             ["text"] = text,
-            ["tenant_id"] = tenant.Value,
+            ["tenant_id"] = tenantId.Value,
             ["subject"] = subject,
             ["chose"] = chose,
             ["because"] = because,
@@ -315,14 +332,13 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     }
 
     public Task<WriteResult> UpsertObservationAsync(
-        string tenantId, string source, string text, object payload, CancellationToken ct = default)
+        TenantId tenantId, string source, string text, object payload, CancellationToken ct = default)
     {
-        var tenant = new TenantId(tenantId);
         var now = DateTime.UtcNow.ToString("O");
         var doc = new Dictionary<string, object?>
         {
             ["text"] = text,
-            ["tenant_id"] = tenant.Value,
+            ["tenant_id"] = tenantId.Value,
             ["source"] = source,
             ["payload"] = payload,
             ["created_at"] = now,
@@ -332,14 +348,13 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     }
 
     public Task<WriteResult> UpsertFactAsync(
-        string tenantId, string text, string? sourceThread, CancellationToken ct = default)
+        TenantId tenantId, string text, string? sourceThread, CancellationToken ct = default)
     {
-        var tenant = new TenantId(tenantId);
         var now = DateTime.UtcNow.ToString("O");
         var doc = new Dictionary<string, object?>
         {
             ["text"] = text,
-            ["tenant_id"] = tenant.Value,
+            ["tenant_id"] = tenantId.Value,
             ["source_thread"] = sourceThread,
             ["created_at"] = now,
             ["updated_at"] = now,
@@ -348,14 +363,13 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     }
 
     public Task<WriteResult> UpsertSummaryAsync(
-        string tenantId, string text, string threadId, CancellationToken ct = default)
+        TenantId tenantId, string text, string threadId, CancellationToken ct = default)
     {
-        var tenant = new TenantId(tenantId);
         var now = DateTime.UtcNow.ToString("O");
         var doc = new Dictionary<string, object?>
         {
             ["text"] = text,
-            ["tenant_id"] = tenant.Value,
+            ["tenant_id"] = tenantId.Value,
             ["thread_id"] = threadId,
             ["created_at"] = now,
             ["updated_at"] = now,
@@ -364,23 +378,22 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     }
 
     public async Task<string> UpsertEntityAsync(
-        string tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
+        TenantId tenantId, string canonicalName, IReadOnlyList<string> aliases, string type, CancellationToken ct = default)
     {
         await EnsureSchemaIfNeededAsync(ct);
-        var tenant = new TenantId(tenantId);
 
         // Deterministic key: sha1(tenant + canonical_name) so the same entity dedupes across calls.
-        var recordId = ContentHash.Sha1Hex($"{tenant.Value}|{canonicalName}");
+        var recordId = ContentHash.Sha1Hex($"{tenantId.Value}|{canonicalName}");
         var doc = new Dictionary<string, object?>
         {
             ["canonical_name"] = canonicalName,
             ["aliases"] = aliases,
             ["type"] = type,
-            ["tenant_id"] = tenant.Value,
+            ["tenant_id"] = tenantId.Value,
             ["created_at"] = DateTime.UtcNow.ToString("O"),
         };
         await _surreal.RawQuery(
-            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            "UPSERT type::record($table, $id) CONTENT $doc;",
             new Dictionary<string, object?>
             {
                 ["table"] = MemoryCollections.Entities,
@@ -392,21 +405,20 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
     }
 
     public async Task<string> UpsertEdgeAsync(
-        string tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
+        TenantId tenantId, string fromId, string toId, string kind, double weight, CancellationToken ct = default)
     {
         await EnsureSchemaIfNeededAsync(ct);
-        var tenant = new TenantId(tenantId);
 
         // Deterministic key so the same (from, to, kind) edge dedupes.
-        var recordId = ContentHash.Sha1Hex($"{tenant.Value}|{fromId}->{toId}|{kind}");
+        var recordId = ContentHash.Sha1Hex($"{tenantId.Value}|{fromId}->{toId}|{kind}");
 
         // SurrealDB RELATE creates a graph edge. fromId/toId are colon-separated record references
         // e.g. "memory_entities:abc123". Split on ':' to get table and id parts.
         var sql = @"
-RELATE type::thing(string::split($from, ':')[0], string::split($from, ':')[1])
+RELATE type::record(string::split($from, ':')[0], string::split($from, ':')[1])
     -> memory_edges
-    -> type::thing(string::split($to, ':')[0], string::split($to, ':')[1])
-SET id = type::thing('memory_edges', $id),
+    -> type::record(string::split($to, ':')[0], string::split($to, ':')[1])
+SET id = type::record('memory_edges', $id),
     kind = $kind,
     weight = $weight,
     tenant_id = $tenant,
@@ -419,7 +431,7 @@ SET id = type::thing('memory_edges', $id),
             ["id"] = recordId,
             ["kind"] = kind,
             ["weight"] = weight,
-            ["tenant"] = tenant.Value,
+            ["tenant"] = tenantId.Value,
             ["now"] = DateTime.UtcNow.ToString("O"),
         };
         await _surreal.RawQuery(sql, parameters, ct);
@@ -445,7 +457,7 @@ SET id = type::thing('memory_edges', $id),
         doc["status"] = "pending_embedding";
 
         await _surreal.RawQuery(
-            "UPSERT type::thing($table, $id) CONTENT $doc;",
+            "UPSERT type::record($table, $id) CONTENT $doc;",
             new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId, ["doc"] = doc },
             ct);
 
@@ -457,7 +469,7 @@ SET id = type::thing('memory_edges', $id),
                     $"Embedding dimension mismatch: expected {_embeddingDimension}, got {emb.Length}");
 
             await _surreal.RawQuery(
-                "UPDATE type::thing($table, $id) SET embedding = $emb, status = 'ready', updated_at = $now;",
+                "UPDATE type::record($table, $id) SET embedding = $emb, status = 'ready', updated_at = $now;",
                 new Dictionary<string, object?>
                 {
                     ["table"] = collection,
@@ -481,7 +493,7 @@ SET id = type::thing('memory_edges', $id),
     public async Task<List<PostSearchHit>> SearchAsync(
         float[] queryVec,
         IReadOnlyList<MemoryKind> kinds,
-        IReadOnlyList<string> tenants,
+        IReadOnlyList<TenantId> tenants,
         int k,
         CancellationToken ct = default)
     {
@@ -511,26 +523,28 @@ SET id = type::thing('memory_edges', $id),
         string collection,
         MemoryKind kind,
         float[] queryVec,
-        IReadOnlyList<string> tenants,
+        IReadOnlyList<TenantId> tenants,
         int k,
         CancellationToken ct)
     {
         // Different projections for posts vs notes. Posts have slug+collection+vector_kind;
         // notes have note_key. Build a single SELECT and let null fields stay null.
+        // Snake_case fields are aliased to camelCase so Dahomey CBOR (used by the SDK
+        // even on HTTP transport) can map them to the SurrealSearchRow properties.
         var sql = $@"
 SELECT
     record::id(id) AS key,
     slug,
     collection,
-    vector_kind,
-    note_key,
+    vector_kind AS vectorKind,
+    note_key AS noteKey,
     kind,
-    tenant_id,
+    tenant_id AS tenantId,
     title,
     description,
     text,
-    ai_summary,
-    pub_date,
+    ai_summary AS aiSummary,
+    pub_date AS pubDate,
     category,
     tags,
     1.0 - vector::distance::knn() AS sim
@@ -543,7 +557,7 @@ LIMIT {k * 2};";
 
         var parameters = new Dictionary<string, object?>
         {
-            ["tenants"] = tenants,
+            ["tenants"] = tenants.Select(t => t.Value).ToList(),
             ["qvec"] = queryVec,
         };
 
@@ -565,7 +579,7 @@ LIMIT {k * 2};";
             Collection = coll,
             VectorKind = vk,
             Kind = row.Kind ?? kind.ToString().ToLowerInvariant(),
-            TenantId = row.TenantId,
+            TenantId = row.TenantId != null ? new TenantId(row.TenantId) : null,
             Title = row.Title ?? string.Empty,
             Text = row.Text ?? string.Empty,
             Description = row.Description ?? string.Empty,
@@ -599,7 +613,7 @@ LIMIT {k * 2};";
     {
         await EnsureSchemaIfNeededAsync(ct);
         return await SelectScalarAsync<string>(
-            "SELECT VALUE hash FROM type::thing($table, $id);",
+            "SELECT VALUE hash FROM type::record($table, $id);",
             new Dictionary<string, object?> { ["table"] = "memory_posts", ["id"] = key },
             ct);
     }
@@ -609,14 +623,18 @@ LIMIT {k * 2};";
         await EnsureSchemaIfNeededAsync(ct);
         var recordId = ContentHash.Sha1Hex(noteKey);
         var resp = await _surreal.RawQuery(
-            "SELECT * FROM type::thing($table, $id);",
+            "SELECT * FROM type::record($table, $id);",
             new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
             ct);
 
         // SELECT returns an array of rows; expect 0 or 1.
-        var rows = resp.GetValue<List<JsonElement>>(0);
+        // JsonElement cannot be deserialized by the Dahomey CBOR engine the SDK uses internally
+        // (ReadOnlySpan<byte> is not constructable). Use Dictionary<string, object?> instead and
+        // round-trip through System.Text.Json to produce the JsonDocument.
+        var rows = resp.GetValue<List<Dictionary<string, object?>>>(0);
         if (rows is null || rows.Count == 0) return null;
-        return JsonDocument.Parse(rows[0].GetRawText());
+        var json = System.Text.Json.JsonSerializer.Serialize(rows[0]);
+        return JsonDocument.Parse(json);
     }
 
     public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(
@@ -682,20 +700,27 @@ RETURN array::len($deleted);";
 
         var resp = await _surreal.RawQuery(sql, parameters, ct);
         // The final statement is `RETURN array::len(...)` — result is at index 1 (0-based).
+        int count;
         try
         {
-            return resp.GetValue<int>(1);
+            count = resp.GetValue<int>(1);
         }
         catch
         {
             var arr = resp.GetValue<List<int>>(1);
-            return arr is null || arr.Count == 0 ? 0 : arr[0];
+            count = arr is null || arr.Count == 0 ? 0 : arr[0];
         }
+
+        if (count > 0)
+        {
+            await _dispatcher.DispatchAsync(new StalePostsDeletedEvent(count, scope, DateTime.UtcNow), ct);
+        }
+        return count;
     }
 
     public async Task<int> DeleteStaleNotesAsync(
         IReadOnlyList<string> currentKeys,
-        string tenant,
+        TenantId tenantId,
         CancellationToken ct = default)
     {
         await EnsureSchemaIfNeededAsync(ct);
@@ -720,7 +745,7 @@ RETURN array::len($deleted);";
 
             var parameters = new Dictionary<string, object?>
             {
-                ["tenant"] = tenant,
+                ["tenant"] = tenantId.Value,
                 ["keep"] = currentKeys,
             };
 
@@ -753,7 +778,7 @@ RETURN array::len($deleted);";
     {
         // memory_meta:embedding_config is a fixed record id.
         var resp = await _surreal.RawQuery(
-            "SELECT model, dimension FROM type::thing($table, $id);",
+            "SELECT model, dimension FROM type::record($table, $id);",
             new Dictionary<string, object?>
             {
                 ["table"] = MemoryCollections.Meta,
@@ -785,7 +810,7 @@ RETURN array::len($deleted);";
         if (isFirstTime) doc["first_set_at"] = now;
 
         await _surreal.RawQuery(
-            "UPSERT type::thing($table, $id) MERGE $doc;",
+            "UPSERT type::record($table, $id) MERGE $doc;",
             new Dictionary<string, object?>
             {
                 ["table"] = MemoryCollections.Meta,
@@ -897,6 +922,8 @@ RETURN array::len($deleted);";
         await EnsureSchemaAsync(ct);
 
         await WriteEmbeddingConfigAsync(current, isFirstTime: previous is null, ct);
+
+        await _dispatcher.DispatchAsync(new EmbeddingConfigChangedEvent(previous, current, queueSize, DateTime.UtcNow), ct);
 
         return new MigrationResult(
             Previous: previous,

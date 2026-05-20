@@ -5,13 +5,16 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Darbee.Gateway.Plugins;
 using Darbee.Gateway.Middleware;
 using Darbee.Gateway.Hubs;
-using Darbee.Gateway.Memory;
 using Darbee.Gateway.Models;
 using Darbee.Gateway.Endpoints;
 using Darbee.Gateway.Domain.Models;
 using Darbee.Gateway.Domain.Ports;
 using Darbee.Gateway.Domain.Services;
+using Darbee.Gateway.Domain.Exceptions;
+using Darbee.Gateway.Domain.ValueObjects;
 using Darbee.Gateway.Infrastructure.SurrealDb;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Infrastructure.Embedding;
 using SurrealDb.Net;
 
 namespace Darbee.Gateway;
@@ -99,18 +102,21 @@ public class Program
             ?? builder.Configuration["AI:ApiKey"];
 
         builder.Services.AddHttpClient("memory");
+
+        builder.Services.AddSingleton<IDomainEventDispatcher, InMemoryDomainEventDispatcher>();
+
         builder.Services.AddSingleton<IEmbeddingClient>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
             return new OpenAiCompatibleEmbeddingClient(http, lmEmbeddingUrl, embeddingModelId, embeddingDimension, lmApiKey);
         });
-        // Keep MemoryStore registered as a concrete singleton so it can be resolved by
-        // tests and by code that still needs the Arango type directly. The IMemoryRepository
-        // / ISchemaManager / IEmbeddingMigrator port bindings below pick which backend is live.
-        builder.Services.AddSingleton<MemoryStore>(sp =>
+        // Keep ArangoMemoryRepository registered as a concrete singleton so it can be resolved by
+        // tests and by code that still needs the Arango type directly.
+        builder.Services.AddSingleton<ArangoMemoryRepository>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingModelId, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
+            var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
+            return new ArangoMemoryRepository(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingModelId, embeddingDimension, vectorNLists, http, dispatcher, sp.GetRequiredService<IEmbeddingClient>());
         });
 
         if (memoryBackend == "surreal")
@@ -131,7 +137,7 @@ public class Program
             {
                 var client = sp.GetRequiredService<ISurrealDbClient>();
                 var emb = sp.GetRequiredService<IEmbeddingClient>();
-                return new SurrealDbMemoryRepository(client, embeddingModelId, embeddingDimension, emb);
+                return new SurrealDbMemoryRepository(client, embeddingModelId, embeddingDimension, emb, sp.GetRequiredService<IDomainEventDispatcher>());
             });
             builder.Services.AddSingleton<IMemoryRepository>(sp => sp.GetRequiredService<SurrealDbMemoryRepository>());
             builder.Services.AddSingleton<ISchemaManager>(sp => sp.GetRequiredService<SurrealDbMemoryRepository>());
@@ -139,9 +145,9 @@ public class Program
         }
         else
         {
-            builder.Services.AddSingleton<IMemoryRepository>(sp => sp.GetRequiredService<MemoryStore>());
-            builder.Services.AddSingleton<ISchemaManager>(sp => sp.GetRequiredService<MemoryStore>());
-            builder.Services.AddSingleton<IEmbeddingMigrator>(sp => sp.GetRequiredService<MemoryStore>());
+            builder.Services.AddSingleton<IMemoryRepository>(sp => sp.GetRequiredService<ArangoMemoryRepository>());
+            builder.Services.AddSingleton<ISchemaManager>(sp => sp.GetRequiredService<ArangoMemoryRepository>());
+            builder.Services.AddSingleton<IEmbeddingMigrator>(sp => sp.GetRequiredService<ArangoMemoryRepository>());
         }
 
         builder.Services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
@@ -149,21 +155,11 @@ public class Program
         var recallAlpha = double.Parse(builder.Configuration["Memory:RecallAlpha"] ?? "0.7");
         var recallBeta = double.Parse(builder.Configuration["Memory:RecallBeta"] ?? "0.3");
 
-        // SubstringEntityExtractor depends on IMemoryRepository; register once so both backends
-        // share the same extractor wired to whichever repository port is active.
-        builder.Services.AddSingleton<IEntityExtractor>(sp =>
-            new SubstringEntityExtractor(sp.GetRequiredService<IMemoryRepository>()));
-
-        // Keep the Arango-backed engine registered so existing tests can resolve it.
-        builder.Services.AddSingleton<MemoryRecallEngine>(sp =>
-        {
-            var store = sp.GetRequiredService<MemoryStore>();
-            var emb = sp.GetRequiredService<IEmbeddingClient>();
-            return new MemoryRecallEngine(store, emb, recallAlpha, recallBeta);
-        });
-
         if (memoryBackend == "surreal")
         {
+            builder.Services.AddSingleton<IEntityExtractor>(sp =>
+                new SurrealDbEntityExtractor(sp.GetRequiredService<IMemoryRepository>()));
+
             builder.Services.AddSingleton<SurrealDbRecallEngine>(sp =>
             {
                 var repo = sp.GetRequiredService<IMemoryRepository>();
@@ -175,7 +171,17 @@ public class Program
         }
         else
         {
-            builder.Services.AddSingleton<IRecallEngine>(sp => sp.GetRequiredService<MemoryRecallEngine>());
+            builder.Services.AddSingleton<IEntityExtractor>(sp =>
+                new ArangoEntityExtractor(sp.GetRequiredService<IMemoryRepository>()));
+
+            builder.Services.AddSingleton<ArangoRecallEngine>(sp =>
+            {
+                var repo = sp.GetRequiredService<ArangoMemoryRepository>();
+                var emb = sp.GetRequiredService<IEmbeddingClient>();
+                var extractor = sp.GetRequiredService<IEntityExtractor>();
+                return new ArangoRecallEngine(repo, emb, extractor, recallAlpha, recallBeta);
+            });
+            builder.Services.AddSingleton<IRecallEngine>(sp => sp.GetRequiredService<ArangoRecallEngine>());
         }
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";

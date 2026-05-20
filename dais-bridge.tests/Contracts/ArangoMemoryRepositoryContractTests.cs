@@ -1,14 +1,13 @@
 using System.Net.Http;
 using Darbee.Gateway.Domain.Ports;
-using Darbee.Gateway.Memory;
+using Darbee.Gateway.Infrastructure.Arango;
 using Darbee.Gateway.Tests.Memory;
 
 namespace Darbee.Gateway.Tests.Contracts;
 
 /// <summary>
-/// LSP enforcement: prove that <see cref="MemoryStore"/> (the ArangoDB adapter)
-/// satisfies the IMemoryRepository contract. Same suite runs against
-/// SurrealDbMemoryRepository in Phase 12.
+/// LSP enforcement: prove that <see cref="ArangoMemoryRepository"/>
+/// satisfies the IMemoryRepository contract.
 /// </summary>
 public sealed class ArangoMemoryRepositoryContractTests : MemoryRepositoryContractTests
 {
@@ -22,7 +21,8 @@ public sealed class ArangoMemoryRepositoryContractTests : MemoryRepositoryContra
         _dbName = await MemoryStoreSchemaTests.CreateUniqueDb();
         _http = new HttpClient();
         var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
-        var store = new MemoryStore(
+        var dispatcher = new StubDomainEventDispatcher();
+        var store = new ArangoMemoryRepository(
             MemoryStoreSchemaTests.ArangoUrl,
             _dbName,
             MemoryStoreSchemaTests.ArangoUser,
@@ -31,6 +31,7 @@ public sealed class ArangoMemoryRepositoryContractTests : MemoryRepositoryContra
             embeddingDimension: 4,
             vectorNLists: 1,
             _http,
+            dispatcher,
             emb);
         return (store, emb);
     }

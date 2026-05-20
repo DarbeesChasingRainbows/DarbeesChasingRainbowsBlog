@@ -1,5 +1,6 @@
 using Darbee.Gateway.Domain.Models;
 using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Infrastructure.SurrealDb;
 
@@ -30,34 +31,13 @@ public sealed class SurrealDbRecallEngine : IRecallEngine
     }
 
     public async Task<IReadOnlyList<string>> ExtractEntitiesAsync(
-        string tenantId, string query, CancellationToken ct = default)
+        TenantId tenantId, string query, CancellationToken ct = default)
     {
-        // SurrealQL substring + alias match on memory_entities for the tenant.
-        // Lowercases both sides so matching is case-insensitive.
-        var sql = @"
-SELECT VALUE id FROM memory_entities
-WHERE tenant_id = $tenant
-  AND (
-    string::contains(string::lowercase($query), string::lowercase(canonical_name))
-    OR (
-      aliases IS NOT NONE AND
-      array::any(aliases, |$a| string::contains(string::lowercase($query), string::lowercase($a)))
-    )
-  );";
-
-        var bindVars = new Dictionary<string, object>
-        {
-            ["tenant"] = tenantId,
-            ["query"] = query,
-        };
-
-        // QueryAsync<string> returns the bare ids when the projection is SELECT VALUE id.
-        var ids = await _repository.QueryAsync<string>(sql, bindVars, ct);
-        return ids;
+        return await _entityExtractor.ExtractAsync(tenantId, query, ct);
     }
 
     public async Task<RecallResult> RecallAsync(
-        string tenantId, string query, int topK = 8, int expandHops = 1, CancellationToken ct = default)
+        TenantId tenantId, string query, int topK = 8, int expandHops = 1, CancellationToken ct = default)
     {
         // Step 1: extract matching entities from the query text.
         var entityIds = await ExtractEntitiesAsync(tenantId, query, ct);
@@ -99,7 +79,7 @@ FROM $startIds;";
                 MemoryKind.Summary,
                 MemoryKind.Post,
             },
-            new[] { tenantId, "public" },
+            new[] { tenantId, new TenantId("public") },
             k: Math.Max(topK * 2, 16),
             ct);
 

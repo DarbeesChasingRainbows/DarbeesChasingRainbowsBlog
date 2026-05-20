@@ -1,6 +1,9 @@
 using System.Net.Http;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Infrastructure.Embedding;
+using Darbee.Gateway.Domain.Exceptions;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -20,8 +23,8 @@ public class MemoryStoreEmbeddingConfigTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher());
 
             await store.EnsureSchemaAsync();
 
@@ -44,12 +47,12 @@ public class MemoryStoreEmbeddingConfigTests
         try
         {
             using var http = new HttpClient();
-            var first = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "nomic-embed-text-v1.5", embeddingDimension: 768, vectorNLists: 1, http);
+            var first = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "nomic-embed-text-v1.5", embeddingDimension: 768, vectorNLists: 1, http, new StubDomainEventDispatcher());
             await first.EnsureSchemaAsync();
 
-            var second = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 1, http);
+            var second = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 1, http, new StubDomainEventDispatcher());
 
             var ex = await Assert.ThrowsAsync<EmbeddingConfigMismatchException>(() => second.EnsureSchemaAsync());
             Assert.Equal("nomic-embed-text-v1.5", ex.Previous.Model);
@@ -71,8 +74,8 @@ public class MemoryStoreEmbeddingConfigTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher());
 
             await store.EnsureSchemaAsync();
             await store.EnsureSchemaAsync();  // second call — must not throw
@@ -96,11 +99,11 @@ public class MemoryStoreEmbeddingConfigTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher());
 
             // Do NOT call EnsureSchemaAsync explicitly — UpsertFactAsync should trigger it.
-            await store.UpsertFactAsync("tenant-a", "the sky is blue", sourceThread: null);
+            await store.UpsertFactAsync(new TenantId("tenant-a"), "the sky is blue", sourceThread: null);
 
             // Verify the schema was actually bootstrapped: read the config sentinel.
             var config = await store.ReadEmbeddingConfigAsync();
@@ -123,13 +126,13 @@ public class MemoryStoreEmbeddingConfigTests
             using var http = new HttpClient();
 
             // Seed at old config
-            var oldStore = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "nomic-embed-text-v1.5", embeddingDimension: 768, vectorNLists: 1, http);
+            var oldStore = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "nomic-embed-text-v1.5", embeddingDimension: 768, vectorNLists: 1, http, new StubDomainEventDispatcher());
             await oldStore.EnsureSchemaAsync();
 
             // Open new store at mismatched config
-            var newStore = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 1, http);
+            var newStore = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 1, http, new StubDomainEventDispatcher());
 
             // First call: throws mismatch
             var ex1 = await Assert.ThrowsAsync<EmbeddingConfigMismatchException>(

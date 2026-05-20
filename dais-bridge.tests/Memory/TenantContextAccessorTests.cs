@@ -24,7 +24,7 @@ public class TenantContextAccessorTests
         ITenantContextAccessor acc = new TenantContextAccessor();
         acc.Current = TenantContext.ForKid("lila");
         await Task.Yield();
-        Assert.Equal("kid:lila", acc.Required.TenantId);
+        Assert.Equal("kid:lila", acc.Required.TenantId.Value);
     }
 
     [Fact]
@@ -35,13 +35,13 @@ public class TenantContextAccessorTests
         {
             acc.Current = TenantContext.ForKid("a");
             await Task.Delay(20);
-            return acc.Required.TenantId;
+            return acc.Required.TenantId.Value;
         });
         var t2 = Task.Run(async () =>
         {
             acc.Current = TenantContext.ForKid("b");
             await Task.Delay(20);
-            return acc.Required.TenantId;
+            return acc.Required.TenantId.Value;
         });
         var ids = await Task.WhenAll(t1, t2);
         Assert.Contains("kid:a", ids);

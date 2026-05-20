@@ -1,7 +1,9 @@
 using System.Net.Http;
 using System.Text.Json;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -62,8 +64,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var result = await store.UpsertPostAsync(MakePost(), force: false);
 
@@ -97,8 +99,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertPostAsync(MakePost(), force: false);
             var callsAfterFirst = emb.EmbedCalls;
@@ -127,8 +129,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             // First write: doc lands with status=ready
             var first = await store.UpsertPostAsync(MakePost(), force: false);
@@ -175,8 +177,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertPostAsync(MakePost(), force: false);
             var callsAfterFirst = emb.EmbedCalls;
@@ -201,8 +203,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertPostAsync(MakePost(slug: "one"), force: false);
             await store.UpsertPostAsync(MakePost(slug: "two"), force: false);
@@ -242,8 +244,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             // Seed: one blog, one project
             await store.UpsertPostAsync(MakePost(slug: "blog-one", collection: "blog"), force: false);
@@ -275,15 +277,15 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.EnsureSchemaAsync();
 
             var results = await store.SearchAsync(
                 queryVec: new[] { 0.1f, 0.2f, 0.3f, 0.4f },
                 kinds: new[] { MemoryKind.Post },
-                tenants: new[] { "public" },
+                tenants: new[] { new TenantId("public") },
                 rawK: 10);
 
             Assert.Empty(results);
@@ -303,8 +305,8 @@ public class MemoryStorePostsTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertPostAsync(MakePost(slug: "ready"), force: false);
 
@@ -326,7 +328,7 @@ public class MemoryStorePostsTests
             var results = await store.SearchAsync(
                 queryVec: new[] { 0.1f, 0.2f, 0.3f, 0.4f },
                 kinds: new[] { MemoryKind.Post },
-                tenants: new[] { "public" },
+                tenants: new[] { new TenantId("public") },
                 rawK: 10);
 
             Assert.All(results, r => Assert.NotEqual("pending", r.Slug));
