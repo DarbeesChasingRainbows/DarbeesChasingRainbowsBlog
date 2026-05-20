@@ -272,7 +272,7 @@ DEFINE INDEX IF NOT EXISTS idx_summaries_embed ON TABLE memory_summaries FIELDS 
         var doc = new Dictionary<string, object?>
         {
             ["note_key"] = note.Key,
-            ["tenant_id"] = note.TenantId,
+            ["tenant_id"] = note.TenantId.Value,
             ["kind"] = note.Kind.ToString().ToLowerInvariant(),
             ["title"] = note.Title,
             ["text"] = note.Text,
@@ -527,24 +527,24 @@ SET id = type::record('memory_edges', $id),
         int k,
         CancellationToken ct)
     {
-        // Different projections for posts vs notes. Posts have slug+collection+vector_kind;
-        // notes have note_key. Build a single SELECT and let null fields stay null.
-        // Snake_case fields are aliased to camelCase so Dahomey CBOR (used by the SDK
-        // even on HTTP transport) can map them to the SurrealSearchRow properties.
+        // Project scalar fields only (no raw record-id `id`, no `embedding` vector).
+        // The SDK's CBOR engine cannot deserialize Dictionary<string, object?> (its
+        // object-value converter rejects scalars) — a concrete POCO with snake_case
+        // property names matching the SurrealDB column names is the reliable path.
         var sql = $@"
 SELECT
     record::id(id) AS key,
     slug,
     collection,
-    vector_kind AS vectorKind,
-    note_key AS noteKey,
+    vector_kind,
+    note_key,
     kind,
-    tenant_id AS tenantId,
+    tenant_id,
     title,
     description,
     text,
-    ai_summary AS aiSummary,
-    pub_date AS pubDate,
+    ai_summary,
+    pub_date,
     category,
     tags,
     1.0 - vector::distance::knn() AS sim
@@ -568,47 +568,49 @@ LIMIT {k * 2};";
 
     private static PostSearchHit MapRowToHit(SurrealSearchRow row, string collection, MemoryKind kind)
     {
-        // Notes use note_key as the human key; posts use slug+collection+vector_kind.
-        var slug = row.Slug ?? row.NoteKey ?? row.Key ?? string.Empty;
-        var coll = row.Collection ?? collection;
-        var vk = row.VectorKind ?? kind.ToString().ToLowerInvariant();
+        // Notes use note_key as the human key; posts use slug.
+        var slug = row.slug ?? row.note_key ?? row.key ?? string.Empty;
         return new PostSearchHit
         {
-            Key = row.Key ?? string.Empty,
+            Key = row.key ?? string.Empty,
             Slug = slug,
-            Collection = coll,
-            VectorKind = vk,
-            Kind = row.Kind ?? kind.ToString().ToLowerInvariant(),
-            TenantId = row.TenantId != null ? new TenantId(row.TenantId) : null,
-            Title = row.Title ?? string.Empty,
-            Text = row.Text ?? string.Empty,
-            Description = row.Description ?? string.Empty,
-            AiSummary = row.AiSummary,
-            PubDate = row.PubDate,
-            Category = row.Category,
-            Tags = row.Tags ?? (IReadOnlyList<string>)Array.Empty<string>(),
-            Sim = row.Sim,
+            Collection = row.collection ?? collection,
+            VectorKind = row.vector_kind ?? kind.ToString().ToLowerInvariant(),
+            Kind = row.kind ?? kind.ToString().ToLowerInvariant(),
+            TenantId = row.tenant_id != null ? new TenantId(row.tenant_id) : null,
+            Title = row.title ?? string.Empty,
+            Text = row.text ?? string.Empty,
+            Description = row.description ?? string.Empty,
+            AiSummary = row.ai_summary,
+            PubDate = row.pub_date,
+            Category = row.category,
+            Tags = row.tags ?? (IReadOnlyList<string>)Array.Empty<string>(),
+            Sim = row.sim,
         };
     }
 
+    // Property names are snake_case to match the SurrealDB column names verbatim — the
+    // SDK's CBOR engine maps by member name and ignores System.Text.Json attributes.
+#pragma warning disable IDE1006 // intentional snake_case to mirror DB columns
     private sealed class SurrealSearchRow
     {
-        [System.Text.Json.Serialization.JsonPropertyName("key")] public string? Key { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("slug")] public string? Slug { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("collection")] public string? Collection { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("vector_kind")] public string? VectorKind { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("note_key")] public string? NoteKey { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("kind")] public string? Kind { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("tenant_id")] public string? TenantId { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("title")] public string? Title { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("description")] public string? Description { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("text")] public string? Text { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("ai_summary")] public string? AiSummary { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("pub_date")] public string? PubDate { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("category")] public string? Category { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("tags")] public List<string>? Tags { get; set; }
-        [System.Text.Json.Serialization.JsonPropertyName("sim")] public double Sim { get; set; }
+        public string? key { get; set; }
+        public string? slug { get; set; }
+        public string? collection { get; set; }
+        public string? vector_kind { get; set; }
+        public string? note_key { get; set; }
+        public string? kind { get; set; }
+        public string? tenant_id { get; set; }
+        public string? title { get; set; }
+        public string? description { get; set; }
+        public string? text { get; set; }
+        public string? ai_summary { get; set; }
+        public string? pub_date { get; set; }
+        public string? category { get; set; }
+        public List<string>? tags { get; set; }
+        public double sim { get; set; }
     }
+#pragma warning restore IDE1006
     public async Task<string?> ReadPostHashAsync(string key, CancellationToken ct = default)
     {
         await EnsureSchemaIfNeededAsync(ct);
@@ -622,20 +624,50 @@ LIMIT {k * 2};";
     {
         await EnsureSchemaIfNeededAsync(ct);
         var recordId = ContentHash.Sha1Hex(noteKey);
+
+        // Project explicit scalar fields only. `SELECT *` would include the raw record-id
+        // and the embedding vector, neither of which the SDK's CBOR engine can deserialize
+        // into a generic container. A concrete POCO with snake_case members is reliable.
         var resp = await _surreal.RawQuery(
-            "SELECT * FROM type::record($table, $id);",
+            @"SELECT
+                record::id(id) AS key,
+                note_key,
+                tenant_id,
+                kind,
+                title,
+                text,
+                hash,
+                status,
+                source,
+                created_at,
+                updated_at
+              FROM type::record($table, $id);",
             new Dictionary<string, object?> { ["table"] = collection, ["id"] = recordId },
             ct);
 
         // SELECT returns an array of rows; expect 0 or 1.
-        // JsonElement cannot be deserialized by the Dahomey CBOR engine the SDK uses internally
-        // (ReadOnlySpan<byte> is not constructable). Use Dictionary<string, object?> instead and
-        // round-trip through System.Text.Json to produce the JsonDocument.
-        var rows = resp.GetValue<List<Dictionary<string, object?>>>(0);
+        var rows = resp.GetValue<List<SurrealNoteRow>>(0);
         if (rows is null || rows.Count == 0) return null;
         var json = System.Text.Json.JsonSerializer.Serialize(rows[0]);
         return JsonDocument.Parse(json);
     }
+
+#pragma warning disable IDE1006 // intentional snake_case to mirror DB columns
+    private sealed class SurrealNoteRow
+    {
+        public string? key { get; set; }
+        public string? note_key { get; set; }
+        public string? tenant_id { get; set; }
+        public string? kind { get; set; }
+        public string? title { get; set; }
+        public string? text { get; set; }
+        public string? hash { get; set; }
+        public string? status { get; set; }
+        public string? source { get; set; }
+        public string? created_at { get; set; }
+        public string? updated_at { get; set; }
+    }
+#pragma warning restore IDE1006
 
     public async Task<List<(string id, string targetCollection, string targetKey)>> ListPendingEmbeddingsAsync(
         int limit = 100, CancellationToken ct = default)
