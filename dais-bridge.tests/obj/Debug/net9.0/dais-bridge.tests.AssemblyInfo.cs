@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("dais-bridge.tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d307abc6549a2db4e5de3222e231c184a9e870bd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+398c094ac2f6803055ec0cca513c806d26accfa6")]
 [assembly: System.Reflection.AssemblyProductAttribute("dais-bridge.tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("dais-bridge.tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

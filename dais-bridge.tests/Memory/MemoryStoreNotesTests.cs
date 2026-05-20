@@ -1,7 +1,10 @@
 using System.Net.Http;
 using System.Text.Json;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -35,13 +38,13 @@ public class MemoryStoreNotesTests
     internal static NoteDocument MakeNote(string key = "obsidian://daily/note.md",
                                            MemoryKind kind = MemoryKind.Observation,
                                            string text = "I noticed the cast iron pan rusts in the trailer.",
-                                           string tenant = "private") =>
+                                           TenantId? tenant = null) =>
         new NoteDocument(
             Key: key,
             Title: "Note",
             Text: text,
             Kind: kind,
-            TenantId: tenant,
+            TenantId: tenant ?? new TenantId("private"),
             Metadata: new Dictionary<string, object> { ["source"] = "obsidian", ["tags"] = new[] { "rv" } });
 
     [Fact]
@@ -53,8 +56,8 @@ public class MemoryStoreNotesTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var result = await store.UpsertNoteAsync(MakeNote());
 
@@ -63,7 +66,7 @@ public class MemoryStoreNotesTests
 
             using var doc = await store.ReadNoteDocumentAsync(MemoryCollections.Observations, MakeNote().Key);
             Assert.NotNull(doc);
-            Assert.Equal("private", doc!.RootElement.GetProperty("tenant_id").GetString());
+            Assert.Equal("private", doc.RootElement.GetProperty("tenant_id").GetString());
             Assert.Equal("ready", doc.RootElement.GetProperty("status").GetString());
             Assert.Equal("obsidian", doc.RootElement.GetProperty("source").GetString());
         }
@@ -82,8 +85,8 @@ public class MemoryStoreNotesTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertNoteAsync(MakeNote());
             var callsAfterFirst = emb.EmbedCalls;
@@ -107,8 +110,8 @@ public class MemoryStoreNotesTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertNoteAsync(MakeNote(text: "first version"));
             var callsAfterFirst = emb.EmbedCalls;
@@ -132,8 +135,8 @@ public class MemoryStoreNotesTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertNoteAsync(MakeNote(kind: MemoryKind.Fact, key: "obsidian://f1.md"));
 
@@ -158,8 +161,8 @@ public class MemoryStoreNotesTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             // Seed 1 post + 2 obsidian notes + 1 private-tenant non-obsidian doc.
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "one"), force: false);
@@ -183,7 +186,7 @@ public class MemoryStoreNotesTests
             }, MemoryCollections.Observations);
 
             // currentKeys empty -> all obsidian-sourced private notes should be removed.
-            var deleted = await store.DeleteStaleNotesAsync(Array.Empty<string>(), "private");
+            var deleted = await store.DeleteStaleNotesAsync(Array.Empty<string>(), new TenantId("private"));
 
             Assert.Equal(2, deleted);
             Assert.NotNull(await store.ReadPostDocumentAsync("blog__one__summary"));
@@ -206,13 +209,13 @@ public class MemoryStoreNotesTests
         {
             using var http = new HttpClient();
             var emb = new StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p2"), force: false);
 
-            var deleted = await store.DeleteStaleNotesAsync(Array.Empty<string>(), "private");
+            var deleted = await store.DeleteStaleNotesAsync(Array.Empty<string>(), new TenantId("private"));
 
             Assert.Equal(0, deleted);
             Assert.NotNull(await store.ReadPostDocumentAsync("blog__p1__summary"));

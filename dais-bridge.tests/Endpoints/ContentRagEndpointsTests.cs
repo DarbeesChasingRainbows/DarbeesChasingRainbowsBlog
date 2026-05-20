@@ -1,7 +1,9 @@
 using System.Net.Http;
 using Darbee.Gateway.Endpoints;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
+using Darbee.Gateway.Tests.Memory;
 using Darbee.Gateway.Tests.Memory;
 
 namespace Darbee.Gateway.Tests.Endpoints;
@@ -37,9 +39,9 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var request = new ReindexRequest(
                 Force: false,
@@ -68,9 +70,9 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var request = new ReindexRequest(false, new[] { MakeReindexPost("one") });
             await ContentRagEndpoints.HandleReindexAsync(request, store, emb);
@@ -94,9 +96,9 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var first = new ReindexRequest(false, new[] {
                 MakeReindexPost("keep-this"),
@@ -131,8 +133,8 @@ public class ContentRagEndpointsTests
         // No real Arango call — validation runs before any store call.
         using var http = new HttpClient();
         var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-        var store = new MemoryStore("http://unused:8529", "unused", "u", "p",
-            "m", 4, 1, http, emb);
+        var store = new ArangoMemoryRepository("http://unused:8529", "unused", "u", "p",
+            "m", 4, 1, http, new StubDomainEventDispatcher(), emb);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             ContentRagEndpoints.HandleReindexAsync(request, store, emb));
@@ -147,9 +149,9 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var seed = new ReindexRequest(false, new[] {
                 MakeReindexPost("alpha"),
@@ -182,9 +184,9 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
             await store.EnsureSchemaAsync();
 
             var search = new SearchRequest(Query: "x", Kinds: null, K: 5, Tenant: null);
@@ -206,9 +208,9 @@ public class ContentRagEndpointsTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher());
             await store.EnsureSchemaAsync();
 
             var request = new MigrateRequest("preserve-and-reembed");
@@ -227,8 +229,8 @@ public class ContentRagEndpointsTests
     public async Task HandleMigrateAsync_InvalidConfirm_Throws()
     {
         using var http = new HttpClient();
-        var store = new MemoryStore("http://unused:8529", "unused", "u", "p",
-            "m", 4, 1, http);
+        var store = new ArangoMemoryRepository("http://unused:8529", "unused", "u", "p",
+            "m", 4, 1, http, new StubDomainEventDispatcher());
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             ContentRagEndpoints.HandleMigrateAsync(new MigrateRequest("bad"), store));
@@ -246,9 +248,9 @@ public class ContentRagEndpointsTests
             {
                 ShouldFailOn = text => text.Contains("broken-post"),
             };
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             var goodPost = MakeReindexPost("good-post");
             var brokenPost = new ReindexPost(
@@ -300,9 +302,9 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             // Seed: index two posts via a normal reindex
             var seed = new ReindexRequest(false, new[] { MakeReindexPost("a"), MakeReindexPost("b") });
@@ -334,8 +336,8 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
             await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://n1.md"));
 
@@ -360,8 +362,8 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
             await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://n1.md"));
 
@@ -392,8 +394,8 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreNotesTests.StubEmbeddingClient(); // returns identical embedding for any text
-            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "publicPost"), force: false);
             await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://privateNote.md"));
 
@@ -424,8 +426,8 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
             await store.UpsertPostAsync(MemoryStorePostsTests.MakePost(slug: "p1"), force: false);
             await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://n1.md"));
 
@@ -458,8 +460,8 @@ public class ContentRagEndpointsTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreNotesTests.StubEmbeddingClient();
-            var store = new MemoryStore(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
+                "test-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
 
             // Pre-seed an obsidian note that will become stale.
             await store.UpsertNoteAsync(MemoryStoreNotesTests.MakeNote(key: "obsidian://old.md"));

@@ -17,6 +17,31 @@ services:
       retries: 12
     restart: unless-stopped
 
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    user: "root"
+    command:
+      - start
+      - --user
+      - root
+      - --pass
+      - ${SURREAL_ROOT_PASSWORD:-password}
+      - --bind
+      - 0.0.0.0:8000
+      - rocksdb:///data/surreal.db
+    environment:
+      SURREAL_LOG: info
+    ports:
+      - "8000:8000"
+    volumes:
+      - surreal-data:/data
+    healthcheck:
+      test: ["CMD", "/surreal", "isready", "--endpoint", "http://localhost:8000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   dais-bridge-dev:
     profiles: ["dev"]
     build:
@@ -38,10 +63,17 @@ services:
       AI_EMBEDDING_DIMENSION: ${AI_EMBEDDING_DIMENSION:-4096}
       ARANGO_DATABASE: ${ARANGO_DATABASE:-darbees_knowledge}
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      SURREAL_URL: http://surrealdb:8000
+      SURREAL_NS: darbees
+      SURREAL_DB: memory
+      SURREAL_USER: root
+      SURREAL_PASS: ${SURREAL_ROOT_PASSWORD:-password}
+      MEMORY_BACKEND: ${MEMORY_BACKEND:-arango}
     ports:
       - "5000:5000"
     depends_on:
       arango: { condition: service_healthy }
+      surrealdb: { condition: service_healthy }
     restart: unless-stopped
 
   dais-bridge-prod:
@@ -60,11 +92,19 @@ services:
       AI_EMBEDDING_MODEL_ID: ${AI_EMBEDDING_MODEL_ID:-qwen3-embedding-8b}
       AI_EMBEDDING_DIMENSION: ${AI_EMBEDDING_DIMENSION:-4096}
       ARANGO_DATABASE: ${ARANGO_DATABASE:-darbees_knowledge}
+      SURREAL_URL: http://surrealdb:8000
+      SURREAL_NS: darbees
+      SURREAL_DB: memory
+      SURREAL_USER: root
+      SURREAL_PASS: ${SURREAL_ROOT_PASSWORD:-password}
+      MEMORY_BACKEND: ${MEMORY_BACKEND:-arango}
     ports:
       - "5000:5000"
     depends_on:
       arango: { condition: service_healthy }
+      surrealdb: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:
   arango-data:
+  surreal-data:

@@ -1,4 +1,4 @@
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Domain.Models;
 
 namespace Darbee.Gateway.Tests.Memory;
 

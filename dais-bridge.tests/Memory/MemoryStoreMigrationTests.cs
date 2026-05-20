@@ -1,6 +1,7 @@
 using System.Net.Http;
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -20,8 +21,8 @@ public class MemoryStoreMigrationTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher());
 
             await store.EnsureSchemaAsync();
 
@@ -46,8 +47,8 @@ public class MemoryStoreMigrationTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http);
+            var store = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher());
             await store.EnsureSchemaAsync();
 
             await Assert.ThrowsAsync<ArgumentException>(() => store.MigrateEmbeddingsAsync("nope"));
@@ -70,8 +71,8 @@ public class MemoryStoreMigrationTests
             var emb = new MemoryStorePostsTests.StubEmbeddingClient();
 
             // Seed at old config
-            var oldStore = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "nomic-embed-text-v1.5", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            var oldStore = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "nomic-embed-text-v1.5", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), emb);
             await oldStore.UpsertPostAsync(MemoryStorePostsTests.MakePost("one"), force: false);
 
             // Pre-migration: doc is ready with embedding
@@ -80,8 +81,8 @@ public class MemoryStoreMigrationTests
             Assert.Equal("ready", pre!.RootElement.GetProperty("status").GetString());
 
             // Now open a NEW store at NEW config and run migration
-            var newStore = new MemoryStore(ArangoUrl, dbName, ArangoUser, ArangoPass,
-                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, emb);
+            var newStore = new ArangoMemoryRepository(ArangoUrl, dbName, ArangoUser, ArangoPass,
+                "qwen3-embedding-8b", embeddingDimension: 4096, vectorNLists: 100, http, new StubDomainEventDispatcher(), emb);
 
             var result = await newStore.MigrateEmbeddingsAsync("preserve-and-reembed");
 

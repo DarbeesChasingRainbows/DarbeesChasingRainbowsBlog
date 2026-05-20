@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using Darbee.Gateway.Memory;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Infrastructure.Embedding;
+using Darbee.Gateway.Domain.Exceptions;
 
 namespace Darbee.Gateway.Tests.Memory;
 

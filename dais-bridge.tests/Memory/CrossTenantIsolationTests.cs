@@ -1,5 +1,8 @@
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
+using System.Net.Http;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -39,29 +42,32 @@ public class CrossTenantIsolationTests
         try
         {
             using var http = new HttpClient();
+            var dispatcher = new StubDomainEventDispatcher();
 
             // Store for tenant-alpha
-            var storeAlpha = new MemoryStore(
+            var storeAlpha = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
                 "test-model", embeddingDimension: 4, vectorNLists: 1, http,
+                dispatcher,
                 new TenantAwareEmbeddingClient(TenantAlpha));
             await storeAlpha.EnsureSchemaAsync();
 
             // Store for tenant-beta (shares the same DB — same as production sharing one DB)
-            var storeBeta = new MemoryStore(
+            var storeBeta = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
                 "test-model", embeddingDimension: 4, vectorNLists: 1, http,
+                dispatcher,
                 new TenantAwareEmbeddingClient(TenantBeta));
 
             const string SameText = "kingdom farm decision: use raised beds for the first growing season";
 
             // Write identical text under both tenants
             var resultAlpha = await storeAlpha.UpsertDecisionAsync(
-                TenantAlpha, "kingdom farm beds", "raised beds", SameText, Array.Empty<string>());
+                new TenantId(TenantAlpha), "kingdom farm beds", "raised beds", SameText, Array.Empty<string>());
             var resultBeta = await storeBeta.UpsertDecisionAsync(
-                TenantBeta, "kingdom farm beds", "raised beds", SameText, Array.Empty<string>());
+                new TenantId(TenantBeta), "kingdom farm beds", "raised beds", SameText, Array.Empty<string>());
 
             Assert.True(resultAlpha.Completed, "alpha write should complete");
             Assert.True(resultBeta.Completed, "beta write should complete");
@@ -70,14 +76,14 @@ public class CrossTenantIsolationTests
             var alphaHits = await storeAlpha.SearchAsync(
                 QueryVec,
                 kinds: [MemoryKind.Decision],
-                tenants: [TenantAlpha],
+                tenants: [new TenantId(TenantAlpha)],
                 rawK: 10);
 
             // Search scoped strictly to tenant-beta only
             var betaHits = await storeBeta.SearchAsync(
                 QueryVec,
                 kinds: [MemoryKind.Decision],
-                tenants: [TenantBeta],
+                tenants: [new TenantId(TenantBeta)],
                 rawK: 10);
 
             // Each tenant should find exactly one result — their own
@@ -85,10 +91,10 @@ public class CrossTenantIsolationTests
             Assert.True(betaHits.Count >= 1, "beta search should return at least one hit");
 
             // Isolation: alpha results must not contain any beta tenant doc
-            Assert.All(alphaHits, h => Assert.Equal(TenantAlpha, h.TenantId));
+            Assert.All(alphaHits, h => Assert.Equal(TenantAlpha, h.TenantId.Value));
 
             // Isolation: beta results must not contain any alpha tenant doc
-            Assert.All(betaHits, h => Assert.Equal(TenantBeta, h.TenantId));
+            Assert.All(betaHits, h => Assert.Equal(TenantBeta, h.TenantId.Value));
         }
         finally { await MemoryStoreSchemaTests.DropDb(dbName); }
     }
@@ -101,36 +107,38 @@ public class CrossTenantIsolationTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(
+            var dispatcher = new StubDomainEventDispatcher();
+            var store = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
                 "test-model", embeddingDimension: 4, vectorNLists: 1, http,
+                dispatcher,
                 new MemoryStoreWriteTests.ConstantEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             // Write one fact under each tenant
-            await store.UpsertFactAsync(TenantAlpha, "alpha-only fact", null);
-            await store.UpsertFactAsync(TenantBeta,  "beta-only fact",  null);
+            await store.UpsertFactAsync(new TenantId(TenantAlpha), "alpha-only fact", null);
+            await store.UpsertFactAsync(new TenantId(TenantBeta),  "beta-only fact",  null);
 
             // Query with alpha tenant list — must not return beta
             var alphaOnly = await store.SearchAsync(
                 QueryVec,
                 kinds: [MemoryKind.Fact],
-                tenants: [TenantAlpha],
+                tenants: [new TenantId(TenantAlpha)],
                 rawK: 100);
 
             Assert.NotEmpty(alphaOnly);
-            Assert.DoesNotContain(alphaOnly, h => h.TenantId == TenantBeta);
+            Assert.DoesNotContain(alphaOnly, h => h.TenantId.Value == TenantBeta);
 
             // Query with beta tenant list — must not return alpha
             var betaOnly = await store.SearchAsync(
                 QueryVec,
                 kinds: [MemoryKind.Fact],
-                tenants: [TenantBeta],
+                tenants: [new TenantId(TenantBeta)],
                 rawK: 100);
 
             Assert.NotEmpty(betaOnly);
-            Assert.DoesNotContain(betaOnly, h => h.TenantId == TenantAlpha);
+            Assert.DoesNotContain(betaOnly, h => h.TenantId.Value == TenantAlpha);
         }
         finally { await MemoryStoreSchemaTests.DropDb(dbName); }
     }

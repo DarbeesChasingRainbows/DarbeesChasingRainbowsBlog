@@ -40,3 +40,8 @@ obsidian-templates/
 # Obsidian plugin build artifacts
 obsidian-plugin/node_modules/
 obsidian-plugin/dist/
+
+# AI assistant skills and configuration (local environment)
+.agents/
+.claude/
+.windsurf/

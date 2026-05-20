@@ -1,16 +1,20 @@
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
+using Darbee.Gateway.Infrastructure.Arango;
+using System.Net.Http;
 
 namespace Darbee.Gateway.Tests.Memory;
 
 [Trait("Category", "Integration")]
 public class MemoryRecallEngineTests
 {
-    private static MemoryStore NewStore(string dbName, HttpClient http, IEmbeddingClient emb) =>
-        new MemoryStore(
+    private static ArangoMemoryRepository NewStore(string dbName, HttpClient http, IEmbeddingClient emb) =>
+        new ArangoMemoryRepository(
             MemoryStoreSchemaTests.ArangoUrl, dbName,
             MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-            "test-model", embeddingDimension: 4, vectorNLists: 1, http, emb);
+            "test-model", embeddingDimension: 4, vectorNLists: 1, http,
+            new StubDomainEventDispatcher(), emb);
 
     [Fact]
     public async Task ExtractEntities_MatchesCanonicalNameSubstring()
@@ -24,12 +28,13 @@ public class MemoryRecallEngineTests
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
 
-            var chickenId = await store.UpsertEntityAsync("admin", "chickens", new[] { "chooks" }, "concept");
-            await store.UpsertEntityAsync("admin", "PostCard", Array.Empty<string>(), "file");
+            var chickenId = await store.UpsertEntityAsync(new TenantId("admin"), "chickens", new[] { "chooks" }, "concept");
+            await store.UpsertEntityAsync(new TenantId("admin"), "PostCard", Array.Empty<string>(), "file");
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
 
-            var result = await engine.ExtractEntitiesAsync("admin", "who fed the chickens yesterday");
+            var result = await engine.ExtractEntitiesAsync(new TenantId("admin"), "who fed the chickens yesterday");
 
             Assert.Single(result);
             Assert.Equal($"{MemoryCollections.Entities}/{chickenId}", result[0]);
@@ -48,10 +53,11 @@ public class MemoryRecallEngineTests
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
-            var id = await store.UpsertEntityAsync("admin", "chickens", new[] { "chooks", "hens" }, "concept");
+            var id = await store.UpsertEntityAsync(new TenantId("admin"), "chickens", new[] { "chooks", "hens" }, "concept");
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
-            var result = await engine.ExtractEntitiesAsync("admin", "checked the chooks this morning");
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
+            var result = await engine.ExtractEntitiesAsync(new TenantId("admin"), "checked the chooks this morning");
 
             Assert.Contains($"{MemoryCollections.Entities}/{id}", result);
         }
@@ -70,12 +76,13 @@ public class MemoryRecallEngineTests
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
             // Same canonical name, different tenants
-            await store.UpsertEntityAsync("admin", "chickens", Array.Empty<string>(), "concept");
-            await store.UpsertEntityAsync("kid:a", "chickens", Array.Empty<string>(), "concept");
+            await store.UpsertEntityAsync(new TenantId("admin"), "chickens", Array.Empty<string>(), "concept");
+            await store.UpsertEntityAsync(new TenantId("kid:a"), "chickens", Array.Empty<string>(), "concept");
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
-            var adminHits = await engine.ExtractEntitiesAsync("admin", "feed the chickens");
-            var kidHits = await engine.ExtractEntitiesAsync("kid:a", "feed the chickens");
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
+            var adminHits = await engine.ExtractEntitiesAsync(new TenantId("admin"), "feed the chickens");
+            var kidHits = await engine.ExtractEntitiesAsync(new TenantId("kid:a"), "feed the chickens");
 
             Assert.Single(adminHits);
             Assert.Single(kidHits);
@@ -96,19 +103,20 @@ public class MemoryRecallEngineTests
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
 
-            var entityId = await store.UpsertEntityAsync("admin", "PostCard", Array.Empty<string>(), "file");
+            var entityId = await store.UpsertEntityAsync(new TenantId("admin"), "PostCard", Array.Empty<string>(), "file");
             var dec = await store.UpsertDecisionAsync(
-                "admin", "PostCard kind union", "discriminated union",
+                new TenantId("admin"), "PostCard kind union", "discriminated union",
                 "TS6 narrowing", Array.Empty<string>());
             await store.UpsertEdgeAsync(
-                "admin",
+                new TenantId("admin"),
                 $"{MemoryCollections.Decisions}/{dec.Id}",
                 $"{MemoryCollections.Entities}/{entityId}",
                 "mentions", 1.0);
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
             var expanded = await engine.GraphExpandAsync(
-                "admin",
+                new TenantId("admin"),
                 new[] { $"{MemoryCollections.Entities}/{entityId}" },
                 expandHops: 1);
 
@@ -146,7 +154,7 @@ public class MemoryRecallEngineTests
         }
 
         public Task<IReadOnlyList<float[]>> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<float[]>>(texts.Select(t => EmbedAsync(t).Result).ToArray());
+            => Task.FromResult<IReadOnlyList<float[]>>(texts.Select(txt => EmbedAsync(txt).Result).ToArray());
     }
 
     [Fact]
@@ -166,21 +174,22 @@ public class MemoryRecallEngineTests
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
 
-            var ent = await store.UpsertEntityAsync("admin", "chickens", Array.Empty<string>(), "concept");
+            var ent = await store.UpsertEntityAsync(new TenantId("admin"), "chickens", Array.Empty<string>(), "concept");
             var dec1 = await store.UpsertDecisionAsync(
-                "admin", "chickens housing", "free range",
+                new TenantId("admin"), "chickens housing", "free range",
                 "chickens are happier outdoors", Array.Empty<string>());
             var dec2 = await store.UpsertDecisionAsync(
-                "admin", "weather plan", "summer schedule",
+                new TenantId("admin"), "weather plan", "summer schedule",
                 "weather is warm enough", Array.Empty<string>());
             await store.UpsertEdgeAsync(
-                "admin",
+                new TenantId("admin"),
                 $"{MemoryCollections.Decisions}/{dec1.Id}",
                 $"{MemoryCollections.Entities}/{ent}",
                 "mentions", 1.0);
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
-            var result = await engine.RecallAsync("admin", "what about the chickens", topK: 5);
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
+            var result = await engine.RecallAsync(new TenantId("admin"), "what about the chickens", topK: 5);
 
             Assert.NotEmpty(result.Items);
             Assert.NotEmpty(result.ExtractedEntityIds);
@@ -219,7 +228,7 @@ public class MemoryRecallEngineTests
             for (int i = 0; i < 5; i++)
             {
                 var result = await store.UpsertDecisionAsync(
-                    "admin", $"subject {i}", "x", $"because {i}", Array.Empty<string>());
+                    new TenantId("admin"), $"subject {i}", "x", $"because {i}", Array.Empty<string>());
                 Assert.True(result.Completed, $"write {i} should complete (sparse index allows pending docs)");
             }
 
@@ -228,11 +237,12 @@ public class MemoryRecallEngineTests
                 await store.IsVectorIndexReadyAsync(MemoryCollections.Decisions),
                 "vector index for memory_decisions should be trained after writes");
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
-            var topK = await engine.VectorTopKAsync("admin", new float[] { 1, 1, 1, 1 }, limit: 5);
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
+            var topK = await engine.VectorTopKAsync(new TenantId("admin"), new float[] { 1, 1, 1, 1 }, limit: 5);
 
             Assert.Equal(5, topK.Count);
-            Assert.All(topK, c => Assert.Equal("admin", c.Item.TenantId));
+            Assert.All(topK, c => Assert.Equal("admin", c.Item.TenantId.Value));
         }
         finally { await MemoryStoreSchemaTests.DropDb(dbName); }
     }
@@ -249,13 +259,14 @@ public class MemoryRecallEngineTests
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
 
-            await store.UpsertDecisionAsync("admin", "policy", "x", "admin-only fact", Array.Empty<string>());
-            await store.UpsertDecisionAsync("kid:a", "snack", "x", "kid-only fact", Array.Empty<string>());
+            await store.UpsertDecisionAsync(new TenantId("admin"), "policy", "x", "admin-only fact", Array.Empty<string>());
+            await store.UpsertDecisionAsync(new TenantId("kid:a"), "snack", "x", "kid-only fact", Array.Empty<string>());
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
-            var kidResult = await engine.RecallAsync("kid:a", "anything goes", topK: 8);
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
+            var kidResult = await engine.RecallAsync(new TenantId("kid:a"), "anything goes", topK: 8);
 
-            Assert.All(kidResult.Items, i => Assert.Equal("kid:a", i.Item.TenantId));
+            Assert.All(kidResult.Items, i => Assert.Equal("kid:a", i.Item.TenantId.Value));
             Assert.DoesNotContain(kidResult.Items, i => i.Item.Text.Contains("admin-only"));
         }
         finally { await MemoryStoreSchemaTests.DropDb(dbName); }
@@ -273,8 +284,9 @@ public class MemoryRecallEngineTests
             var store = NewStore(dbName, http, emb);
             await store.EnsureSchemaAsync();
 
-            var engine = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
-            var expanded = await engine.GraphExpandAsync("admin", Array.Empty<string>(), expandHops: 2);
+            var extractor = new ArangoEntityExtractor(store);
+            var engine = new ArangoRecallEngine(store, emb, extractor, alpha: 0.7, beta: 0.3);
+            var expanded = await engine.GraphExpandAsync(new TenantId("admin"), Array.Empty<string>(), expandHops: 2);
 
             Assert.Empty(expanded);
         }

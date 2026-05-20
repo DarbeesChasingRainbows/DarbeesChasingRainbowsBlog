@@ -1,6 +1,7 @@
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Models;
 using Darbee.Gateway.Models;
+using Darbee.Gateway.Domain.ValueObjects;
 using Darbee.Gateway.Plugins;
 using Xunit;
 using System.Net.Http;
@@ -22,13 +23,13 @@ public class MemoryPluginTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
-            var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", 4, 1, http, emb);
+                "test-model", 4, 1, http, new StubDomainEventDispatcher(), emb);
             await store.EnsureSchemaAsync();
 
             var acc = new TenantContextAccessor { Current = TenantContext.Admin };
-            var recall = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
+            var recall = new ArangoRecallEngine(store, emb, new ArangoEntityExtractor(store), alpha: 0.7, beta: 0.3);
             var plugin = new MemoryPlugin(store, acc, recall);
 
             var json = await plugin.RememberDecision("subject", "x", "because", new[] { "y" });
@@ -43,9 +44,9 @@ public class MemoryPluginTests
         using var http = new HttpClient();
         // Note: store is just a shell here, won't be called if accessor throws first
         var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
-        var store = new MemoryStore("http://localhost:8529", "ignored", "root", "password", "test-model", 4, 1, http);
+        var store = new ArangoMemoryRepository("http://localhost:8529", "ignored", "root", "password", "test-model", 4, 1, http, new StubDomainEventDispatcher());
         var acc = new TenantContextAccessor();
-        var recall = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
+        var recall = new ArangoRecallEngine(store, emb, new ArangoEntityExtractor(store), alpha: 0.7, beta: 0.3);
         var plugin = new MemoryPlugin(store, acc, recall);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -61,15 +62,15 @@ public class MemoryPluginTests
         {
             using var http = new HttpClient();
             var emb = new MemoryStoreWriteTests.ConstantEmbeddingClient(4);
-            var store = new MemoryStore(MemoryStoreSchemaTests.ArangoUrl, dbName,
+            var store = new ArangoMemoryRepository(MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-model", 4, 1, http, emb);
+                "test-model", 4, 1, http, new StubDomainEventDispatcher(), emb);
             await store.EnsureSchemaAsync();
 
-            await store.UpsertDecisionAsync("admin", "policy", "x", "admin-only secret policy", Array.Empty<string>());
-            await store.UpsertDecisionAsync("kid:a", "snack", "x", "kid-only snack note", Array.Empty<string>());
+            await store.UpsertDecisionAsync(new TenantId("admin"), "policy", "x", "admin-only secret policy", Array.Empty<string>());
+            await store.UpsertDecisionAsync(new TenantId("kid:a"), "snack", "x", "kid-only snack note", Array.Empty<string>());
 
-            var recall = new MemoryRecallEngine(store, emb, alpha: 0.7, beta: 0.3);
+            var recall = new ArangoRecallEngine(store, emb, new ArangoEntityExtractor(store), alpha: 0.7, beta: 0.3);
             var acc = new TenantContextAccessor { Current = TenantContext.ForKid("a") };
             var plugin = new MemoryPlugin(store, acc, recall);
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Related posts (#6) — read body vectors from Arango (memory_posts), compute
+ * Related posts (#6) — read body vectors from Arango or SurrealDB (memory_posts), compute
  * pairwise cosine similarity, write src/data/related-posts.json (consumed at
- * Astro build time). Arango is the single source of truth for vectors; this
+ * Astro build time). DB is the single source of truth for vectors; this
  * script does not embed.
  */
 
@@ -51,39 +51,62 @@ export function buildRelatedMap(posts, opts) {
 import { writeFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { ArangoError, runAql } from './lib/arango-client.mjs';
+import { SurrealError, runSurrealQL } from './lib/surreal-client.mjs';
 
 const DATA_DIR = 'src/data';
 const OUT_PATH = `${DATA_DIR}/related-posts.json`;
 
 async function main() {
-	const aql = `
-		FOR doc IN memory_posts
-			FILTER doc.tenant_id == "public"
-			FILTER doc.status == "ready"
-			FILTER doc.vector_kind == "body"
-			RETURN { collection: doc.collection, id: doc.slug, vector: doc.embedding }
-	`;
-
+	const backend = process.env.MEMORY_BACKEND || 'arango';
 	let rows;
-	try {
-		rows = await runAql(aql);
-	} catch (err) {
-		if (err instanceof ArangoError) {
-			console.error(`Arango error: ${err.message}`);
-			if (err.status === 404) {
-				console.error(
-					'Hint: database `darbees_knowledge` may not exist yet. ' +
-						'Run `make up` then `npm run rag:reindex` to bootstrap it.',
-				);
+
+	if (backend === 'surreal') {
+		const sql = `
+			SELECT collection, slug AS id, embedding AS vector
+			FROM memory_posts
+			WHERE tenant_id = "public"
+			  AND status = "ready"
+			  AND vector_kind = "body";
+		`;
+		try {
+			rows = await runSurrealQL(sql);
+		} catch (err) {
+			if (err instanceof SurrealError) {
+				console.error(`SurrealDB error: ${err.message}`);
+			} else {
+				console.error(err.stack || err.message);
 			}
-		} else {
-			console.error(err.stack || err.message);
+			process.exit(1);
 		}
-		process.exit(1);
+	} else {
+		const aql = `
+			FOR doc IN memory_posts
+				FILTER doc.tenant_id == "public"
+				FILTER doc.status == "ready"
+				FILTER doc.vector_kind == "body"
+				RETURN { collection: doc.collection, id: doc.slug, vector: doc.embedding }
+		`;
+
+		try {
+			rows = await runAql(aql);
+		} catch (err) {
+			if (err instanceof ArangoError) {
+				console.error(`Arango error: ${err.message}`);
+				if (err.status === 404) {
+					console.error(
+						'Hint: database `darbees_knowledge` may not exist yet. ' +
+							'Run `make up` then `npm run rag:reindex` to bootstrap it.',
+					);
+				}
+			} else {
+				console.error(err.stack || err.message);
+			}
+			process.exit(1);
+		}
 	}
 
 	if (rows.length === 0) {
-		console.error('No ready vectors in memory_posts. Run `npm run rag:reindex` first.');
+		console.error(`No ready vectors in memory_posts on ${backend}. Run \`npm run rag:reindex\` first.`);
 		process.exit(1);
 	}
 
@@ -109,7 +132,7 @@ async function main() {
 	await mkdir(DATA_DIR, { recursive: true });
 	await writeFile(OUT_PATH, `${JSON.stringify(map, null, '\t')}\n`, 'utf8');
 
-	console.log(`${rows.length} posts indexed, ${orphans} with 0 relations (floor=${floor})`);
+	console.log(`${rows.length} posts indexed (${backend}), ${orphans} with 0 relations (floor=${floor})`);
 	console.log(`Wrote ${OUT_PATH}`);
 }
 

@@ -5,9 +5,17 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Darbee.Gateway.Plugins;
 using Darbee.Gateway.Middleware;
 using Darbee.Gateway.Hubs;
-using Darbee.Gateway.Memory;
 using Darbee.Gateway.Models;
 using Darbee.Gateway.Endpoints;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Services;
+using Darbee.Gateway.Domain.Exceptions;
+using Darbee.Gateway.Domain.ValueObjects;
+using Darbee.Gateway.Infrastructure.SurrealDb;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Infrastructure.Embedding;
+using SurrealDb.Net;
 
 namespace Darbee.Gateway;
 
@@ -53,6 +61,33 @@ public class Program
             ?? builder.Configuration["ArangoDB:Password"]
             ?? "password";
 
+        var memoryBackend = (Environment.GetEnvironmentVariable("MEMORY_BACKEND")
+            ?? builder.Configuration["Memory:Backend"]
+            ?? "arango").ToLowerInvariant();
+        if (memoryBackend != "arango" && memoryBackend != "surreal")
+        {
+            throw new InvalidOperationException(
+                $"MEMORY_BACKEND must be 'arango' or 'surreal' (got '{memoryBackend}')");
+        }
+
+        var surrealUrl = Environment.GetEnvironmentVariable("SURREAL_URL")
+            ?? builder.Configuration["SurrealDB:Url"]
+            ?? "http://localhost:8000";
+        var surrealNs = Environment.GetEnvironmentVariable("SURREAL_NS")
+            ?? builder.Configuration["SurrealDB:Namespace"]
+            ?? "darbees";
+        var surrealDb = Environment.GetEnvironmentVariable("SURREAL_DB")
+            ?? builder.Configuration["SurrealDB:Database"]
+            ?? "memory";
+        var surrealUser = Environment.GetEnvironmentVariable("SURREAL_USER")
+            ?? builder.Configuration["SurrealDB:User"]
+            ?? "root";
+        var surrealPass = Environment.GetEnvironmentVariable("SURREAL_PASS")
+            ?? builder.Configuration["SurrealDB:Password"]
+            ?? "password";
+
+        Console.WriteLine($"[bridge] memory backend: {memoryBackend}");
+
         var embeddingModelId = Environment.GetEnvironmentVariable("AI_EMBEDDING_MODEL_ID")
             ?? builder.Configuration["AI:EmbeddingModelId"]
             ?? "qwen3-embedding-8b";
@@ -67,26 +102,87 @@ public class Program
             ?? builder.Configuration["AI:ApiKey"];
 
         builder.Services.AddHttpClient("memory");
+
+        builder.Services.AddSingleton<IDomainEventDispatcher, InMemoryDomainEventDispatcher>();
+
         builder.Services.AddSingleton<IEmbeddingClient>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
             return new OpenAiCompatibleEmbeddingClient(http, lmEmbeddingUrl, embeddingModelId, embeddingDimension, lmApiKey);
         });
-        builder.Services.AddSingleton<MemoryStore>(sp =>
+        // Keep ArangoMemoryRepository registered as a concrete singleton so it can be resolved by
+        // tests and by code that still needs the Arango type directly.
+        builder.Services.AddSingleton<ArangoMemoryRepository>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("memory");
-            return new MemoryStore(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingModelId, embeddingDimension, vectorNLists, http, sp.GetRequiredService<IEmbeddingClient>());
+            var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
+            return new ArangoMemoryRepository(arangoUrl, arangoDb, arangoUser, arangoPass, embeddingModelId, embeddingDimension, vectorNLists, http, dispatcher, sp.GetRequiredService<IEmbeddingClient>());
         });
+
+        if (memoryBackend == "surreal")
+        {
+            // SurrealDB SDK registers ISurrealDbClient as a scoped service by default.
+            // Bridge endpoints are singleton-scoped; promote to singleton for our wiring.
+            var surrealOptions = SurrealDbOptions
+                .Create()
+                .WithEndpoint(surrealUrl)
+                .WithNamespace(surrealNs)
+                .WithDatabase(surrealDb)
+                .WithUsername(surrealUser)
+                .WithPassword(surrealPass)
+                .Build();
+            builder.Services.AddSurreal(surrealOptions, ServiceLifetime.Singleton);
+
+            builder.Services.AddSingleton<SurrealDbMemoryRepository>(sp =>
+            {
+                var client = sp.GetRequiredService<ISurrealDbClient>();
+                var emb = sp.GetRequiredService<IEmbeddingClient>();
+                return new SurrealDbMemoryRepository(client, embeddingModelId, embeddingDimension, emb, sp.GetRequiredService<IDomainEventDispatcher>());
+            });
+            builder.Services.AddSingleton<IMemoryRepository>(sp => sp.GetRequiredService<SurrealDbMemoryRepository>());
+            builder.Services.AddSingleton<ISchemaManager>(sp => sp.GetRequiredService<SurrealDbMemoryRepository>());
+            builder.Services.AddSingleton<IEmbeddingMigrator>(sp => sp.GetRequiredService<SurrealDbMemoryRepository>());
+        }
+        else
+        {
+            builder.Services.AddSingleton<IMemoryRepository>(sp => sp.GetRequiredService<ArangoMemoryRepository>());
+            builder.Services.AddSingleton<ISchemaManager>(sp => sp.GetRequiredService<ArangoMemoryRepository>());
+            builder.Services.AddSingleton<IEmbeddingMigrator>(sp => sp.GetRequiredService<ArangoMemoryRepository>());
+        }
+
         builder.Services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
 
         var recallAlpha = double.Parse(builder.Configuration["Memory:RecallAlpha"] ?? "0.7");
         var recallBeta = double.Parse(builder.Configuration["Memory:RecallBeta"] ?? "0.3");
-        builder.Services.AddSingleton<MemoryRecallEngine>(sp =>
+
+        if (memoryBackend == "surreal")
         {
-            var store = sp.GetRequiredService<MemoryStore>();
-            var emb = sp.GetRequiredService<IEmbeddingClient>();
-            return new MemoryRecallEngine(store, emb, recallAlpha, recallBeta);
-        });
+            builder.Services.AddSingleton<IEntityExtractor>(sp =>
+                new SurrealDbEntityExtractor(sp.GetRequiredService<IMemoryRepository>()));
+
+            builder.Services.AddSingleton<SurrealDbRecallEngine>(sp =>
+            {
+                var repo = sp.GetRequiredService<IMemoryRepository>();
+                var emb = sp.GetRequiredService<IEmbeddingClient>();
+                var extractor = sp.GetRequiredService<IEntityExtractor>();
+                return new SurrealDbRecallEngine(repo, emb, extractor, recallAlpha, recallBeta);
+            });
+            builder.Services.AddSingleton<IRecallEngine>(sp => sp.GetRequiredService<SurrealDbRecallEngine>());
+        }
+        else
+        {
+            builder.Services.AddSingleton<IEntityExtractor>(sp =>
+                new ArangoEntityExtractor(sp.GetRequiredService<IMemoryRepository>()));
+
+            builder.Services.AddSingleton<ArangoRecallEngine>(sp =>
+            {
+                var repo = sp.GetRequiredService<ArangoMemoryRepository>();
+                var emb = sp.GetRequiredService<IEmbeddingClient>();
+                var extractor = sp.GetRequiredService<IEntityExtractor>();
+                return new ArangoRecallEngine(repo, emb, extractor, recallAlpha, recallBeta);
+            });
+            builder.Services.AddSingleton<IRecallEngine>(sp => sp.GetRequiredService<ArangoRecallEngine>());
+        }
 
         var cfAccountId = builder.Configuration["Cloudflare:AccountId"] ?? "YOUR_ID";
         var cfToken = builder.Configuration["Cloudflare:ApiToken"] ?? "YOUR_TOKEN";
@@ -118,9 +214,9 @@ public class Program
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
             kernelBuilder.Plugins.AddFromObject(
                 new MemoryPlugin(
-                    sp.GetRequiredService<MemoryStore>(),
+                    sp.GetRequiredService<IMemoryRepository>(),
                     sp.GetRequiredService<ITenantContextAccessor>(),
-                    sp.GetRequiredService<MemoryRecallEngine>()),
+                    sp.GetRequiredService<IRecallEngine>()),
                 "Memory");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
             kernelBuilder.Plugins.AddFromObject(new GitPlugin(), "Git");
@@ -137,9 +233,9 @@ public class Program
             kernelBuilder.Plugins.AddFromObject(new ObsidianPlugin(obsidianVault), "Obsidian");
             kernelBuilder.Plugins.AddFromObject(
                 new MemoryPlugin(
-                    sp.GetRequiredService<MemoryStore>(),
+                    sp.GetRequiredService<IMemoryRepository>(),
                     sp.GetRequiredService<ITenantContextAccessor>(),
-                    sp.GetRequiredService<MemoryRecallEngine>()),
+                    sp.GetRequiredService<IRecallEngine>()),
                 "Memory");
             kernelBuilder.Plugins.AddFromObject(new AssetPlugin(cfAccountId, cfToken), "Assets");
             kernelBuilder.Plugins.AddFromObject(new GEOPlugin(lmChatUrl, modelId), "GEO");
@@ -161,7 +257,7 @@ public class Program
 
         app.MapPost("/api/admin/reindex-posts", async (
             ReindexRequest request,
-            MemoryStore store,
+            IMemoryRepository store,
             IEmbeddingClient embeddings,
             CancellationToken ct) =>
         {
@@ -188,7 +284,7 @@ public class Program
 
         app.MapPost("/api/memory/search", async (
             SearchRequest request,
-            MemoryStore store,
+            IMemoryRepository store,
             IEmbeddingClient embeddings,
             CancellationToken ct) =>
         {
@@ -215,7 +311,7 @@ public class Program
 
         app.MapPost("/api/memory/ingest-notes", async (
             IngestNotesRequest request,
-            MemoryStore store,
+            IMemoryRepository store,
             CancellationToken ct) =>
         {
             try
@@ -241,12 +337,12 @@ public class Program
 
         app.MapPost("/api/admin/migrate-embeddings", async (
             MigrateRequest request,
-            MemoryStore store,
+            IEmbeddingMigrator migrator,
             CancellationToken ct) =>
         {
             try
             {
-                var result = await ContentRagEndpoints.HandleMigrateAsync(request, store, ct);
+                var result = await ContentRagEndpoints.HandleMigrateAsync(request, migrator, ct);
                 return Results.Ok(result);
             }
             catch (ArgumentException ex)

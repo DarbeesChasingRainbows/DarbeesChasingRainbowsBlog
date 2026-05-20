@@ -1,5 +1,8 @@
-using Darbee.Gateway.Memory;
-using Darbee.Gateway.Memory.Models;
+using Darbee.Gateway.Infrastructure.Arango;
+using Darbee.Gateway.Domain.Ports;
+using Darbee.Gateway.Domain.Models;
+using Darbee.Gateway.Domain.ValueObjects;
+using Darbee.Gateway.Domain.ValueObjects;
 
 namespace Darbee.Gateway.Tests.Memory;
 
@@ -32,14 +35,14 @@ public class MemoryStoreWriteTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(
+            var store = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-embed-model", embeddingDimension: 4, vectorNLists: 1, http, new ConstantEmbeddingClient(4));
+                "test-embed-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), new ConstantEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             var result = await store.UpsertDecisionAsync(
-                tenantId: "admin",
+                tenantId: new TenantId("admin"),
                 subject: "PostCard kind union",
                 chose: "discriminated union",
                 because: "type narrowing in TS6",
@@ -60,14 +63,14 @@ public class MemoryStoreWriteTests
         try
         {
             using var http = new HttpClient();
-            var store = new MemoryStore(
+            var store = new ArangoMemoryRepository(
                 MemoryStoreSchemaTests.ArangoUrl, dbName,
                 MemoryStoreSchemaTests.ArangoUser, MemoryStoreSchemaTests.ArangoPass,
-                "test-embed-model", embeddingDimension: 4, vectorNLists: 1, http, new FailingEmbeddingClient(4));
+                "test-embed-model", embeddingDimension: 4, vectorNLists: 1, http, new StubDomainEventDispatcher(), new FailingEmbeddingClient(4));
             await store.EnsureSchemaAsync();
 
             var result = await store.UpsertDecisionAsync(
-                tenantId: "admin", subject: "x", chose: "a", because: "b", alternatives: Array.Empty<string>());
+                tenantId: new TenantId("admin"), subject: "x", chose: "a", because: "b", alternatives: Array.Empty<string>());
 
             Assert.False(result.Completed);
             Assert.True(result.Queued);
