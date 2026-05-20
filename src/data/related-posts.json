@@ -3,26 +3,41 @@
 		{
 			"id": "welcome-to-darbees-chasing-rainbows",
 			"collection": "blog",
-			"score": 0.5610838219859379
+			"score": 0.6052852061283605
 		},
 		{
 			"id": "read-aloud-rhythms-on-the-road",
 			"collection": "blog",
-			"score": 0.5060656174797457
+			"score": 0.5221834287796722
+		},
+		{
+			"id": "carry-on-mr-bowditch",
+			"collection": "books",
+			"score": 0.5181626580134641
 		}
 	],
 	"blog/read-aloud-rhythms-on-the-road": [
 		{
+			"id": "wingfeather-saga-book-one",
+			"collection": "books",
+			"score": 0.7051331984453839
+		},
+		{
 			"id": "homeschooling-under-constraints",
 			"collection": "blog",
-			"score": 0.5060656174797457
+			"score": 0.5221834287796722
+		},
+		{
+			"id": "carry-on-mr-bowditch",
+			"collection": "books",
+			"score": 0.5154968247169207
 		}
 	],
 	"blog/rv-systems-checklist-before-every-launch": [
 		{
 			"id": "what-we-pack-first-in-the-rv",
 			"collection": "blog",
-			"score": 0.5940099315708562
+			"score": 0.59570042177457
 		}
 	],
 	"blog/the-water-source-well-and-irrigation": [],
@@ -30,30 +45,58 @@
 		{
 			"id": "homeschooling-under-constraints",
 			"collection": "blog",
-			"score": 0.5610838219859379
+			"score": 0.6052852061283605
 		},
 		{
 			"id": "why-we-call-it-kingdom-farm",
 			"collection": "blog",
-			"score": 0.5576727232228204
+			"score": 0.5737060893734485
 		}
 	],
-	"blog/what-are-we-choosing-on-behalf-of-our-children.wip": [],
 	"blog/what-we-pack-first-in-the-rv": [
 		{
 			"id": "rv-systems-checklist-before-every-launch",
 			"collection": "blog",
-			"score": 0.5940099315708562
+			"score": 0.59570042177457
 		}
 	],
 	"blog/why-we-call-it-kingdom-farm": [
 		{
 			"id": "welcome-to-darbees-chasing-rainbows",
 			"collection": "blog",
-			"score": 0.5576727232228204
+			"score": 0.5737060893734485
 		}
 	],
+	"books/carry-on-mr-bowditch": [
+		{
+			"id": "homeschooling-under-constraints",
+			"collection": "blog",
+			"score": 0.5181626580134641
+		},
+		{
+			"id": "wingfeather-saga-book-one",
+			"collection": "books",
+			"score": 0.5156809500279799
+		},
+		{
+			"id": "read-aloud-rhythms-on-the-road",
+			"collection": "blog",
+			"score": 0.5154968247169207
+		}
+	],
+	"books/wingfeather-saga-book-one": [
+		{
+			"id": "read-aloud-rhythms-on-the-road",
+			"collection": "blog",
+			"score": 0.7051331984453839
+		},
+		{
+			"id": "carry-on-mr-bowditch",
+			"collection": "books",
+			"score": 0.5156809500279799
+		}
+	],
+	"field-notes/bulow-plantation-ruins": [],
 	"projects/off-grid-power-solar-setup": [],
-	"projects/rv-water-tank-alert-system": [],
-	"field-notes/bulow-plantation-ruins": []
+	"projects/rv-water-tank-alert-system": []
 }

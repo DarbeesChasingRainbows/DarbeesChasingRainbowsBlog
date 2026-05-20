@@ -626,7 +626,7 @@ public sealed class ArangoMemoryRepository : IMemoryRepository, ISchemaManager, 
         {
             ["_key"] = arangoKey,
             ["note_key"] = note.Key,
-            ["tenant_id"] = note.TenantId,
+            ["tenant_id"] = note.TenantId.Value,
             ["kind"] = note.Kind.ToString().ToLowerInvariant(),
             ["title"] = note.Title,
             ["text"] = note.Text,

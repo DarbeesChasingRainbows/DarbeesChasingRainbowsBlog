@@ -16,7 +16,7 @@ export class SurrealError extends Error {
 function connInfo() {
 	const url = (process.env.SURREAL_URL || 'http://localhost:8000').replace(/\/$/, '');
 	const ns = process.env.SURREAL_NS || 'darbees';
-	const db = process.env.SURREAL_DB || 'knowledge';
+	const db = process.env.SURREAL_DB || 'memory';
 	const user = process.env.SURREAL_USER || 'root';
 	const pass = process.env.SURREAL_PASS || 'password';
 	const auth = `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`;
@@ -25,7 +25,16 @@ function connInfo() {
 
 export async function runSurrealQL(query, bindVars = {}, { timeoutMs = 30_000 } = {}) {
 	const { url, ns, db, auth } = connInfo();
-	const endpoint = `${url}/sql`;
+
+	// SurrealDB HTTP /sql takes the raw SurrealQL string as the request body.
+	// Bind-var values ($name) are supplied as URL query parameters, JSON-encoded.
+	let endpoint = `${url}/sql`;
+	if (bindVars && Object.keys(bindVars).length > 0) {
+		const params = new URLSearchParams();
+		for (const [k, v] of Object.entries(bindVars)) params.set(k, JSON.stringify(v));
+		endpoint += `?${params.toString()}`;
+	}
+
 	const signal = AbortSignal.timeout(timeoutMs);
 
 	let response;
@@ -33,13 +42,13 @@ export async function runSurrealQL(query, bindVars = {}, { timeoutMs = 30_000 } 
 		response = await fetch(endpoint, {
 			method: 'POST',
 			headers: {
-				'content-type': 'application/json',
+				'content-type': 'text/plain',
 				Accept: 'application/json',
 				Authorization: auth,
-				NS: ns,
-				DB: db,
+				'surreal-ns': ns,
+				'surreal-db': db,
 			},
-			body: JSON.stringify(bindVars ? [query, bindVars] : [query]),
+			body: query,
 			signal,
 		});
 	} catch (cause) {
